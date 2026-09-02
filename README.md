@@ -9,9 +9,10 @@ Built to `BRIBAR_Logistics_V1_SRS.pdf` v1.0. Comments throughout the codebase
 cite the clause a piece of behaviour implements, so a rule can be traced from
 requirement to code to test.
 
-**Status: Phase 1 complete** — data model, migrations and the server-side
-foundation. Authentication, APIs and the user interface follow in later phases.
-See [`docs/roadmap.md`](docs/roadmap.md).
+**Status: Phases 1–2 complete** — data model, authentication, the service
+layer and every API endpoint. The user interface follows in Phases 3–4; the
+whole workflow is already exercisable over HTTP. See
+[`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
@@ -119,12 +120,19 @@ src/
     errors/              Error taxonomy and HTTP status mapping
     http/                Response envelope, route wrapper, body parsing
     time/                Business dates and clock times
+    auth/                Auth.js config, session helpers, Argon2id
+    audit/               Append-only audit trail with secret redaction
+    i18n/                Every user-facing string, in Spanish
     utils/
   modules/               Feature modules, one per domain area
     services/
-      domain/            Pure rules: mileage, state machine, Service ID
+      domain/            Pure rules: mileage, times, state machine, Service ID
       schemas/           Zod request schemas
+      repository/        Prisma queries - the only layer that knows the ORM
+      service/           Authorisation, transactions, audit
     users/ vehicles/ routes/ shared/
+
+proxy.ts                 Edge route protection (Next.js 16 middleware)
 
 tests/
   unit/                  Domain and schema behaviour - no database

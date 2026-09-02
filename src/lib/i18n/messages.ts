@@ -169,6 +169,7 @@ export const VALIDATION = {
 export const ERRORS = {
   validationFailed: 'Revise los campos marcados.',
   unauthenticated: 'Inicie sesión para continuar.',
+  accountInactive: 'Su cuenta está desactivada. Póngase en contacto con un administrador.',
   forbidden: 'No tiene permiso para realizar esta acción.',
   notFound: (entity = 'El registro solicitado') => `${entity} no se ha encontrado.`,
   internal: 'Se ha producido un error. Inténtelo de nuevo.',
@@ -195,6 +196,8 @@ export const ERRORS = {
   driverInactive: 'Esa cuenta de conductor está desactivada.',
   userNotDriver: 'Solo se pueden asignar rutas y vehículos a conductores.',
   alreadyApproved: 'Este servicio ya está aprobado.',
+  cannotDeactivateSelf: 'No puede desactivar su propia cuenta.',
+  cannotDemoteSelf: 'No puede quitarse a sí mismo el rol de administrador.',
 } as const;
 
 /** Messages for database constraint violations (see `lib/db/prisma-errors.ts`). */

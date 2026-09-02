@@ -108,19 +108,33 @@ const envSchema = baseEnvSchema
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'production') return;
 
-    // In production the callback origin cannot be inferred safely, and it must
-    // be HTTPS because the session cookie is `Secure` (SRS 22.6).
+    // In production the callback origin cannot be inferred safely.
     if (!value.AUTH_URL) {
       ctx.addIssue({
         code: 'custom',
         path: ['AUTH_URL'],
         message: 'is required in production',
       });
-    } else if (!value.AUTH_URL.startsWith('https://')) {
+      return;
+    }
+
+    // SRS 22.6: production access is over HTTPS, and the session cookie is
+    // `Secure`, so a plain-http origin would silently break sign-in.
+    //
+    // Localhost is exempt. `next build` sets NODE_ENV=production, but building
+    // is not deploying - a developer running a production build on their own
+    // machine has no certificate and does not need one. Exempting only
+    // loopback keeps the rule meaningful: http://logistics.bribar.example is
+    // still rejected, which is the case that matters.
+    const isLoopback = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(
+      value.AUTH_URL,
+    );
+
+    if (!isLoopback && !value.AUTH_URL.startsWith('https://')) {
       ctx.addIssue({
         code: 'custom',
         path: ['AUTH_URL'],
-        message: 'must use https in production (SRS 22.6)',
+        message: 'must use https outside localhost (SRS 22.6)',
       });
     }
   });

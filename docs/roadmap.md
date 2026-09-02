@@ -50,29 +50,44 @@ beyond a redirect stub. That is Phase 2's boundary, not an omission.
 
 ---
 
-## Phase 2 — Auth, authorisation, domain services, APIs (7.5 days)
+## Phase 2 — Auth, authorisation, domain services, APIs ✅
 
-The largest phase, and the one that carries the security requirements. Roughly
-28% of the build is this layer — the part a client cannot see, and the part that
-stops a driver editing an approved record with a raw HTTP call.
+The largest phase, and the one carrying the security requirements — roughly 28%
+of the build, and the part a client cannot see.
 
-- Auth.js v5 credentials provider, split edge/Node config; login page; session
-  callbacks carrying role and active state.
-- Route protection in middleware, re-checked server-side per SRS 8.3.
-- Session helpers: `requireUser`, `requireAdmin`, `requireDriver`.
-- Repository layer per module.
-- Service layer: create/update/approve with authorisation, transactions and
-  audit writes.
-- Add Service context endpoint (SRS 18.3) — default vehicle, assigned routes,
-  default route, configuration-required states.
-- All API routes from SRS 18.
-- Audit service with redaction.
-- Integration tests for every row of the SRS 20 permissions matrix and every
-  case in SRS 26.4 and 26.8.
+**Delivered**
 
-**Ends at:** the whole workflow demonstrable over HTTP, with no interface.
+- Auth.js v5 credentials provider with Argon2id, split Edge/Node config so the
+  proxy can authorise on the Edge without pulling Prisma into that bundle.
+- Sign-in page with distinct invalid-credential and deactivated-account states
+  (SRS 17.1), and a constant-time dummy hash so the form cannot be used to
+  enumerate accounts.
+- `requireUser` / `requireAdmin` / `requireDriver`, each re-reading the user
+  from the database so a deactivated account loses access immediately rather
+  than at token expiry (SRS 8.3, 12.4).
+- Route protection in `proxy.ts`, re-checked in every handler.
+- Repositories for services, users, vehicles and routes. Ownership scoping is
+  pushed into SQL, so a driver's query cannot return another driver's row.
+- Service layer with authorisation, transactions and audit writes: create,
+  edit, approve, and the Add Service context.
+- Audit service with secret redaction and field-level diffs.
+- All 13 API endpoints from SRS 18, plus presenters that keep Prisma rows off
+  the wire.
+- Driver and admin dashboard stubs proving the role-scoped read path.
 
----
+**Verified:** 234 tests — 129 unit, 105 integration. `pnpm verify` clean,
+`pnpm build` succeeds.
+
+**Notable during the build**
+
+- Prisma's `updateMany` cannot express a relation connect; the repository type
+  now says so rather than accepting a wider input and casting. The cast
+  compiled and failed at runtime — the integration tests caught it.
+- `translatePrismaError` originally ran only in the HTTP wrapper, so a server
+  component calling a service directly would have received a raw ORM error.
+  Translation moved into the service layer, making `AppError` the contract
+  whatever the caller.
+- Next.js 16 renamed `middleware.ts` to `proxy.ts`.
 
 ## Phase 3 — Driver UI (4.0 days)
 

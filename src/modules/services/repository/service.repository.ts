@@ -1,0 +1,241 @@
+/**
+ * Database access for services (SRS 30.1).
+ *
+ * The only module that writes Prisma queries against `services`. Everything
+ * above it — the service layer, route handlers, pages — works with the shapes
+ * declared here and never sees a `where` clause.
+ *
+ * ## Ownership is enforced in SQL, not after the read
+ *
+ * `findByIdForActor` takes the actor and pushes `driverId` into the query for a
+ * driver. A foreign record is therefore never fetched, and the caller gets
+ * `null` — which becomes a 404. That is deliberate: SRS 18.7 defines 404 as
+ * "not found *or not visible to caller*", and SRS 24.3 forbids confirming that
+ * a protected record exists. Loading the row and then checking ownership would
+ * produce the same status code but leak timing, and invites the eventual bug
+ * where someone forgets the second step.
+ */
+import type { Prisma, PrismaClient, Service, ServiceStatus } from '@prisma/client';
+
+import type { PrismaClientLike } from '@/lib/db/prisma';
+import { prisma } from '@/lib/db/prisma';
+import { businessDateRange } from '@/lib/time/business-date';
+import { Role, type ServiceActor } from '../domain/service-status';
+import { SERVICE_CODE_SEQUENCE } from '../domain/service-code';
+
+/**
+ * Relations every service view needs.
+ *
+ * Declared once so a list row and a detail page cannot disagree about what a
+ * service looks like, and so adding a column is a single edit.
+ */
+const SERVICE_INCLUDE = {
+  driver: { select: { id: true, name: true, loginIdentifier: true } },
+  vehicle: {
+    select: { id: true, registrationPlate: true, referenceName: true, isActive: true },
+  },
+  route: { select: { id: true, code: true, name: true, isActive: true } },
+  approvedBy: { select: { id: true, name: true } },
+} satisfies Prisma.ServiceInclude;
+
+export type ServiceWithRelations = Prisma.ServiceGetPayload<{
+  include: typeof SERVICE_INCLUDE;
+}>;
+
+export interface ServiceFilters {
+  driverId?: string | undefined;
+  vehicleId?: string | undefined;
+  routeId?: string | undefined;
+  status?: ServiceStatus[] | undefined;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+}
+
+/**
+ * Builds the `where` clause shared by list and count.
+ *
+ * `visibleTo` is applied last and cannot be overridden by a filter — a driver
+ * passing `?driverId=` for somebody else still only matches their own rows
+ * (SRS 9.7, 26.8).
+ */
+function buildWhere(
+  filters: ServiceFilters,
+  visibleTo: ServiceActor,
+): Prisma.ServiceWhereInput {
+  const where: Prisma.ServiceWhereInput = {};
+
+  if (filters.vehicleId) where.vehicleId = filters.vehicleId;
+  if (filters.routeId) where.routeId = filters.routeId;
+  if (filters.status?.length) where.status = { in: filters.status };
+
+  const range = businessDateRange(filters.dateFrom ?? null, filters.dateTo ?? null);
+  if (range.gte || range.lt) where.serviceDate = range;
+
+  if (visibleTo.role === Role.ADMIN) {
+    if (filters.driverId) where.driverId = filters.driverId;
+  } else {
+    // Overwrites whatever the caller asked for. This is the line that makes
+    // "Driver ID substitution fails" (SRS 26.8) structural.
+    where.driverId = visibleTo.userId;
+  }
+
+  return where;
+}
+
+export const serviceRepository = {
+  /**
+   * One service, or `null` when it does not exist *or* is not this actor's to
+   * see.
+   */
+  async findByIdForActor(
+    id: string,
+    actor: ServiceActor,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations | null> {
+    return client.service.findFirst({
+      where: actor.role === Role.ADMIN ? { id } : { id, driverId: actor.userId },
+      include: SERVICE_INCLUDE,
+    });
+  },
+
+  /** A page of services, newest business date first. */
+  async list(
+    filters: ServiceFilters,
+    visibleTo: ServiceActor,
+    pagination: { skip: number; take: number },
+    client: PrismaClientLike = prisma,
+  ): Promise<{ items: ServiceWithRelations[]; total: number }> {
+    const where = buildWhere(filters, visibleTo);
+
+    // One round trip rather than two sequential ones. Both statements see the
+    // same snapshot, so the count cannot disagree with the page.
+    const [items, total] = await Promise.all([
+      client.service.findMany({
+        where,
+        include: SERVICE_INCLUDE,
+        // `createdAt` breaks ties within a day so pagination is stable; without
+        // it, two services on the same date could swap places between pages.
+        orderBy: [{ serviceDate: 'desc' }, { createdAt: 'desc' }],
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+      client.service.count({ where }),
+    ]);
+
+    return { items, total };
+  },
+
+  /** The most recent services for a dashboard panel (SRS 15.2, 16.2). */
+  async listRecent(
+    visibleTo: ServiceActor,
+    status: ServiceStatus[] | undefined,
+    take: number,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations[]> {
+    return client.service.findMany({
+      where: buildWhere({ ...(status ? { status } : {}) }, visibleTo),
+      include: SERVICE_INCLUDE,
+      orderBy: [{ serviceDate: 'desc' }, { createdAt: 'desc' }],
+      take,
+    });
+  },
+
+  async countByStatus(
+    visibleTo: ServiceActor,
+    status: ServiceStatus,
+    client: PrismaClientLike = prisma,
+  ): Promise<number> {
+    return client.service.count({ where: buildWhere({ status: [status] }, visibleTo) });
+  },
+
+  /**
+   * Allocates the next Service ID (SRS 19.1, 23.4).
+   *
+   * `nextval()` is atomic and is deliberately *not* rolled back by a failed
+   * transaction, so two concurrent submissions can never receive the same
+   * number. See `domain/service-code.ts` for why gaps are the accepted cost.
+   */
+  async nextServiceSequence(client: PrismaClientLike = prisma): Promise<bigint> {
+    const rows = await client.$queryRawUnsafe<{ value: bigint }[]>(
+      `SELECT nextval('${SERVICE_CODE_SEQUENCE}') AS value`,
+    );
+
+    const value = rows[0]?.value;
+    if (value === undefined) {
+      throw new Error(`Sequence "${SERVICE_CODE_SEQUENCE}" returned no value.`);
+    }
+    return value;
+  },
+
+  async create(
+    data: Prisma.ServiceUncheckedCreateInput,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations> {
+    return client.service.create({ data, include: SERVICE_INCLUDE });
+  },
+
+  /**
+   * Updates a service, but **only while it still matches `expectedStatus`**.
+   *
+   * This is the SRS 24.4 race, closed at the database rather than in the
+   * application: a driver opens a pending service, an administrator approves it
+   * in the meantime, and the driver saves. Checking the status in JavaScript
+   * before calling `update` leaves a window between the read and the write.
+   * Folding the status into the `where` clause closes it — the row either
+   * matches at the instant of the write or it does not.
+   *
+   * Returns `null` when nothing matched, which the service layer turns into a
+   * 409 rather than a 404.
+   */
+  async updateIfStatus(
+    id: string,
+    expectedStatus: ServiceStatus,
+    // Scalars only. `updateMany` cannot express a relation connect, so the
+    // type says so rather than accepting a wider input and casting - the cast
+    // compiled and then failed at runtime.
+    data: Prisma.ServiceUncheckedUpdateManyInput,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations | null> {
+    const result = await client.service.updateMany({
+      where: { id, status: expectedStatus },
+      data,
+    });
+
+    if (result.count === 0) return null;
+
+    return client.service.findUniqueOrThrow({ where: { id }, include: SERVICE_INCLUDE });
+  },
+
+  /** Unconditional update, for an administrator editing an approved service. */
+  async update(
+    id: string,
+    data: Prisma.ServiceUncheckedUpdateInput,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations> {
+    return client.service.update({ where: { id }, data, include: SERVICE_INCLUDE });
+  },
+
+  /** Appends a transition to the history (SRS 19.8, 21.2). */
+  async recordStatusChange(
+    entry: {
+      serviceId: string;
+      fromStatus: ServiceStatus | null;
+      toStatus: ServiceStatus;
+      changedByUserId: string;
+    },
+    client: PrismaClientLike = prisma,
+  ): Promise<void> {
+    await client.serviceStatusHistory.create({ data: entry });
+  },
+
+  async listStatusHistory(serviceId: string, client: PrismaClientLike = prisma) {
+    return client.serviceStatusHistory.findMany({
+      where: { serviceId },
+      include: { changedBy: { select: { id: true, name: true } } },
+      orderBy: { changedAt: 'asc' },
+    });
+  },
+} as const;
+
+export type ServiceRepository = typeof serviceRepository;
+export type { Service, PrismaClient };
