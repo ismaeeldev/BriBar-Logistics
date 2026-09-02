@@ -90,6 +90,7 @@ exercise. Sample data is skipped when `NODE_ENV=production`.
 | `pnpm db:migrate`                   | Create and apply a migration                                 |
 | `pnpm db:deploy`                    | Apply pending migrations (production)                        |
 | `pnpm db:seed`                      | Bootstrap administrator, plus sample data outside production |
+| `pnpm db:demo`                      | Fill two weeks with plausible services, for demos and UAT    |
 | `pnpm db:set-service-start <n>`     | Continue the Service ID numbering from the client's register |
 | `pnpm db:reset`                     | Drop, re-migrate and re-seed                                 |
 | `pnpm db:studio`                    | Prisma Studio                                                |

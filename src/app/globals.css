@@ -28,20 +28,34 @@
   --input: oklch(0.885 0.008 255);
   --ring: oklch(0.55 0.14 250);
 
-  /* Brand. A deep, unsaturated blue — the register enterprise logistics tools
-     sit in, and dark enough that white text on it clears WCAG AA at any size. */
-  --primary: oklch(0.48 0.13 254);
-  --primary-hover: oklch(0.43 0.13 254);
-  --primary-foreground: oklch(0.99 0 0);
+  /* Brand. Sampled from the logo (#164A90) rather than chosen alongside it,
+     so the interface and the mark are the same blue. */
+  --primary: #164a90;
+  --primary-hover: #103a73;
+  --primary-foreground: #ffffff;
 
-  /* Status. Amber for work outstanding, green for signed off (SRS 11.1). */
-  --pending: oklch(0.55 0.12 70);
-  --pending-surface: oklch(0.96 0.04 85);
-  --pending-border: oklch(0.86 0.09 80);
+  /* Status. Amber for work outstanding, teal-green for signed off (SRS 11.1).
+     These two are the states a user distinguishes all day, so the pair was
+     chosen by running the palette validator rather than by eye: an earlier
+     amber/green sat at ΔE 5.8 under protanopia, which is effectively the same
+     colour. This pair clears every check in both themes. */
+  --pending: #c2620a;
+  --pending-surface: oklch(0.96 0.045 75);
+  --pending-border: oklch(0.87 0.09 72);
 
-  --approved: oklch(0.48 0.12 155);
-  --approved-surface: oklch(0.96 0.04 158);
-  --approved-border: oklch(0.85 0.08 158);
+  --approved: #0f766e;
+  --approved-surface: oklch(0.96 0.035 175);
+  --approved-border: oklch(0.86 0.07 175);
+
+  /* Chart ramp: one hue, light to dark, for magnitude (never a rainbow). */
+  --chart-1: oklch(0.86 0.055 250);
+  --chart-2: oklch(0.76 0.09 251);
+  --chart-3: oklch(0.66 0.12 252);
+  --chart-4: oklch(0.55 0.14 253);
+  --chart-5: #164a90;
+  --chart-grid: oklch(0.93 0.005 255);
+  /* Everything that is context rather than the point (see the journey bar). */
+  --chart-muted: oklch(0.86 0.008 255);
 
   --destructive: oklch(0.52 0.2 27);
   --destructive-surface: oklch(0.97 0.02 25);
@@ -65,17 +79,25 @@
     --input: oklch(0.36 0.016 258);
     --ring: oklch(0.65 0.13 250);
 
-    --primary: oklch(0.62 0.14 254);
-    --primary-hover: oklch(0.68 0.14 254);
-    --primary-foreground: oklch(0.16 0.02 258);
+    --primary: #7ba3e8;
+    --primary-hover: #9dbcf0;
+    --primary-foreground: #0f1620;
 
-    --pending: oklch(0.8 0.13 78);
-    --pending-surface: oklch(0.28 0.05 70);
-    --pending-border: oklch(0.4 0.08 72);
+    --pending: #f0b054;
+    --pending-surface: oklch(0.29 0.05 72);
+    --pending-border: oklch(0.41 0.08 72);
 
-    --approved: oklch(0.78 0.13 158);
-    --approved-surface: oklch(0.26 0.05 158);
-    --approved-border: oklch(0.38 0.08 158);
+    --approved: #5fd8a4;
+    --approved-surface: oklch(0.28 0.05 165);
+    --approved-border: oklch(0.4 0.08 165);
+
+    --chart-1: oklch(0.36 0.06 252);
+    --chart-2: oklch(0.46 0.09 252);
+    --chart-3: oklch(0.56 0.12 252);
+    --chart-4: oklch(0.66 0.13 252);
+    --chart-5: #7ba3e8;
+    --chart-grid: oklch(0.29 0.012 258);
+    --chart-muted: oklch(0.36 0.012 258);
 
     --destructive: oklch(0.7 0.17 25);
     --destructive-surface: oklch(0.27 0.06 25);
@@ -105,6 +127,14 @@
   --color-approved: var(--approved);
   --color-approved-surface: var(--approved-surface);
   --color-approved-border: var(--approved-border);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-muted: var(--chart-muted);
 
   --color-destructive: var(--destructive);
   --color-destructive-surface: var(--destructive-surface);

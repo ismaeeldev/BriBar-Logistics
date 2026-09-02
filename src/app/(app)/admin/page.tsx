@@ -4,17 +4,25 @@
  * "The Admin Dashboard shall prioritize services awaiting review while
  * providing direct access to master-data management."
  *
- * So the approval queue is the page, not a panel on it. The master-data links
- * live in the navigation bar above rather than being repeated as tiles here —
- * duplicating them would push the queue below the fold on a laptop, which
- * inverts the priority the SRS states.
+ * So the page is ordered by urgency rather than by prettiness: four headline
+ * numbers, then the approval queue, then the two summary charts. The charts sit
+ * *below* the queue deliberately — they are context for a quiet moment, and the
+ * queue is the reason an administrator opened the page.
+ *
+ * The charts read data SRS 16.2 already requires and add no new storage. They
+ * are a dashboard summary over a fixed window, not the reporting module SRS 29
+ * excludes: no custom ranges, no export, no drill-down.
  */
-import { CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, Route as RouteIcon, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 import { AdminServiceRow } from '@/components/admin/admin-service-row';
+import { ActivityChart } from '@/components/charts/activity-chart';
+import { RouteBars } from '@/components/charts/route-bars';
+import { StatTile } from '@/components/charts/stat-tile';
 import {
   Card,
+  CardBody,
   CardHeader,
   CardTitle,
   EmptyState,
@@ -25,17 +33,35 @@ import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
+import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
 export const metadata = { title: UI.admin.panelTitle };
 
+function ServiceTableHead() {
+  return (
+    <Thead>
+      <tr>
+        <Th>{FIELD_LABELS.serviceDate}</Th>
+        <Th>{FIELD_LABELS.serviceCode}</Th>
+        <Th>{FIELD_LABELS.driver}</Th>
+        <Th>{UI.admin.routeColumn}</Th>
+        <Th>{FIELD_LABELS.vehicle}</Th>
+        <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
+        <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
+        <Th />
+      </tr>
+    </Thead>
+  );
+}
+
 export default async function AdminDashboard() {
   const actor = await requireAdmin();
 
-  const [pending, recentlyApproved, approvedTotal] = await Promise.all([
+  const [data, pending, recentlyApproved] = await Promise.all([
+    getDashboardData(actor),
     serviceRepository.listRecent(actor, [ServiceStatus.PENDING_APPROVAL], 25),
     serviceRepository.listRecent(actor, [ServiceStatus.APPROVED], 5),
-    serviceRepository.countByStatus(actor, ServiceStatus.APPROVED),
   ]);
 
   return (
@@ -43,23 +69,43 @@ export default async function AdminDashboard() {
       <PageHeader
         title={UI.admin.panelTitle}
         description={
-          pending.length === 0
+          data.pendingCount === 0
             ? UI.admin.nothingPending
-            : UI.admin.pendingSummary(pending.length)
+            : UI.admin.pendingSummary(data.pendingCount)
         }
       />
 
-      <dl className="grid grid-cols-2 gap-3">
-        <Stat
+      {/* Four headline numbers are stat tiles, not a grouped bar chart — there
+          is nothing to compare between a count and a distance. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
           label={SERVICE_STATUS_LABELS.PENDING_APPROVAL}
-          value={pending.length}
-          tone={pending.length > 0 ? 'pending' : 'neutral'}
+          value={data.pendingCount}
+          tone={data.pendingCount > 0 ? 'pending' : 'neutral'}
+          hint={UI.admin.awaitingReview}
         />
-        <Stat label={SERVICE_STATUS_LABELS.APPROVED} value={approvedTotal} tone="neutral" />
-      </dl>
+        <StatTile
+          label={SERVICE_STATUS_LABELS.APPROVED}
+          value={data.approvedCount}
+          tone="approved"
+          hint={UI.admin.allTime}
+        />
+        <StatTile
+          label={FIELD_LABELS.serviceKm}
+          value={data.window.serviceKm.toLocaleString('es-ES')}
+          unit="km"
+          hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+        />
+        <StatTile
+          label={UI.admin.servicesTitle}
+          value={data.window.services}
+          hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+        />
+      </div>
 
+      {/* The queue: the reason the page exists. */}
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
             <ClipboardCheck aria-hidden className="text-pending size-4" />
             {UI.admin.approvalQueue}
@@ -83,18 +129,7 @@ export default async function AdminDashboard() {
         ) : (
           <TableWrap>
             <Table>
-              <Thead>
-                <tr>
-                  <Th>{FIELD_LABELS.serviceDate}</Th>
-                  <Th>{FIELD_LABELS.serviceCode}</Th>
-                  <Th>{FIELD_LABELS.driver}</Th>
-                  <Th>{UI.admin.routeColumn}</Th>
-                  <Th>{FIELD_LABELS.vehicle}</Th>
-                  <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
-                  <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
-                  <Th />
-                </tr>
-              </Thead>
+              <ServiceTableHead />
               <Tbody>
                 {pending.map((service) => (
                   <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
@@ -105,23 +140,45 @@ export default async function AdminDashboard() {
         )}
       </section>
 
+      {/* Context, below the work. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp aria-hidden className="text-muted-foreground size-4" />
+              {UI.admin.activityTitle}
+            </CardTitle>
+            <p className="text-muted-foreground text-xs">{UI.admin.lastDays(ACTIVITY_DAYS)}</p>
+          </CardHeader>
+          <CardBody>
+            <ActivityChart points={data.activity} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RouteIcon aria-hidden className="text-muted-foreground size-4" />
+              {UI.admin.topRoutesTitle}
+            </CardTitle>
+            <p className="text-muted-foreground text-xs">{UI.admin.lastDays(ACTIVITY_DAYS)}</p>
+          </CardHeader>
+          <CardBody>
+            {data.routes.length === 0 ? (
+              <EmptyState title={UI.admin.noRouteActivity} />
+            ) : (
+              <RouteBars routes={data.routes} />
+            )}
+          </CardBody>
+        </Card>
+      </div>
+
       {recentlyApproved.length > 0 ? (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold tracking-tight">{UI.driver.recentlyApproved}</h2>
           <TableWrap>
             <Table>
-              <Thead>
-                <tr>
-                  <Th>{FIELD_LABELS.serviceDate}</Th>
-                  <Th>{FIELD_LABELS.serviceCode}</Th>
-                  <Th>{FIELD_LABELS.driver}</Th>
-                  <Th>{UI.admin.routeColumn}</Th>
-                  <Th>{FIELD_LABELS.vehicle}</Th>
-                  <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
-                  <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
-                  <Th />
-                </tr>
-              </Thead>
+              <ServiceTableHead />
               <Tbody>
                 {recentlyApproved.map((service) => (
                   <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
@@ -132,34 +189,5 @@ export default async function AdminDashboard() {
         </section>
       ) : null}
     </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: 'pending' | 'neutral';
-}) {
-  return (
-    <Card>
-      <CardHeader className="border-b-0 pb-0">
-        <CardTitle className="text-muted-foreground font-normal">{label}</CardTitle>
-      </CardHeader>
-      <div className="px-4 pt-1 pb-4">
-        <dd
-          className={
-            tone === 'pending'
-              ? 'text-pending font-mono text-3xl font-semibold'
-              : 'font-mono text-3xl font-semibold'
-          }
-        >
-          {value}
-        </dd>
-      </div>
-    </Card>
   );
 }

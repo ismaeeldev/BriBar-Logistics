@@ -8,6 +8,7 @@ import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
 import { LoginSubmit } from '@/components/auth/login-submit';
+import { LogoLockup } from '@/components/layout/logo';
 import { Alert } from '@/components/ui/primitives';
 import { signIn } from '@/lib/auth';
 import { AUTH, FIELD_LABELS, UI } from '@/lib/i18n/messages';
@@ -71,17 +72,14 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-dvh flex-col justify-center px-4 py-10">
       <div className="mx-auto w-full max-w-sm space-y-8">
-        <header className="space-y-4 text-center">
-          <span
-            aria-hidden
-            className="bg-primary text-primary-foreground mx-auto flex size-12 items-center justify-center rounded-xl text-base font-bold tracking-tight"
-          >
-            BL
-          </span>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{UI.common.appName}</h1>
-            <p className="text-muted-foreground text-sm">{UI.auth.internalAccess}</p>
-          </div>
+        <header className="space-y-3 text-center">
+          {/* The lockup already carries the company name, so it is the heading
+              rather than decoration above one. */}
+          <h1>
+            <LogoLockup className="text-primary mx-auto h-24 w-52" />
+            <span className="sr-only">{UI.common.appName}</span>
+          </h1>
+          <p className="text-muted-foreground text-sm">{UI.auth.internalAccess}</p>
         </header>
 
         <div className="bg-card rounded-xl border p-6 shadow-xs">

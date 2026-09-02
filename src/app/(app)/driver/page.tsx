@@ -9,18 +9,22 @@
 import { ClipboardList, Plus } from 'lucide-react';
 import Link from 'next/link';
 
+import { ActivityChart } from '@/components/charts/activity-chart';
+import { StatTile } from '@/components/charts/stat-tile';
 import { ServiceCard } from '@/components/services/service-card';
 import {
   Card,
+  CardBody,
   CardHeader,
   CardTitle,
   EmptyState,
   PageHeader,
 } from '@/components/ui/primitives';
 import { requireDriver } from '@/lib/auth/session';
-import { SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
+import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
 export const metadata = { title: UI.driver.myServices };
@@ -28,7 +32,11 @@ export const metadata = { title: UI.driver.myServices };
 export default async function DriverDashboard() {
   const actor = await requireDriver();
 
-  const [pending, recent] = await Promise.all([
+  // The same summary the administrator sees, scoped by the repository to this
+  // driver's own services (SRS 9.7) - a driver's dashboard shows their work,
+  // not the fleet's.
+  const [data, pending, recent] = await Promise.all([
+    getDashboardData(actor, { routeLimit: 0 }),
     serviceRepository.listRecent(actor, [ServiceStatus.PENDING_APPROVAL], 20),
     serviceRepository.listRecent(actor, [ServiceStatus.APPROVED], 5),
   ]);
@@ -52,6 +60,40 @@ export default async function DriverDashboard() {
         <Plus aria-hidden className="size-5" />
         {UI.driver.addService}
       </Link>
+
+      {/* The driver's own fortnight, so the panel says something about their
+          work rather than only listing it. */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile
+          label={UI.admin.servicesTitle}
+          value={data.window.services}
+          hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+        />
+        <StatTile
+          label={FIELD_LABELS.serviceKm}
+          value={data.window.serviceKm.toLocaleString('es-ES')}
+          unit="km"
+          hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+        />
+        <StatTile
+          label={FIELD_LABELS.actualKm}
+          value={data.window.actualKm.toLocaleString('es-ES')}
+          unit="km"
+          hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+        />
+      </div>
+
+      {data.window.services > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{UI.admin.activityTitle}</CardTitle>
+            <p className="text-muted-foreground text-xs">{UI.admin.lastDays(ACTIVITY_DAYS)}</p>
+          </CardHeader>
+          <CardBody>
+            <ActivityChart points={data.activity} />
+          </CardBody>
+        </Card>
+      ) : null}
 
       {/* SRS 15.2: Pending Approval list. */}
       <Card className="overflow-hidden">

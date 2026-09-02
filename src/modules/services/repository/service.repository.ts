@@ -215,6 +215,104 @@ export const serviceRepository = {
     return client.service.update({ where: { id }, data, include: SERVICE_INCLUDE });
   },
 
+  /**
+   * Services and kilometres per business day, for the dashboard trend.
+   *
+   * Grouped in the database rather than by pulling rows and reducing in
+   * JavaScript: the dashboard must stay cheap as the services table grows, and
+   * `services_service_date_idx` already backs this exact grouping (SRS 19.10).
+   *
+   * Days with no activity are absent from the result - a `GROUP BY` cannot
+   * invent rows that do not exist. The service layer fills the gaps, because a
+   * trend line with holes in it reads as missing data rather than a quiet day.
+   */
+  async dailyActivity(
+    visibleTo: ServiceActor,
+    from: Date,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ serviceDate: Date; services: number; actualKm: number }[]> {
+    const grouped = await client.service.groupBy({
+      by: ['serviceDate'],
+      where: { ...buildWhere({}, visibleTo), serviceDate: { gte: from } },
+      _count: { _all: true },
+      _sum: { actualKm: true },
+      orderBy: { serviceDate: 'asc' },
+    });
+
+    return grouped.map((row) => ({
+      serviceDate: row.serviceDate,
+      services: row._count._all,
+      actualKm: row._sum.actualKm ?? 0,
+    }));
+  },
+
+  /**
+   * Contracted kilometres per route, busiest first (SRS 28.6 anticipates this
+   * kind of aggregation; here it is a dashboard summary, not a report).
+   *
+   * Two queries rather than a join: `groupBy` cannot select through a relation,
+   * and fetching the handful of routes it returns by id is cheaper than the
+   * raw SQL it would take to avoid the round trip.
+   */
+  async routeTotals(
+    visibleTo: ServiceActor,
+    limit: number,
+    from: Date,
+    client: PrismaClientLike = prisma,
+  ): Promise<
+    { routeId: string; code: string; name: string; services: number; serviceKm: number }[]
+  > {
+    const grouped = await client.service.groupBy({
+      by: ['routeId'],
+      where: { ...buildWhere({}, visibleTo), serviceDate: { gte: from } },
+      _count: { _all: true },
+      _sum: { serviceKm: true },
+      orderBy: { _sum: { serviceKm: 'desc' } },
+      take: limit,
+    });
+
+    if (grouped.length === 0) return [];
+
+    const routes = await client.route.findMany({
+      where: { id: { in: grouped.map((row) => row.routeId) } },
+      select: { id: true, code: true, name: true },
+    });
+    const byId = new Map(routes.map((route) => [route.id, route]));
+
+    return grouped.flatMap((row) => {
+      const route = byId.get(row.routeId);
+      if (!route) return [];
+      return [
+        {
+          routeId: row.routeId,
+          code: route.code,
+          name: route.name,
+          services: row._count._all,
+          serviceKm: row._sum.serviceKm ?? 0,
+        },
+      ];
+    });
+  },
+
+  /** Headline totals for the stat tiles. */
+  async totals(
+    visibleTo: ServiceActor,
+    from: Date,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ services: number; actualKm: number; serviceKm: number }> {
+    const result = await client.service.aggregate({
+      where: { ...buildWhere({}, visibleTo), serviceDate: { gte: from } },
+      _count: { _all: true },
+      _sum: { actualKm: true, serviceKm: true },
+    });
+
+    return {
+      services: result._count._all,
+      actualKm: result._sum.actualKm ?? 0,
+      serviceKm: result._sum.serviceKm ?? 0,
+    };
+  },
+
   /** Appends a transition to the history (SRS 19.8, 21.2). */
   async recordStatusChange(
     entry: {

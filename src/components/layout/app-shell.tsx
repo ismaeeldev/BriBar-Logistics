@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { AdminNav } from '@/components/layout/admin-nav';
+import { LogoMark } from '@/components/layout/logo';
 import { signOut } from '@/lib/auth';
 import type { Actor } from '@/lib/auth/session';
 import { ROLE_LABELS, UI } from '@/lib/i18n/messages';
@@ -25,9 +26,12 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
     <div className="flex min-h-dvh flex-col">
       <header className="bg-card/80 sticky top-0 z-20 border-b backdrop-blur-sm">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
-          <Link href={home} className="flex min-w-0 items-center gap-2.5">
-            <BribarMark />
-            <span className="truncate text-sm font-semibold tracking-tight">
+          <Link
+            href={home}
+            className="text-primary flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80"
+          >
+            <LogoMark className="h-7 w-[2.35rem]" />
+            <span className="text-foreground truncate text-sm font-semibold tracking-tight">
               {UI.common.appName}
             </span>
           </Link>
@@ -72,17 +76,5 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
 
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</div>
     </div>
-  );
-}
-
-/** A simple geometric mark — no external asset to load or go missing. */
-function BribarMark() {
-  return (
-    <span
-      aria-hidden
-      className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-md text-[0.6875rem] font-bold tracking-tight"
-    >
-      BL
-    </span>
   );
 }

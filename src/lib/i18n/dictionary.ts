@@ -218,6 +218,13 @@ export interface Dictionary {
       submittedHint: string;
       saved: string;
       approvedReadOnly: string;
+      journeySection: string;
+      legApproach: string;
+      legReturn: string;
+      legEmpty: string;
+      legStart: string;
+      legEnd: string;
+      productiveShare: (percent: number) => string;
       record: string;
       created: string;
       lastUpdated: string;
@@ -236,6 +243,12 @@ export interface Dictionary {
       viewAllServices: string;
       review: string;
 
+      awaitingReview: string;
+      allTime: string;
+      lastDays: (days: number) => string;
+      activityTitle: string;
+      topRoutesTitle: string;
+      noRouteActivity: string;
       servicesTitle: string;
       noServicesMatch: string;
       filters: string;

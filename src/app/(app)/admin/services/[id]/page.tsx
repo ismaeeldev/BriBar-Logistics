@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ApproveButton } from '@/components/admin/approve-button';
+import { JourneyBar } from '@/components/charts/journey-bar';
 import {
   Alert,
   Card,
@@ -111,6 +112,17 @@ export default async function AdminServiceDetailPage({
               <p className="font-mono text-2xl font-semibold">{service.serviceKm}</p>
             </div>
           </div>
+
+          {/* The four readings as the journey they describe: approach, the
+              contracted leg, and the return. The ratio between them is the
+              operationally interesting fact, and a list of four numbers hides
+              it completely. */}
+          <JourneyBar
+            startDashboardKm={service.startDashboardKm}
+            startBaseKm={service.startBaseKm}
+            endBaseKm={service.endBaseKm}
+            endDashboardKm={service.endDashboardKm}
+          />
 
           <dl className="divide-y">
             <DetailRow
