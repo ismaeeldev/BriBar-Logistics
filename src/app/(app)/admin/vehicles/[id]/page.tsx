@@ -1,15 +1,18 @@
 /**
  * Edit a vehicle (SRS 13.3, 13.4, 17.3 `/admin/vehicles/[id]`).
  *
- * No delete action, deliberately: SRS 21.5 makes deactivation the removal
- * path, and the `onDelete: Restrict` foreign keys would refuse the write for
- * any vehicle attached to a service.
+ * Deactivation is still the removal path for a vehicle that has been used
+ * (SRS 21.5), and the `onDelete: Restrict` foreign keys enforce that whatever
+ * this page offers. Delete exists for the other case: a plate typed wrong, a
+ * vehicle added and never driven. `getDeletability` decides which of the two
+ * the administrator is looking at before the control is drawn.
  */
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { updateVehicleAction } from '@/app/(app)/admin/actions';
+import { deleteVehicleAction, updateVehicleAction } from '@/app/(app)/admin/actions';
+import { DeleteRecord } from '@/components/admin/delete-record';
 import { VehicleForm } from '@/components/admin/vehicle-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
@@ -31,6 +34,8 @@ export default async function EditVehiclePage({ params }: { params: Promise<{ id
     throw error;
   }
 
+  const deletability = await vehicleService.getDeletability(actor, id);
+
   return (
     <div className="space-y-5">
       <Link
@@ -51,6 +56,12 @@ export default async function EditVehiclePage({ params }: { params: Promise<{ id
           referenceName: vehicle.referenceName,
           isActive: vehicle.isActive,
         }}
+      />
+
+      <DeleteRecord
+        action={deleteVehicleAction.bind(null, id)}
+        name={vehicle.registrationPlate}
+        deletability={deletability}
       />
     </div>
   );

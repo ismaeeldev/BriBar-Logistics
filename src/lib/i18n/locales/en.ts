@@ -143,6 +143,8 @@ export const en: Dictionary = {
     driverInactive: 'That driver account is deactivated.',
     userNotDriver: 'Only drivers can be assigned routes and vehicles.',
     alreadyApproved: 'This service is already approved.',
+    deleteBlocked: 'Cannot delete: services depend on this record. Deactivate it instead.',
+    deleteSelfBlocked: 'You cannot delete your own account.',
     cannotDeactivateSelf: 'You cannot deactivate your own account.',
     cannotDemoteSelf: 'You cannot remove your own administrator role.',
   },
@@ -177,6 +179,30 @@ export const en: Dictionary = {
 
   UI: {
     common: {
+      delete: 'Delete',
+      deleting: 'Deleting…',
+      deleteTitle: 'Delete record',
+      deleteConfirm: (name) => `“${name}” will be permanently deleted.`,
+      deleteIrreversible: 'This cannot be undone.',
+      deleteBlockedTitle: 'Cannot be deleted',
+      deleteBlockedHint: 'Deactivate it to take it out of use while keeping the history.',
+      deleteCascade: (count) =>
+        count === 1
+          ? '1 route assignment will be removed with it.'
+          : `${count} route assignments will be removed with it.`,
+      blockerServices: (count) =>
+        count === 1 ? '1 service uses it' : `${count} services use it`,
+      blockerApprovals: (count) =>
+        count === 1
+          ? '1 service approved by this account'
+          : `${count} services approved by this account`,
+      blockerStatusChanges: (count) =>
+        count === 1 ? '1 recorded status change' : `${count} recorded status changes`,
+      blockerDefaultForUsers: (count) =>
+        count === 1
+          ? '1 driver has it as their default'
+          : `${count} drivers have it as their default`,
+      dangerZone: 'Delete record',
       appName: 'BRIBAR Logistics',
       back: 'Back',
       edit: 'Edit',
@@ -200,6 +226,12 @@ export const en: Dictionary = {
       previous: 'Previous',
       next: 'Next',
       pageOf: (page, total) => `Page ${page} of ${total}`,
+      goToPage: (page) => `Go to page ${page}`,
+      showing: (from, to, total) => `${from}–${to} of ${total}`,
+      theme: 'Theme',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'System',
       deactivated: '(deactivated)',
       inactiveMarker: '(inactive)',
       you: '(you)',
@@ -317,6 +349,7 @@ export const en: Dictionary = {
       editVehicle: 'Edit vehicle',
       vehicleCreated: 'Vehicle created',
       vehicleUpdated: 'Vehicle updated',
+      vehicleDeleted: 'Vehicle deleted',
       noVehicles: 'No vehicles',
       noVehiclesHint: 'Add a vehicle so drivers can record services.',
       plateHint: 'Stored in upper case. Must be unique.',
@@ -329,6 +362,7 @@ export const en: Dictionary = {
       editRoute: 'Edit route / contract',
       routeCreated: 'Route created',
       routeUpdated: 'Route updated',
+      routeDeleted: 'Route deleted',
       noRoutes: 'No routes',
       noRoutesHint: 'Create a route and assign it to a driver so they can record services.',
       routeCodeHint: 'Stored in upper case. Must be unique.',
@@ -345,6 +379,7 @@ export const en: Dictionary = {
       editAccount: 'Edit account',
       accountCreated: 'Account created',
       accountUpdated: 'Account updated',
+      accountDeleted: 'Account deleted',
       noAccounts: 'No accounts',
       loginHint: 'Lower case, no spaces. Used to sign in.',
       passwordHintCreate: 'At least 12 characters. Pass it to the driver securely.',

@@ -4,6 +4,9 @@
  * Every function here is administrator-only, and every one re-checks that
  * rather than trusting the route it was reached through (SRS 8.3).
  */
+import type { Deletability } from '@/modules/shared/deletability';
+import { toDeletability } from '@/modules/shared/deletability';
+import type { Pagination } from '@/modules/shared/schemas/common';
 import { Role as PrismaRole } from '@prisma/client';
 
 import {
@@ -78,6 +81,80 @@ export const userService = {
       ...(filters.role ? { role: filters.role as PrismaRole } : {}),
       ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
     });
+  },
+
+  /**
+   * One page of the list. Same authorisation, same scoping, same ordering as
+   * `list` — the only difference is that a screen gets a bounded slice and the
+   * count it needs to draw the pager.
+   */
+  async listPage(
+    actor: Actor,
+    filters: { role?: Role | undefined; isActive?: boolean | undefined },
+    pagination: Pagination,
+  ): Promise<{ items: UserWithRelations[]; total: number }> {
+    assertAdmin(actor);
+    return userRepository.listPage(
+      {
+        ...(filters.role ? { role: filters.role as PrismaRole } : {}),
+        ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+      },
+      pagination,
+    );
+  },
+
+  /** Whether this account can be deleted, for the screen that offers it. */
+  async getDeletability(actor: Actor, id: string): Promise<Deletability> {
+    assertAdmin(actor);
+
+    // Your own account is never deletable, whatever its history looks like:
+    // an administrator locking themselves out mid-session is not recoverable
+    // from inside the application.
+    if (actor.userId === id) {
+      return { canDelete: false, blockers: [], cascades: [] };
+    }
+
+    const counts = await userRepository.countDependents(id);
+    const assignments = await userRepository.countRouteAssignments(id);
+    return toDeletability(counts, { routeAssignments: assignments });
+  },
+
+  /**
+   * Deletes the record, if nothing depends on it.
+   *
+   * The check is re-run inside the transaction rather than trusted from the
+   * page that drew the button: between the render and the click, a driver may
+   * have filed a service against it. `withTranslatedErrors` then catches the
+   * foreign-key violation as a last line of defence, so even a race that beats
+   * the re-check produces a sentence rather than a stack trace.
+   */
+  async remove(actor: Actor, id: string): Promise<void> {
+    assertAdmin(actor);
+    if (actor.userId === id) throw businessRuleViolation(ERRORS.deleteSelfBlocked);
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw notFound();
+
+    await withTranslatedErrors(() =>
+      prisma.$transaction(async (tx) => {
+        const counts = await userRepository.countDependents(id, tx);
+        if (!toDeletability(counts).canDelete) {
+          throw businessRuleViolation(ERRORS.deleteBlocked);
+        }
+
+        await writeAudit(tx, {
+          actorUserId: actor.userId,
+          entityType: AuditEntityType.USER,
+          entityId: id,
+          action: AuditAction.DELETE,
+          // `redactAuditPayload` strips the hash, and `USER_SELECT` never
+          // loaded one in the first place.
+          before: existing,
+        });
+
+        await userRepository.delete(id, tx);
+      }),
+    );
   },
 
   async getById(actor: Actor, id: string): Promise<UserWithRelations> {

@@ -9,7 +9,8 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { updateRouteAction } from '@/app/(app)/admin/actions';
+import { deleteRouteAction, updateRouteAction } from '@/app/(app)/admin/actions';
+import { DeleteRecord } from '@/components/admin/delete-record';
 import { RouteForm } from '@/components/admin/route-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
@@ -35,6 +36,10 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
     throw error;
   }
 
+  // A route no service ever ran can be deleted; one with history is
+  // deactivated instead, and the control says which this is.
+  const deletability = await routeService.getDeletability(actor, id);
+
   return (
     <div className="space-y-5">
       <Link
@@ -58,6 +63,12 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
           destination: route.destination,
           isActive: route.isActive,
         }}
+      />
+
+      <DeleteRecord
+        action={deleteRouteAction.bind(null, id)}
+        name={route.code}
+        deletability={deletability}
       />
     </div>
   );

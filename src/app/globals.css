@@ -12,20 +12,37 @@
    hand-picked hex values.
    --------------------------------------------------------------------------- */
 
+/*
+ * ## Light and dark are chosen, not inherited
+ *
+ * `data-theme` on `<html>` always holds a *resolved* value - `light` or `dark`,
+ * never `system`. The preference itself lives in `localStorage`, and the
+ * blocking script in the document head resolves it against the OS setting
+ * before the first paint (see `theme-script.tsx`). Two consequences worth
+ * knowing:
+ *
+ *   - there is no flash of the wrong theme, because nothing renders before
+ *     the attribute is on the element;
+ *   - the stylesheet needs one dark block rather than two nearly identical
+ *     ones, since it never has to guess at the OS setting itself.
+ */
 :root {
+  color-scheme: light;
+
   /* Surfaces. A faintly cool off-white rather than pure white: less glare on a
-     phone screen, and it lets cards sit on the page without a heavy border. */
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.21 0.015 255);
+     phone screen, and it lets a white card sit on the page without needing a
+     heavy border to separate it. */
+  --background: oklch(0.981 0.004 250);
+  --foreground: oklch(0.205 0.02 258);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.015 255);
+  --card-foreground: oklch(0.205 0.02 258);
 
-  --muted: oklch(0.965 0.004 250);
-  --muted-foreground: oklch(0.5 0.015 255);
+  --muted: oklch(0.962 0.006 252);
+  --muted-foreground: oklch(0.505 0.018 256);
 
-  --border: oklch(0.915 0.006 255);
-  --input: oklch(0.885 0.008 255);
+  --border: oklch(0.912 0.008 255);
+  --input: oklch(0.878 0.011 255);
   --ring: oklch(0.55 0.14 250);
 
   /* Brand. Sampled from the logo (#164A90) rather than chosen alongside it,
@@ -34,11 +51,19 @@
   --primary-hover: #103a73;
   --primary-foreground: #ffffff;
 
+  /* The brand at background strength, for a selected row or an active nav
+     item. A token rather than `bg-primary/10`: a translucent brand colour
+     picks up whatever is behind it, which in dark mode is the wrong direction
+     entirely - it lightens where it should deepen. */
+  --primary-subtle: oklch(0.953 0.022 252);
+  --primary-subtle-foreground: oklch(0.38 0.12 258);
+
   /* Status. Amber for work outstanding, teal-green for signed off (SRS 11.1).
      These two are the states a user distinguishes all day, so the pair was
      chosen by running the palette validator rather than by eye: an earlier
      amber/green sat at ΔE 5.8 under protanopia, which is effectively the same
-     colour. This pair clears every check in both themes. */
+     colour. This pair clears every check in both themes, and is therefore the
+     one part of the palette not to adjust casually. */
   --pending: #c2620a;
   --pending-surface: oklch(0.96 0.045 75);
   --pending-border: oklch(0.87 0.09 72);
@@ -61,48 +86,62 @@
   --destructive-surface: oklch(0.97 0.02 25);
   --destructive-border: oklch(0.87 0.08 25);
 
+  /* Shadows carry the brand hue at very low chroma, so a raised card reads as
+     lit rather than smudged with grey. */
+  --shadow-color: 225deg 30% 45%;
+
   --radius: 0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.17 0.012 258);
-    --foreground: oklch(0.96 0.003 250);
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --card: oklch(0.215 0.014 258);
-    --card-foreground: oklch(0.96 0.003 250);
+  /* Not an inversion. The ground is a desaturated navy rather than black, and
+     each surface steps up in lightness so the same elevation cues survive:
+     page, card, muted. Pure black would make the cards float. */
+  --background: oklch(0.168 0.014 258);
+  --foreground: oklch(0.955 0.004 250);
 
-    --muted: oklch(0.255 0.014 258);
-    --muted-foreground: oklch(0.7 0.012 255);
+  --card: oklch(0.212 0.016 258);
+  --card-foreground: oklch(0.955 0.004 250);
 
-    --border: oklch(0.3 0.014 258);
-    --input: oklch(0.36 0.016 258);
-    --ring: oklch(0.65 0.13 250);
+  --muted: oklch(0.252 0.016 258);
+  --muted-foreground: oklch(0.708 0.014 255);
 
-    --primary: #7ba3e8;
-    --primary-hover: #9dbcf0;
-    --primary-foreground: #0f1620;
+  --border: oklch(0.298 0.016 258);
+  --input: oklch(0.355 0.018 258);
+  --ring: oklch(0.66 0.13 250);
 
-    --pending: #f0b054;
-    --pending-surface: oklch(0.29 0.05 72);
-    --pending-border: oklch(0.41 0.08 72);
+  /* The logo navy is unreadable on this ground, so the brand lightens rather
+     than the text darkening - the hue is held, the lightness is not. */
+  --primary: #7ba3e8;
+  --primary-hover: #9dbcf0;
+  --primary-foreground: #0f1620;
 
-    --approved: #5fd8a4;
-    --approved-surface: oklch(0.28 0.05 165);
-    --approved-border: oklch(0.4 0.08 165);
+  --primary-subtle: oklch(0.272 0.045 256);
+  --primary-subtle-foreground: oklch(0.83 0.075 252);
 
-    --chart-1: oklch(0.36 0.06 252);
-    --chart-2: oklch(0.46 0.09 252);
-    --chart-3: oklch(0.56 0.12 252);
-    --chart-4: oklch(0.66 0.13 252);
-    --chart-5: #7ba3e8;
-    --chart-grid: oklch(0.29 0.012 258);
-    --chart-muted: oklch(0.36 0.012 258);
+  --pending: #f0b054;
+  --pending-surface: oklch(0.29 0.05 72);
+  --pending-border: oklch(0.41 0.08 72);
 
-    --destructive: oklch(0.7 0.17 25);
-    --destructive-surface: oklch(0.27 0.06 25);
-    --destructive-border: oklch(0.4 0.1 25);
-  }
+  --approved: #5fd8a4;
+  --approved-surface: oklch(0.28 0.05 165);
+  --approved-border: oklch(0.4 0.08 165);
+
+  --chart-1: oklch(0.36 0.06 252);
+  --chart-2: oklch(0.46 0.09 252);
+  --chart-3: oklch(0.56 0.12 252);
+  --chart-4: oklch(0.66 0.13 252);
+  --chart-5: #7ba3e8;
+  --chart-grid: oklch(0.29 0.012 258);
+  --chart-muted: oklch(0.36 0.012 258);
+
+  --destructive: oklch(0.7 0.17 25);
+  --destructive-surface: oklch(0.27 0.06 25);
+  --destructive-border: oklch(0.4 0.1 25);
+
+  --shadow-color: 225deg 60% 4%;
 }
 
 @theme inline {
@@ -119,6 +158,8 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-subtle-foreground: var(--primary-subtle-foreground);
 
   --color-pending: var(--pending);
   --color-pending-surface: var(--pending-surface);
@@ -147,11 +188,29 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Tinted rather than neutral: a grey shadow over a cool ground reads as
+     dirt, and the same three steps then work in both themes. */
+  --shadow-xs: 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-sm:
+    0 1px 2px hsl(var(--shadow-color) / 0.06), 0 2px 6px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-lg:
+    0 4px 12px -2px hsl(var(--shadow-color) / 0.14),
+    0 12px 28px -8px hsl(var(--shadow-color) / 0.18);
 }
 
 @layer base {
   * {
     border-color: var(--border);
+  }
+
+  /* Switching theme repaints every token at once. Without this, each element
+     that happens to carry `transition-colors` runs its own crossfade and the
+     page dissolves in pieces. */
+  :root[data-theme-switching] *,
+  :root[data-theme-switching] *::before,
+  :root[data-theme-switching] *::after {
+    transition: none !important;
   }
 
   body {

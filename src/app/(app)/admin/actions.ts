@@ -370,3 +370,71 @@ export async function updateUserAction(
   revalidatePath(`/admin/users/${userId}`);
   redirect('/admin/users?updated=1');
 }
+
+// ---------------------------------------------------------------------------
+// Deleting master data
+//
+// One action per entity rather than one generic action taking an entity name:
+// a `deleteAction('user', id)` would be a single endpoint that deletes anything
+// by string, and the type system would stop checking which service it reaches.
+// ---------------------------------------------------------------------------
+
+/**
+ * The outcome of a delete attempt.
+ *
+ * Deletion redirects on success, so the only state a form ever renders is a
+ * failure — a record that acquired a dependent between the page render and the
+ * click, or a foreign key the application layer did not anticipate.
+ */
+export type DeleteState = { status: 'idle' } | { status: 'error'; message: string };
+
+function toDeleteState(error: unknown, context: string): DeleteState {
+  if (isAppError(error)) return { status: 'error', message: error.message };
+  logger.error(`${context} failed`, { error });
+  return { status: 'error', message: ERRORS.internal };
+}
+
+export async function deleteVehicleAction(
+  vehicleId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await vehicleService.remove(actor, vehicleId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteVehicleAction');
+  }
+
+  revalidatePath('/admin/vehicles');
+  redirect('/admin/vehicles?deleted=1');
+}
+
+export async function deleteRouteAction(
+  routeId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await routeService.remove(actor, routeId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteRouteAction');
+  }
+
+  revalidatePath('/admin/routes');
+  redirect('/admin/routes?deleted=1');
+}
+
+export async function deleteUserAction(
+  userId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await userService.remove(actor, userId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteUserAction');
+  }
+
+  revalidatePath('/admin/users');
+  redirect('/admin/users?deleted=1');
+}

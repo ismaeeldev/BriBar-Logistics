@@ -13,6 +13,8 @@ import type { Prisma, Role } from '@prisma/client';
 
 import type { PrismaClientLike } from '@/lib/db/prisma';
 import { prisma } from '@/lib/db/prisma';
+import type { Pagination } from '@/modules/shared/schemas/common';
+import { toPrismaPagination } from '@/modules/shared/schemas/common';
 
 /** Everything a user view needs, and nothing that must not be exposed. */
 const USER_SELECT = {
@@ -69,6 +71,67 @@ export const userRepository = {
       select: USER_SELECT,
       orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
     });
+  },
+
+  /**
+   * One page of the list, with the total the page came from.
+   *
+   * Separate from `list` on purpose. `list` fills the filter pickers, which
+   * need every option or they silently hide records from the filtered view;
+   * this is what a screen renders, and it must not grow without bound as the
+   * table does. Both share the same `where` and the same ordering, so page 2
+   * is genuinely the continuation of page 1.
+   */
+  async listPage(
+    filters: { role?: Role | undefined; isActive?: boolean | undefined },
+    pagination: Pagination,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ items: UserWithRelations[]; total: number }> {
+    const where = {
+      ...(filters.role ? { role: filters.role } : {}),
+      ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+    };
+
+    const [items, total] = await Promise.all([
+      client.user.findMany({
+        where,
+        select: USER_SELECT,
+        orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+        ...toPrismaPagination(pagination),
+      }),
+      client.user.count({ where }),
+    ]);
+
+    return { items, total };
+  },
+
+  /**
+   * What would stop this account being deleted.
+   *
+   * Route assignments are excluded for the same reason as on a route: they are
+   * configuration and go with the account. Audit rows are excluded too — that
+   * foreign key is `SetNull` precisely so the trail outlives the actor.
+   */
+  async countDependents(
+    id: string,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ services: number; approvals: number; statusChanges: number }> {
+    const [services, approvals, statusChanges] = await Promise.all([
+      client.service.count({ where: { driverId: id } }),
+      client.service.count({ where: { approvedByUserId: id } }),
+      client.serviceStatusHistory.count({ where: { changedByUserId: id } }),
+    ]);
+
+    return { services, approvals, statusChanges };
+  },
+
+  async countRouteAssignments(id: string, client: PrismaClientLike = prisma): Promise<number> {
+    return client.driverRoute.count({ where: { driverId: id } });
+  },
+
+  async delete(id: string, client: PrismaClientLike = prisma): Promise<void> {
+    await client.driverRoute.deleteMany({ where: { driverId: id } });
+    await client.user.delete({ where: { id } });
   },
 
   async create(

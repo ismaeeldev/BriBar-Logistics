@@ -41,7 +41,7 @@ export function ServiceCard({ service }: { service: ServiceListItem }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <ServiceStatusBadge status={service.status} />
+          <ServiceStatusBadge status={service.status} subtle />
           <ChevronRight
             aria-hidden
             className="text-muted-foreground group-hover:text-foreground size-4 transition-colors"

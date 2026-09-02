@@ -1,6 +1,9 @@
 /**
  * Vehicle administration (SRS 13, 21.5).
  */
+import type { Deletability } from '@/modules/shared/deletability';
+import { toDeletability } from '@/modules/shared/deletability';
+import type { Pagination } from '@/modules/shared/schemas/common';
 import {
   AuditAction,
   AuditEntityType,
@@ -10,7 +13,8 @@ import {
 import type { Actor } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { withTranslatedErrors } from '@/lib/db/with-translated-errors';
-import { forbidden, notFound } from '@/lib/errors/app-error';
+import { businessRuleViolation, forbidden, notFound } from '@/lib/errors/app-error';
+import { ERRORS } from '@/lib/i18n/messages';
 import { Role } from '@/modules/services/domain/service-status';
 import { vehicleRepository, type VehicleRecord } from '../repository/vehicle.repository';
 import type { CreateVehicleInput, UpdateVehicleInput } from '../schemas/vehicle.schema';
@@ -36,11 +40,67 @@ export const vehicleService = {
     return vehicleRepository.list(scoped);
   },
 
+  /**
+   * One page of the list. Same authorisation, same scoping, same ordering as
+   * `list` — the only difference is that a screen gets a bounded slice and the
+   * count it needs to draw the pager.
+   */
+  async listPage(
+    actor: Actor,
+    filters: { isActive?: boolean | undefined },
+    pagination: Pagination,
+  ): Promise<{ items: VehicleRecord[]; total: number }> {
+    const scoped = actor.role === Role.ADMIN ? filters : { isActive: true };
+    return vehicleRepository.listPage(scoped, pagination);
+  },
+
   async getById(actor: Actor, id: string): Promise<VehicleRecord> {
     assertAdmin(actor);
     const vehicle = await vehicleRepository.findById(id);
     if (!vehicle) throw notFound();
     return vehicle;
+  },
+
+  /** Whether this vehicle can be deleted, for the screen that offers it. */
+  async getDeletability(actor: Actor, id: string): Promise<Deletability> {
+    assertAdmin(actor);
+    const counts = await vehicleRepository.countDependents(id);
+    return toDeletability(counts);
+  },
+
+  /**
+   * Deletes the record, if nothing depends on it.
+   *
+   * The check is re-run inside the transaction rather than trusted from the
+   * page that drew the button: between the render and the click, a driver may
+   * have filed a service against it. `withTranslatedErrors` then catches the
+   * foreign-key violation as a last line of defence, so even a race that beats
+   * the re-check produces a sentence rather than a stack trace.
+   */
+  async remove(actor: Actor, id: string): Promise<void> {
+    assertAdmin(actor);
+
+    const existing = await vehicleRepository.findById(id);
+    if (!existing) throw notFound();
+
+    await withTranslatedErrors(() =>
+      prisma.$transaction(async (tx) => {
+        const counts = await vehicleRepository.countDependents(id, tx);
+        if (!toDeletability(counts).canDelete) {
+          throw businessRuleViolation(ERRORS.deleteBlocked);
+        }
+
+        await writeAudit(tx, {
+          actorUserId: actor.userId,
+          entityType: AuditEntityType.VEHICLE,
+          entityId: id,
+          action: AuditAction.DELETE,
+          before: existing,
+        });
+
+        await vehicleRepository.delete(id, tx);
+      }),
+    );
   },
 
   async create(actor: Actor, input: CreateVehicleInput): Promise<VehicleRecord> {

@@ -30,6 +30,22 @@ export function CardBody({ className, ...props }: ComponentProps<'div'>) {
 /* Status                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Two weights, for two jobs.
+ *
+ * `solid` is a filled pill: right when one badge carries the state of the
+ * whole screen, as on a service detail page. Repeat that pill down forty rows
+ * of a table and the fills are all the eye sees — the colour stops marking the
+ * exception and becomes the background.
+ *
+ * `subtle` keeps the dot and the colour and drops the fill, which is what a
+ * list wants: scanning for the amber dots still works, and the row's actual
+ * content is legible again. The dot stays either way, so colour is never the
+ * only signal (SRS 23.10).
+ *
+ * `subtle` is declared after `tone` deliberately: `cn` runs `twMerge` over the
+ * result, and the later utility of a conflicting family wins.
+ */
 const badgeVariants = cva(
   'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap',
   {
@@ -38,7 +54,13 @@ const badgeVariants = cva(
         pending: 'bg-pending-surface border-pending-border text-pending',
         approved: 'bg-approved-surface border-approved-border text-approved',
         neutral: 'bg-muted border-border text-muted-foreground',
+        // Identity, not state. Reusing `pending` here would put a warning
+        // colour on the word "Administrator".
+        brand: 'bg-primary-subtle border-primary-subtle text-primary-subtle-foreground',
         destructive: 'bg-destructive-surface border-destructive-border text-destructive',
+      },
+      subtle: {
+        true: 'border-transparent bg-transparent px-0 py-0',
       },
     },
     defaultVariants: { tone: 'neutral' },
@@ -48,9 +70,10 @@ const badgeVariants = cva(
 export function Badge({
   className,
   tone,
+  subtle,
   ...props
 }: ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+  return <span className={cn(badgeVariants({ tone, subtle }), className)} {...props} />;
 }
 
 /**
@@ -60,11 +83,18 @@ export function Badge({
  * distinguishable for a red/green-deficient viewer and in a photocopy — colour
  * is never the only signal (SRS 23.10).
  */
-export function ServiceStatusBadge({ status }: { status: ServiceStatus }) {
+export function ServiceStatusBadge({
+  status,
+  subtle,
+}: {
+  status: ServiceStatus;
+  /** Set on rows in a list; leave unset where the badge stands alone. */
+  subtle?: boolean;
+}) {
   const isPending = status === 'PENDING_APPROVAL';
 
   return (
-    <Badge tone={isPending ? 'pending' : 'approved'}>
+    <Badge tone={isPending ? 'pending' : 'approved'} {...(subtle ? { subtle: true } : {})}>
       <span
         aria-hidden
         className={cn('size-1.5 rounded-full', isPending ? 'bg-pending' : 'bg-approved')}

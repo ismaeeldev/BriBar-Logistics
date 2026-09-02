@@ -101,6 +101,8 @@ export interface Dictionary {
     driverInactive: string;
     userNotDriver: string;
     alreadyApproved: string;
+    deleteBlocked: string;
+    deleteSelfBlocked: string;
     cannotDeactivateSelf: string;
     cannotDemoteSelf: string;
   };
@@ -141,6 +143,19 @@ export interface Dictionary {
   UI: {
     common: {
       appName: string;
+      delete: string;
+      deleting: string;
+      deleteTitle: string;
+      deleteConfirm: (name: string) => string;
+      deleteIrreversible: string;
+      deleteBlockedTitle: string;
+      deleteBlockedHint: string;
+      deleteCascade: (count: number) => string;
+      blockerServices: (count: number) => string;
+      blockerApprovals: (count: number) => string;
+      blockerStatusChanges: (count: number) => string;
+      blockerDefaultForUsers: (count: number) => string;
+      dangerZone: string;
       back: string;
       edit: string;
       save: string;
@@ -163,6 +178,12 @@ export interface Dictionary {
       previous: string;
       next: string;
       pageOf: (page: number, total: number) => string;
+      goToPage: (page: number) => string;
+      showing: (from: number, to: number, total: number) => string;
+      theme: string;
+      themeLight: string;
+      themeDark: string;
+      themeSystem: string;
       deactivated: string;
       inactiveMarker: string;
       you: string;
@@ -275,6 +296,7 @@ export interface Dictionary {
       editVehicle: string;
       vehicleCreated: string;
       vehicleUpdated: string;
+      vehicleDeleted: string;
       noVehicles: string;
       noVehiclesHint: string;
       plateHint: string;
@@ -286,6 +308,7 @@ export interface Dictionary {
       editRoute: string;
       routeCreated: string;
       routeUpdated: string;
+      routeDeleted: string;
       noRoutes: string;
       noRoutesHint: string;
       routeCodeHint: string;
@@ -299,6 +322,7 @@ export interface Dictionary {
       editAccount: string;
       accountCreated: string;
       accountUpdated: string;
+      accountDeleted: string;
       noAccounts: string;
       loginHint: string;
       passwordHintCreate: string;

@@ -5,6 +5,8 @@ import type { Prisma } from '@prisma/client';
 
 import type { PrismaClientLike } from '@/lib/db/prisma';
 import { prisma } from '@/lib/db/prisma';
+import type { Pagination } from '@/modules/shared/schemas/common';
+import { toPrismaPagination } from '@/modules/shared/schemas/common';
 
 const VEHICLE_SELECT = {
   id: true,
@@ -36,6 +38,58 @@ export const vehicleRepository = {
       select: VEHICLE_SELECT,
       orderBy: [{ isActive: 'desc' }, { registrationPlate: 'asc' }],
     });
+  },
+
+  /**
+   * One page of the list, with the total the page came from.
+   *
+   * Separate from `list` on purpose. `list` fills the filter pickers, which
+   * need every option or they silently hide records from the filtered view;
+   * this is what a screen renders, and it must not grow without bound as the
+   * table does. Both share the same `where` and the same ordering, so page 2
+   * is genuinely the continuation of page 1.
+   */
+  async listPage(
+    filters: { isActive?: boolean | undefined },
+    pagination: Pagination,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ items: VehicleRecord[]; total: number }> {
+    const where = filters.isActive === undefined ? {} : { isActive: filters.isActive };
+
+    const [items, total] = await Promise.all([
+      client.vehicle.findMany({
+        where,
+        select: VEHICLE_SELECT,
+        orderBy: [{ isActive: 'desc' }, { registrationPlate: 'asc' }],
+        ...toPrismaPagination(pagination),
+      }),
+      client.vehicle.count({ where }),
+    ]);
+
+    return { items, total };
+  },
+
+  /**
+   * What would stop this vehicle being deleted.
+   *
+   * Asked before the button is drawn rather than after it is pressed: the
+   * screen can then say "3 services use this vehicle" instead of failing with
+   * a foreign-key error the administrator has to interpret.
+   */
+  async countDependents(
+    id: string,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ services: number; defaultForUsers: number }> {
+    const [services, defaultForUsers] = await Promise.all([
+      client.service.count({ where: { vehicleId: id } }),
+      client.user.count({ where: { defaultVehicleId: id } }),
+    ]);
+
+    return { services, defaultForUsers };
+  },
+
+  async delete(id: string, client: PrismaClientLike = prisma): Promise<void> {
+    await client.vehicle.delete({ where: { id } });
   },
 
   async create(

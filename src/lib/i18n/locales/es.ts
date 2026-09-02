@@ -143,6 +143,9 @@ export const es: Dictionary = {
     driverInactive: 'Esa cuenta de conductor está desactivada.',
     userNotDriver: 'Solo se pueden asignar rutas y vehículos a conductores.',
     alreadyApproved: 'Este servicio ya está aprobado.',
+    deleteBlocked:
+      'No se puede eliminar: hay servicios que dependen de este registro. Desactívelo en su lugar.',
+    deleteSelfBlocked: 'No puede eliminar su propia cuenta.',
     cannotDeactivateSelf: 'No puede desactivar su propia cuenta.',
     cannotDemoteSelf: 'No puede quitarse a sí mismo el rol de administrador.',
   },
@@ -177,6 +180,32 @@ export const es: Dictionary = {
 
   UI: {
     common: {
+      delete: 'Eliminar',
+      deleting: 'Eliminando…',
+      deleteTitle: 'Eliminar registro',
+      deleteConfirm: (name) => `Se eliminará «${name}» de forma permanente.`,
+      deleteIrreversible: 'Esta acción no se puede deshacer.',
+      deleteBlockedTitle: 'No se puede eliminar',
+      deleteBlockedHint: 'Desactívelo para retirarlo del uso conservando el historial.',
+      deleteCascade: (count) =>
+        count === 1
+          ? 'Se retirará también 1 asignación de ruta.'
+          : `Se retirarán también ${count} asignaciones de ruta.`,
+      blockerServices: (count) =>
+        count === 1 ? '1 servicio lo utiliza' : `${count} servicios lo utilizan`,
+      blockerApprovals: (count) =>
+        count === 1
+          ? '1 servicio aprobado por esta cuenta'
+          : `${count} servicios aprobados por esta cuenta`,
+      blockerStatusChanges: (count) =>
+        count === 1
+          ? '1 cambio de estado registrado'
+          : `${count} cambios de estado registrados`,
+      blockerDefaultForUsers: (count) =>
+        count === 1
+          ? '1 conductor lo tiene por defecto'
+          : `${count} conductores lo tienen por defecto`,
+      dangerZone: 'Eliminar registro',
       appName: 'BRIBAR Logistics',
       back: 'Volver',
       edit: 'Editar',
@@ -200,6 +229,12 @@ export const es: Dictionary = {
       previous: 'Anterior',
       next: 'Siguiente',
       pageOf: (page, total) => `Página ${page} de ${total}`,
+      goToPage: (page) => `Ir a la página ${page}`,
+      showing: (from, to, total) => `${from}-${to} de ${total}`,
+      theme: 'Tema',
+      themeLight: 'Claro',
+      themeDark: 'Oscuro',
+      themeSystem: 'Sistema',
       deactivated: '(dado de baja)',
       inactiveMarker: '(inactiva)',
       you: '(usted)',
@@ -318,6 +353,7 @@ export const es: Dictionary = {
       editVehicle: 'Editar vehículo',
       vehicleCreated: 'Vehículo creado',
       vehicleUpdated: 'Vehículo actualizado',
+      vehicleDeleted: 'Vehículo eliminado',
       noVehicles: 'No hay vehículos',
       noVehiclesHint:
         'Dé de alta un vehículo para que los conductores puedan registrar servicios.',
@@ -331,6 +367,7 @@ export const es: Dictionary = {
       editRoute: 'Editar ruta / contrato',
       routeCreated: 'Ruta creada',
       routeUpdated: 'Ruta actualizada',
+      routeDeleted: 'Ruta eliminada',
       noRoutes: 'No hay rutas',
       noRoutesHint:
         'Cree una ruta y asígnela a un conductor para que pueda registrar servicios.',
@@ -348,6 +385,7 @@ export const es: Dictionary = {
       editAccount: 'Editar cuenta',
       accountCreated: 'Cuenta creada',
       accountUpdated: 'Cuenta actualizada',
+      accountDeleted: 'Cuenta eliminada',
       noAccounts: 'No hay cuentas',
       loginHint: 'Minúsculas, sin espacios. Se usa para iniciar sesión.',
       passwordHintCreate: 'Mínimo 12 caracteres. Comuníquesela al conductor de forma segura.',

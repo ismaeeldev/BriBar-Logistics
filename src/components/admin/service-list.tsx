@@ -58,13 +58,14 @@ export function AdminServiceList({
           <Td className="text-right font-mono">{service.serviceKm}</Td>
           <Td className="text-right">
             <div className="flex items-center justify-end gap-2">
-              <ServiceStatusBadge status={service.status} />
+              <ServiceStatusBadge status={service.status} subtle />
               <Link
                 href={`/admin/services/${service.id}`}
-                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap transition-colors"
+                aria-label={UI.admin.review}
+                title={UI.admin.review}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors"
               >
-                {UI.admin.review}
-                <ChevronRight aria-hidden className="size-3.5" />
+                <ChevronRight aria-hidden className="size-4" />
               </Link>
             </div>
           </Td>
@@ -85,7 +86,7 @@ export function AdminServiceList({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <ServiceStatusBadge status={service.status} />
+              <ServiceStatusBadge status={service.status} subtle />
               <ChevronRight aria-hidden className="text-muted-foreground size-4" />
             </div>
           </div>

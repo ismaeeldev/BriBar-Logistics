@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { AdminNavMobile, AdminSidebar } from '@/components/layout/admin-nav';
 import { DriverNavDesktop, DriverNavMobile } from '@/components/layout/driver-nav';
 import { LogoMark } from '@/components/layout/logo';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import type { Actor } from '@/lib/auth/session';
@@ -44,7 +45,18 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
             isAdmin ? 'max-w-7xl' : 'max-w-3xl',
           )}
         >
-          <div className="flex min-w-0 items-center gap-5">
+          {/*
+            On an admin desktop this block is exactly the sidebar's width and
+            carries the sidebar's rule, so one unbroken vertical line runs from
+            the top of the window to the bottom of the page and the logo sits
+            in the same column as the navigation it heads.
+          */}
+          <div
+            className={cn(
+              'flex h-full min-w-0 items-center gap-5',
+              isAdmin && 'lg:w-56 lg:shrink-0 lg:border-r lg:pl-6',
+            )}
+          >
             <Link
               href={home}
               className="text-primary flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80"
@@ -53,7 +65,7 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
               {/* The wordmark is dropped on the narrowest screens: the mark
                   identifies the app, and the room is better spent on the
                   page's own title. */}
-              <span className="text-foreground hidden truncate text-sm font-semibold tracking-tight min-[380px]:inline">
+              <span className="text-foreground hidden truncate text-sm font-semibold tracking-tight min-[420px]:inline">
                 {UI.common.appName}
               </span>
             </Link>
@@ -61,7 +73,16 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
             {!isAdmin ? <DriverNavDesktop /> : null}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              'flex items-center gap-2',
+              isAdmin && 'lg:flex-1 lg:justify-end lg:pl-6',
+            )}
+          >
+            {/* Available at every width. A driver reading a route sheet in a
+                dark cab has more use for this than an administrator does. */}
+            <ThemeToggle />
+
             <div className="hidden text-right sm:block">
               <p className="text-sm leading-tight font-medium">{actor.name}</p>
               <p className="text-muted-foreground text-xs leading-tight">

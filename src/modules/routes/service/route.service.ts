@@ -1,6 +1,9 @@
 /**
  * Route/contract administration (SRS 14, 21.4, 21.5).
  */
+import type { Deletability } from '@/modules/shared/deletability';
+import { toDeletability } from '@/modules/shared/deletability';
+import type { Pagination } from '@/modules/shared/schemas/common';
 import {
   AuditAction,
   AuditEntityType,
@@ -10,7 +13,8 @@ import {
 import type { Actor } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { withTranslatedErrors } from '@/lib/db/with-translated-errors';
-import { forbidden, notFound } from '@/lib/errors/app-error';
+import { businessRuleViolation, forbidden, notFound } from '@/lib/errors/app-error';
+import { ERRORS } from '@/lib/i18n/messages';
 import { Role } from '@/modules/services/domain/service-status';
 import { routeRepository, type RouteRecord } from '../repository/route.repository';
 import type { CreateRouteInput, UpdateRouteInput } from '../schemas/route.schema';
@@ -36,11 +40,65 @@ export const routeService = {
     return routeRepository.list(filters);
   },
 
+  /**
+   * One page of the list. Same authorisation, same scoping, same ordering as
+   * `list` — the only difference is that a screen gets a bounded slice and the
+   * count it needs to draw the pager.
+   */
+  async listPage(
+    actor: Actor,
+    filters: { isActive?: boolean | undefined },
+    pagination: Pagination,
+  ): Promise<{ items: RouteRecord[]; total: number }> {
+    assertAdmin(actor);
+    return routeRepository.listPage(filters, pagination);
+  },
+
   async getById(actor: Actor, id: string): Promise<RouteRecord> {
     assertAdmin(actor);
     const route = await routeRepository.findById(id);
     if (!route) throw notFound();
     return route;
+  },
+
+  /** Whether this route can be deleted, for the screen that offers it. */
+  async getDeletability(actor: Actor, id: string): Promise<Deletability> {
+    assertAdmin(actor);
+    const { services, assignedDrivers } = await routeRepository.countDependents(id);
+    return toDeletability({ services }, { routeAssignments: assignedDrivers });
+  },
+
+  /**
+   * Deletes the record, if nothing depends on it.
+   *
+   * The check is re-run inside the transaction rather than trusted from the
+   * page that drew the button: between the render and the click, a driver may
+   * have filed a service against it. `withTranslatedErrors` then catches the
+   * foreign-key violation as a last line of defence, so even a race that beats
+   * the re-check produces a sentence rather than a stack trace.
+   */
+  async remove(actor: Actor, id: string): Promise<void> {
+    assertAdmin(actor);
+
+    const existing = await routeRepository.findById(id);
+    if (!existing) throw notFound();
+
+    await withTranslatedErrors(() =>
+      prisma.$transaction(async (tx) => {
+        const { services } = await routeRepository.countDependents(id, tx);
+        if (services > 0) throw businessRuleViolation(ERRORS.deleteBlocked);
+
+        await writeAudit(tx, {
+          actorUserId: actor.userId,
+          entityType: AuditEntityType.ROUTE,
+          entityId: id,
+          action: AuditAction.DELETE,
+          before: existing,
+        });
+
+        await routeRepository.delete(id, tx);
+      }),
+    );
   },
 
   async create(actor: Actor, input: CreateRouteInput): Promise<RouteRecord> {

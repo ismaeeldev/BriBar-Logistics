@@ -11,6 +11,10 @@
  */
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Script from 'next/script';
+
+import { THEME_SCRIPT } from '@/components/layout/theme';
+import { LOCALE } from '@/lib/i18n/messages';
 
 import './globals.css';
 
@@ -41,10 +45,26 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+    // `suppressHydrationWarning` is scoped to this one element and is required:
+    // the head script writes `data-theme` onto it before React arrives, so the
+    // server's markup and the client's DOM legitimately differ by that
+    // attribute. Nothing below it is exempted.
     <html
-      lang="en"
+      lang={LOCALE}
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {/*
+        `beforeInteractive` is the only strategy that runs before the browser
+        paints, which is the entire requirement: a theme applied after first
+        paint is a flash of the wrong theme. A bare `<script>` in a component
+        tree would be moved by React and silently skipped on a client render.
+      */}
+      <head>
+        <Script id="theme" strategy="beforeInteractive">
+          {THEME_SCRIPT}
+        </Script>
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

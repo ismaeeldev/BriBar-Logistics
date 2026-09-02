@@ -10,10 +10,12 @@ import { ChevronRight, Plus, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 import { Alert, Badge, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { Pagination } from '@/components/ui/pagination';
 import { ResponsiveList } from '@/components/ui/responsive-list';
 import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
+import { paginationSchema } from '@/modules/shared/schemas/common';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
 
 export const metadata = { title: UI.admin.vehiclesTitle };
@@ -21,17 +23,20 @@ export const metadata = { title: UI.admin.vehiclesTitle };
 export default async function AdminVehiclesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; updated?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requireAdmin();
-  const flags = await searchParams;
-  const vehicles = await vehicleService.list(actor, {});
+  // One query string carries both the success flags and the page number: a
+  // redirect after a save lands on `?created=1`, which is page 1 by default.
+  const params = await searchParams;
+  const pagination = paginationSchema.parse(params);
+  const { items: vehicles, total } = await vehicleService.listPage(actor, {}, pagination);
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={UI.admin.vehiclesTitle}
-        description={UI.common.total(vehicles.length)}
+        description={UI.common.total(total)}
         action={
           <Link
             href="/admin/vehicles/new"
@@ -43,8 +48,9 @@ export default async function AdminVehiclesPage({
         }
       />
 
-      {flags.created ? <Alert tone="success" title={UI.admin.vehicleCreated} /> : null}
-      {flags.updated ? <Alert tone="success" title={UI.admin.vehicleUpdated} /> : null}
+      {params['created'] ? <Alert tone="success" title={UI.admin.vehicleCreated} /> : null}
+      {params['updated'] ? <Alert tone="success" title={UI.admin.vehicleUpdated} /> : null}
+      {params['deleted'] ? <Alert tone="success" title={UI.admin.vehicleDeleted} /> : null}
 
       <ResponsiveList
         items={vehicles}
@@ -71,7 +77,7 @@ export default async function AdminVehiclesPage({
             </Td>
             <Td className="text-muted-foreground">{vehicle.referenceName ?? UI.common.none}</Td>
             <Td>
-              <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
+              <Badge subtle tone={vehicle.isActive ? 'approved' : 'neutral'}>
                 {vehicle.isActive ? UI.common.active : UI.common.inactive}
               </Badge>
             </Td>
@@ -97,13 +103,21 @@ export default async function AdminVehiclesPage({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
+              <Badge subtle tone={vehicle.isActive ? 'approved' : 'neutral'}>
                 {vehicle.isActive ? UI.common.active : UI.common.inactive}
               </Badge>
               <ChevronRight aria-hidden className="text-muted-foreground size-4" />
             </div>
           </Link>
         )}
+      />
+
+      <Pagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        total={total}
+        basePath="/admin/vehicles"
+        params={params}
       />
     </div>
   );

@@ -5,15 +5,18 @@
  * route." All four in one form; the action writes the account and the route
  * assignments as two service calls so each produces its own audit entry.
  *
- * No delete: SRS 8.4 forbids hard-deleting a user with historical services
- * through the admin UI, and SRS 21.5 generalises it. Deactivation is the
- * removal path and it is the toggle on this page.
+ * SRS 8.4 forbids hard-deleting a user with historical services, and SRS 21.5
+ * generalises it — so deactivation stays the removal path for anyone who has
+ * filed or approved a service, and the toggle on this form is how. Delete is
+ * offered only for an account with no history at all: one created by mistake,
+ * or for someone who never started.
  */
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { updateUserAction } from '@/app/(app)/admin/actions';
+import { DeleteRecord } from '@/components/admin/delete-record';
+import { deleteUserAction, updateUserAction } from '@/app/(app)/admin/actions';
 import { UserForm } from '@/components/admin/user-form';
 import { Alert, PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
@@ -39,9 +42,10 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     throw error;
   }
 
-  const [routes, vehicles] = await Promise.all([
+  const [routes, vehicles, deletability] = await Promise.all([
     routeService.list(actor, { isActive: true }),
     vehicleService.list(actor, { isActive: true }),
+    userService.getDeletability(actor, id),
   ]);
 
   /**
@@ -105,6 +109,12 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
             isDefault: route.isDefault,
           })),
         }}
+      />
+
+      <DeleteRecord
+        action={deleteUserAction.bind(null, id)}
+        name={user.name}
+        deletability={deletability}
       />
     </div>
   );

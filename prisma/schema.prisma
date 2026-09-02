@@ -78,6 +78,11 @@ enum AuditAction {
   DEACTIVATE
   ASSIGN_ROUTES
 
+  /// Master data only. A service is never deleted - the record is the point of
+  /// the system - so this action only ever names a vehicle, route or account
+  /// that no service referenced.
+  DELETE
+
   @@map("audit_action")
 }
 

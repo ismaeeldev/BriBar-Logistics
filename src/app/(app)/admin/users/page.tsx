@@ -8,10 +8,12 @@ import { ChevronRight, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 
 import { Alert, Badge, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { Pagination } from '@/components/ui/pagination';
 import { CardField, ResponsiveList } from '@/components/ui/responsive-list';
 import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, ROLE_LABELS, UI } from '@/lib/i18n/messages';
+import { paginationSchema } from '@/modules/shared/schemas/common';
 import { toUserDto } from '@/modules/users/service/user.presenter';
 import { userService } from '@/modules/users/service/user.service';
 
@@ -20,17 +22,21 @@ export const metadata = { title: UI.nav.drivers };
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; updated?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requireAdmin();
-  const flags = await searchParams;
-  const users = (await userService.list(actor)).map(toUserDto);
+  // One query string carries both the success flags and the page number: a
+  // redirect after a save lands on `?created=1`, which is page 1 by default.
+  const params = await searchParams;
+  const pagination = paginationSchema.parse(params);
+  const { items, total } = await userService.listPage(actor, {}, pagination);
+  const users = items.map(toUserDto);
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={UI.admin.usersTitle}
-        description={UI.admin.accountCount(users.length)}
+        description={UI.admin.accountCount(total)}
         action={
           <Link
             href="/admin/users/new"
@@ -42,8 +48,9 @@ export default async function AdminUsersPage({
         }
       />
 
-      {flags.created ? <Alert tone="success" title={UI.admin.accountCreated} /> : null}
-      {flags.updated ? <Alert tone="success" title={UI.admin.accountUpdated} /> : null}
+      {params['created'] ? <Alert tone="success" title={UI.admin.accountCreated} /> : null}
+      {params['updated'] ? <Alert tone="success" title={UI.admin.accountUpdated} /> : null}
+      {params['deleted'] ? <Alert tone="success" title={UI.admin.accountDeleted} /> : null}
 
       <ResponsiveList
         items={users}
@@ -70,7 +77,7 @@ export default async function AdminUsersPage({
             </Td>
             <Td className="text-muted-foreground font-mono">{user.loginIdentifier}</Td>
             <Td>
-              <Badge tone={user.role === 'ADMIN' ? 'pending' : 'neutral'}>
+              <Badge subtle tone={user.role === 'ADMIN' ? 'brand' : 'neutral'}>
                 {ROLE_LABELS[user.role]}
               </Badge>
             </Td>
@@ -81,7 +88,7 @@ export default async function AdminUsersPage({
               {user.defaultRoute?.code ?? UI.common.none}
             </Td>
             <Td>
-              <Badge tone={user.isActive ? 'approved' : 'neutral'}>
+              <Badge subtle tone={user.isActive ? 'approved' : 'neutral'}>
                 {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
               </Badge>
             </Td>
@@ -115,7 +122,7 @@ export default async function AdminUsersPage({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Badge tone={user.isActive ? 'approved' : 'neutral'}>
+                <Badge subtle tone={user.isActive ? 'approved' : 'neutral'}>
                   {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
                 </Badge>
                 <ChevronRight aria-hidden className="text-muted-foreground size-4" />
@@ -133,6 +140,14 @@ export default async function AdminUsersPage({
             </dl>
           </Link>
         )}
+      />
+
+      <Pagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        total={total}
+        basePath="/admin/users"
+        params={params}
       />
     </div>
   );

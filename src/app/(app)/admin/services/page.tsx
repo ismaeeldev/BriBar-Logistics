@@ -9,14 +9,13 @@
  * parsed with `serviceFilterSchema`, the same schema `/api/services` uses.
  */
 import { ClipboardList } from 'lucide-react';
-import Link from 'next/link';
 
 import { AdminServiceList } from '@/components/admin/service-list';
 import { ServiceFilters } from '@/components/admin/service-filters';
+import { Pagination } from '@/components/ui/pagination';
 import { EmptyState, PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { UI } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils/cn';
 import { routeRepository } from '@/modules/routes/repository/route.repository';
 import { Role } from '@/modules/services/domain/service-status';
 import { serviceFilterSchema } from '@/modules/services/schemas/service.schema';
@@ -49,7 +48,6 @@ export default async function AdminServicesPage({
   ]);
 
   const { items, total, pagination } = result;
-  const totalPages = Math.max(1, Math.ceil(total / pagination.pageSize));
 
   return (
     <div className="space-y-5">
@@ -78,62 +76,13 @@ export default async function AdminServicesPage({
         }
       />
 
-      {totalPages > 1 ? (
-        <nav
-          className="flex items-center justify-between gap-3"
-          aria-label={UI.common.pagination}
-        >
-          <PageLink params={params} page={pagination.page - 1} disabled={pagination.page <= 1}>
-            {UI.common.previous}
-          </PageLink>
-          <span className="text-muted-foreground text-sm">
-            {UI.common.pageOf(pagination.page, totalPages)}
-          </span>
-          <PageLink
-            params={params}
-            page={pagination.page + 1}
-            disabled={pagination.page >= totalPages}
-          >
-            {UI.common.next}
-          </PageLink>
-        </nav>
-      ) : null}
+      <Pagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        total={total}
+        basePath="/admin/services"
+        params={params}
+      />
     </div>
-  );
-}
-
-/** Preserves every active filter while changing only the page. */
-function PageLink({
-  params,
-  page,
-  disabled,
-  children,
-}: {
-  params: Record<string, string | string[] | undefined>;
-  page: number;
-  disabled: boolean;
-  children: React.ReactNode;
-}) {
-  const className =
-    'rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors bg-card hover:bg-muted';
-
-  if (disabled) {
-    return (
-      <span aria-disabled className={cn(className, 'pointer-events-none opacity-40')}>
-        {children}
-      </span>
-    );
-  }
-
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (key !== 'page' && typeof value === 'string' && value) query.set(key, value);
-  }
-  query.set('page', String(page));
-
-  return (
-    <Link href={`/admin/services?${query}`} className={className}>
-      {children}
-    </Link>
   );
 }

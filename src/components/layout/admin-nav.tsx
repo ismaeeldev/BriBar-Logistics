@@ -65,9 +65,15 @@ export function AdminSidebar() {
   return (
     <nav
       aria-label={UI.nav.adminLabel}
-      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r px-3 py-5 lg:block"
+      // `pl-3` matches the header's logo indent, so the icons below line up
+      // with the mark above them; `pr-4` keeps the active pill off the rule.
+      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r py-6 pr-4 pl-3 lg:block"
     >
-      <ul className="space-y-1">
+      <p className="text-muted-foreground mb-2 px-3 text-[0.7rem] font-medium tracking-wider uppercase">
+        {UI.nav.adminLabel}
+      </p>
+
+      <ul className="space-y-0.5">
         {ADMIN_NAV.map(({ href, label, icon: Icon }) => {
           const active = isCurrent(pathname, href);
 
@@ -77,9 +83,9 @@ export function AdminSidebar() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-primary/10 text-primary'
+                    ? 'bg-primary-subtle text-primary-subtle-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >

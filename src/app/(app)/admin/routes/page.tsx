@@ -5,28 +5,33 @@ import { ChevronRight, Plus, Route as RouteIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { Alert, Badge, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { Pagination } from '@/components/ui/pagination';
 import { ResponsiveList } from '@/components/ui/responsive-list';
 import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { routeService } from '@/modules/routes/service/route.service';
+import { paginationSchema } from '@/modules/shared/schemas/common';
 
 export const metadata = { title: UI.admin.routesTitle };
 
 export default async function AdminRoutesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; updated?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requireAdmin();
-  const flags = await searchParams;
-  const routes = await routeService.list(actor, {});
+  // One query string carries both the success flags and the page number: a
+  // redirect after a save lands on `?created=1`, which is page 1 by default.
+  const params = await searchParams;
+  const pagination = paginationSchema.parse(params);
+  const { items: routes, total } = await routeService.listPage(actor, {}, pagination);
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={UI.admin.routesTitle}
-        description={UI.common.total(routes.length)}
+        description={UI.common.total(total)}
         action={
           <Link
             href="/admin/routes/new"
@@ -38,8 +43,9 @@ export default async function AdminRoutesPage({
         }
       />
 
-      {flags.created ? <Alert tone="success" title={UI.admin.routeCreated} /> : null}
-      {flags.updated ? <Alert tone="success" title={UI.admin.routeUpdated} /> : null}
+      {params['created'] ? <Alert tone="success" title={UI.admin.routeCreated} /> : null}
+      {params['updated'] ? <Alert tone="success" title={UI.admin.routeUpdated} /> : null}
+      {params['deleted'] ? <Alert tone="success" title={UI.admin.routeDeleted} /> : null}
 
       <ResponsiveList
         items={routes}
@@ -68,7 +74,7 @@ export default async function AdminRoutesPage({
             <Td className="text-muted-foreground max-w-40 truncate">{route.origin}</Td>
             <Td className="text-muted-foreground max-w-40 truncate">{route.destination}</Td>
             <Td>
-              <Badge tone={route.isActive ? 'approved' : 'neutral'}>
+              <Badge subtle tone={route.isActive ? 'approved' : 'neutral'}>
                 {route.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
               </Badge>
             </Td>
@@ -93,7 +99,7 @@ export default async function AdminRoutesPage({
                 <span className="text-muted-foreground"> · {route.name}</span>
               </p>
               <div className="flex shrink-0 items-center gap-2">
-                <Badge tone={route.isActive ? 'approved' : 'neutral'}>
+                <Badge subtle tone={route.isActive ? 'approved' : 'neutral'}>
                   {route.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
                 </Badge>
                 <ChevronRight aria-hidden className="text-muted-foreground size-4" />
@@ -105,6 +111,14 @@ export default async function AdminRoutesPage({
             </p>
           </Link>
         )}
+      />
+
+      <Pagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        total={total}
+        basePath="/admin/routes"
+        params={params}
       />
     </div>
   );
