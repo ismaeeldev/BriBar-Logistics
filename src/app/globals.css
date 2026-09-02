@@ -1,26 +1,171 @@
 @import 'tailwindcss';
 
+/* ---------------------------------------------------------------------------
+   BRIBAR Logistics — design tokens
+
+   A restrained, high-contrast system built for the two places this application
+   is actually used: a driver holding a phone in daylight, and an administrator
+   at a desk reviewing records.
+
+   Colours are OKLCH so lightness is perceptually even across hues — the amber
+   and green status badges read as equally prominent, which they would not with
+   hand-picked hex values.
+   --------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces. A faintly cool off-white rather than pure white: less glare on a
+     phone screen, and it lets cards sit on the page without a heavy border. */
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.21 0.015 255);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.015 255);
+
+  --muted: oklch(0.965 0.004 250);
+  --muted-foreground: oklch(0.5 0.015 255);
+
+  --border: oklch(0.915 0.006 255);
+  --input: oklch(0.885 0.008 255);
+  --ring: oklch(0.55 0.14 250);
+
+  /* Brand. A deep, unsaturated blue — the register enterprise logistics tools
+     sit in, and dark enough that white text on it clears WCAG AA at any size. */
+  --primary: oklch(0.48 0.13 254);
+  --primary-hover: oklch(0.43 0.13 254);
+  --primary-foreground: oklch(0.99 0 0);
+
+  /* Status. Amber for work outstanding, green for signed off (SRS 11.1). */
+  --pending: oklch(0.55 0.12 70);
+  --pending-surface: oklch(0.96 0.04 85);
+  --pending-border: oklch(0.86 0.09 80);
+
+  --approved: oklch(0.48 0.12 155);
+  --approved-surface: oklch(0.96 0.04 158);
+  --approved-border: oklch(0.85 0.08 158);
+
+  --destructive: oklch(0.52 0.2 27);
+  --destructive-surface: oklch(0.97 0.02 25);
+  --destructive-border: oklch(0.87 0.08 25);
+
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.17 0.012 258);
+    --foreground: oklch(0.96 0.003 250);
+
+    --card: oklch(0.215 0.014 258);
+    --card-foreground: oklch(0.96 0.003 250);
+
+    --muted: oklch(0.255 0.014 258);
+    --muted-foreground: oklch(0.7 0.012 255);
+
+    --border: oklch(0.3 0.014 258);
+    --input: oklch(0.36 0.016 258);
+    --ring: oklch(0.65 0.13 250);
+
+    --primary: oklch(0.62 0.14 254);
+    --primary-hover: oklch(0.68 0.14 254);
+    --primary-foreground: oklch(0.16 0.02 258);
+
+    --pending: oklch(0.8 0.13 78);
+    --pending-surface: oklch(0.28 0.05 70);
+    --pending-border: oklch(0.4 0.08 72);
+
+    --approved: oklch(0.78 0.13 158);
+    --approved-surface: oklch(0.26 0.05 158);
+    --approved-border: oklch(0.38 0.08 158);
+
+    --destructive: oklch(0.7 0.17 25);
+    --destructive-surface: oklch(0.27 0.06 25);
+    --destructive-border: oklch(0.4 0.1 25);
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-pending: var(--pending);
+  --color-pending-surface: var(--pending-surface);
+  --color-pending-border: var(--pending-border);
+
+  --color-approved: var(--approved);
+  --color-approved-surface: var(--approved-surface);
+  --color-approved-border: var(--approved-border);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-destructive-border: var(--destructive-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    /* Tabular figures everywhere: odometer readings, kilometre totals and
+       Service IDs sit in columns, and proportional digits make them jitter. */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A visible focus ring is non-negotiable (SRS 23.10). `:focus-visible` keeps
+     it off mouse clicks and on for keyboard navigation. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* iOS zooms the page when a focused input's text is under 16px. Anything
+     smaller here would make every tap on the Add Service form jump the
+     viewport. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* The spinners are useless on an odometer field and shrink the tap target. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Keeps a sticky action bar clear of the iOS home indicator. */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }

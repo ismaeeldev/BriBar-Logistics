@@ -53,3 +53,6 @@ next-env.d.ts
 
 # os
 Thumbs.db
+
+# agent/editor tooling, not project config
+.claude/

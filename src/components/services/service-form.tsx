@@ -1,0 +1,438 @@
+'use client';
+
+import { Loader2, Save } from 'lucide-react';
+import { useMemo, useState, useActionState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import {
+  CheckboxField,
+  Field,
+  KmInput,
+  ReadOnlyValue,
+  Select,
+  Textarea,
+  TimeInput,
+} from '@/components/ui/field';
+import { Alert, Card, CardBody, CardHeader, CardTitle } from '@/components/ui/primitives';
+import { FIELD_LABELS } from '@/lib/i18n/messages';
+import { formatBusinessDate } from '@/lib/time/business-date';
+import { calculateMileage, validateMileage } from '@/modules/services/domain/mileage';
+import type { ServiceContextDto } from '@/modules/services/service/service.presenter';
+
+import type { ServiceFormState } from '@/app/(app)/services/actions';
+
+/**
+ * The Add Service / Edit Service form (SRS 9, 17.2).
+ *
+ * ## Why the calculation runs here as well as on the server
+ *
+ * SRS 9.5 requires calculated mileage to be shown "once sufficient mileage
+ * fields are available", and SRS 10.2 permits a live preview while making the
+ * server authoritative. This component imports the *same* `calculateMileage`
+ * and `validateMileage` the service layer uses — not a reimplementation — so
+ * the preview can never disagree with what is ultimately stored. If the rule
+ * changes, both move together or neither does.
+ *
+ * The submitted values are recalculated server-side regardless, and the form
+ * has no field for `actualKm` or `serviceKm` to send (SRS 22.4).
+ *
+ * ## Why a server action rather than fetch
+ *
+ * The credentials never touch client state, validation errors come back typed,
+ * and the form still submits with JavaScript unavailable — a driver on a bad
+ * signal in an industrial estate is exactly the case that matters here.
+ */
+
+const ORDERED_KM_FIELDS = [
+  { name: 'startDashboardKm', label: FIELD_LABELS.startDashboardKm },
+  { name: 'startBaseKm', label: FIELD_LABELS.startBaseKm },
+  { name: 'endBaseKm', label: FIELD_LABELS.endBaseKm },
+  { name: 'endDashboardKm', label: FIELD_LABELS.endDashboardKm },
+] as const;
+
+export interface ServiceFormValues {
+  vehicleId: string;
+  routeId: string;
+  startDashboardKm: string;
+  startBaseKm: string;
+  endBaseKm: string;
+  endDashboardKm: string;
+  departureTime: string;
+  arrivalTime: string;
+  endsNextDay: boolean;
+  sites: string;
+  observations: string;
+}
+
+export function ServiceForm({
+  context,
+  action,
+  initialValues,
+  submitLabel,
+  serviceCode,
+}: {
+  context: ServiceContextDto;
+  action: (state: ServiceFormState, formData: FormData) => Promise<ServiceFormState>;
+  initialValues?: Partial<ServiceFormValues>;
+  submitLabel: string;
+  /** Present when editing; the ID is server-issued and never editable. */
+  serviceCode?: string;
+}) {
+  const [state, formAction, isPending] = useActionState<ServiceFormState, FormData>(action, {
+    status: 'idle',
+  });
+
+  const [routeId, setRouteId] = useState(
+    initialValues?.routeId ?? context.defaultRouteId ?? context.routes[0]?.id ?? '',
+  );
+
+  const [km, setKm] = useState({
+    startDashboardKm: initialValues?.startDashboardKm ?? '',
+    startBaseKm: initialValues?.startBaseKm ?? '',
+    endBaseKm: initialValues?.endBaseKm ?? '',
+    endDashboardKm: initialValues?.endDashboardKm ?? '',
+  });
+
+  /**
+   * Repopulates the controlled fields from what the server received.
+   *
+   * SRS 24.1 forbids losing valid input because another field failed. React
+   * may remount this component when the action returns a new tree, which would
+   * reset the state below — so the values come back from the server with the
+   * errors and are adopted here rather than trusting the state to survive.
+   *
+   * This is React's documented "adjust state when a prop changes" pattern: a
+   * comparison during render, no effect, no extra paint.
+   */
+  const [seenState, setSeenState] = useState(state);
+  if (state !== seenState) {
+    setSeenState(state);
+    if (state.status === 'error' && state.values) {
+      const echoed = state.values;
+      setKm({
+        startDashboardKm: echoed['startDashboardKm'] ?? '',
+        startBaseKm: echoed['startBaseKm'] ?? '',
+        endBaseKm: echoed['endBaseKm'] ?? '',
+        endDashboardKm: echoed['endDashboardKm'] ?? '',
+      });
+      if (echoed['routeId']) setRouteId(echoed['routeId']);
+    }
+  }
+
+  /** Uncontrolled fields read their post-failure value from the same echo. */
+  const echoed = state.status === 'error' ? state.values : undefined;
+
+  // SRS 9.5: "Changing Route/Contract shall immediately refresh Origin and
+  // Destination." Derived from the selection rather than held in its own state,
+  // so the two cannot fall out of step.
+  const selectedRoute = context.routes.find((route) => route.id === routeId);
+
+  /**
+   * The live preview.
+   *
+   * Only shown once all four readings parse *and* pass the same validation the
+   * server applies — a preview computed from a half-filled or invalid set would
+   * show a negative or nonsensical total while the driver is still typing.
+   */
+  const preview = useMemo(() => {
+    const parsed = {
+      startDashboardKm: Number(km.startDashboardKm),
+      startBaseKm: Number(km.startBaseKm),
+      endBaseKm: Number(km.endBaseKm),
+      endDashboardKm: Number(km.endDashboardKm),
+    };
+
+    const allPresent = Object.values(km).every((value) => value.trim() !== '');
+    if (!allPresent) return null;
+    if (validateMileage(parsed).length > 0) return null;
+
+    return calculateMileage(parsed);
+  }, [km]);
+
+  const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
+
+  return (
+    <form action={formAction} className="space-y-4 pb-28">
+      {/* A form-level failure that belongs to no single field: a conflict, a
+          route that stopped being assignable, an unexpected error. */}
+      {state.status === 'error' && state.message ? (
+        <Alert tone="error" title={state.message}>
+          {fieldErrors?.['root']?.join(' ')}
+        </Alert>
+      ) : null}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 1. Automatic values (SRS 9.2, 17.2)                              */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Datos del servicio</CardTitle>
+          <p className="text-muted-foreground text-xs">Rellenados automáticamente</p>
+        </CardHeader>
+        <CardBody className="grid gap-4 sm:grid-cols-2">
+          <ReadOnlyValue
+            label={FIELD_LABELS.serviceCode}
+            value={serviceCode ? `#${serviceCode}` : 'Se asignará al guardar'}
+            mono={Boolean(serviceCode)}
+          />
+          <ReadOnlyValue
+            label={FIELD_LABELS.serviceDate}
+            value={formatBusinessDate(context.serviceDate)}
+          />
+          <ReadOnlyValue
+            label={FIELD_LABELS.driver}
+            value={context.driver.name}
+            // SRS 9.5: the Driver field always reflects the authenticated user
+            // and cannot be switched. It is not an input at all.
+          />
+        </CardBody>
+      </Card>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 2. Route and vehicle (SRS 9.2, 14.4)                             */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ruta y vehículo</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <Field label={FIELD_LABELS.route} required errors={fieldErrors?.['routeId']}>
+            {(props) => (
+              <Select
+                {...props}
+                name="routeId"
+                value={routeId}
+                onChange={(event) => setRouteId(event.target.value)}
+              >
+                {context.routes.map((route) => (
+                  <option key={route.id} value={route.id}>
+                    {route.code} — {route.name}
+                    {route.isDefault ? ' (predeterminada)' : ''}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+
+          {/* SRS 14.4: populated from the route, and the driver cannot
+              override them. Read-only rather than disabled inputs, so they are
+              obviously information rather than something broken. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ReadOnlyValue label={FIELD_LABELS.origin} value={selectedRoute?.origin ?? '—'} />
+            <ReadOnlyValue
+              label={FIELD_LABELS.destination}
+              value={selectedRoute?.destination ?? '—'}
+            />
+          </div>
+
+          <Field
+            label={FIELD_LABELS.vehicle}
+            required
+            errors={fieldErrors?.['vehicleId']}
+            hint="Puede cambiarlo si hoy conduce otro vehículo."
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="vehicleId"
+                defaultValue={
+                  echoed?.['vehicleId'] ??
+                  initialValues?.vehicleId ??
+                  context.defaultVehicleId ??
+                  context.vehicles[0]?.id ??
+                  ''
+                }
+              >
+                {context.vehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.registrationPlate}
+                    {vehicle.referenceName ? ` — ${vehicle.referenceName}` : ''}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </CardBody>
+      </Card>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 3. Mileage (SRS 9.3, 10)                                         */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kilometraje</CardTitle>
+          <p className="text-muted-foreground text-xs">
+            Lecturas del cuentakilómetros, en orden de la ruta
+          </p>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          {ORDERED_KM_FIELDS.map(({ name, label }) => (
+            <Field key={name} label={label} required errors={fieldErrors?.[name]}>
+              {(props) => (
+                <KmInput
+                  {...props}
+                  name={name}
+                  value={km[name]}
+                  onChange={(event) =>
+                    setKm((current) => ({ ...current, [name]: event.target.value }))
+                  }
+                  placeholder="0"
+                />
+              )}
+            </Field>
+          ))}
+
+          <MileagePreview preview={preview} />
+        </CardBody>
+      </Card>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 4. Times (SRS 9.3, 31.3)                                         */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Horario</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={FIELD_LABELS.departureTime}
+              required
+              errors={fieldErrors?.['departureTime']}
+            >
+              {(props) => (
+                <TimeInput
+                  {...props}
+                  name="departureTime"
+                  defaultValue={echoed?.['departureTime'] ?? initialValues?.departureTime ?? ''}
+                />
+              )}
+            </Field>
+
+            <Field
+              label={FIELD_LABELS.arrivalTime}
+              required
+              errors={fieldErrors?.['arrivalTime']}
+            >
+              {(props) => (
+                <TimeInput
+                  {...props}
+                  name="arrivalTime"
+                  defaultValue={echoed?.['arrivalTime'] ?? initialValues?.arrivalTime ?? ''}
+                />
+              )}
+            </Field>
+          </div>
+
+          {/* The flag that makes an overnight run recordable while still
+              rejecting a transposed same-day pair (client decision #3). */}
+          <CheckboxField
+            name="endsNextDay"
+            label={FIELD_LABELS.endsNextDay}
+            hint="Marque esta casilla si el servicio terminó después de medianoche."
+            defaultChecked={
+              echoed ? echoed['endsNextDay'] === 'true' : (initialValues?.endsNextDay ?? false)
+            }
+          />
+
+          {fieldErrors?.['endsNextDay'] ? (
+            <Alert tone="error">{fieldErrors['endsNextDay'].join(' ')}</Alert>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* 5. Optional notes (SRS 9.4)                                      */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notas</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <Field label={FIELD_LABELS.sites} optional errors={fieldErrors?.['sites']}>
+            {(props) => (
+              <Textarea
+                {...props}
+                name="sites"
+                rows={2}
+                defaultValue={echoed?.['sites'] ?? initialValues?.sites ?? ''}
+              />
+            )}
+          </Field>
+
+          <Field
+            label={FIELD_LABELS.observations}
+            optional
+            errors={fieldErrors?.['observations']}
+          >
+            {(props) => (
+              <Textarea
+                {...props}
+                name="observations"
+                rows={3}
+                defaultValue={echoed?.['observations'] ?? initialValues?.observations ?? ''}
+              />
+            )}
+          </Field>
+        </CardBody>
+      </Card>
+
+      {/*
+        A sticky action bar. On a form this long the submit button would
+        otherwise sit below the fold with no indication it exists, and a driver
+        would scroll looking for it. `pb-safe` keeps it clear of the iOS home
+        indicator.
+      */}
+      <div className="bg-card/95 pb-safe fixed inset-x-0 bottom-0 z-10 border-t px-4 pt-3 backdrop-blur-sm">
+        <div className="mx-auto max-w-5xl">
+          <Button type="submit" size="lg" block disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                Guardando…
+              </>
+            ) : (
+              <>
+                <Save aria-hidden className="size-5" />
+                {submitLabel}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * The calculated totals (SRS 9.5, 10.1).
+ *
+ * "Calculated values shall be clearly labeled as calculated and not directly
+ * editable" — so they render as a panel, not as disabled inputs, and there is
+ * no form field behind them to submit.
+ */
+function MileagePreview({
+  preview,
+}: {
+  preview: { actualKm: number; serviceKm: number } | null;
+}) {
+  return (
+    <div className="bg-muted grid grid-cols-2 gap-3 rounded-lg p-3">
+      <div>
+        <p className="text-muted-foreground text-xs">{FIELD_LABELS.actualKm}</p>
+        <p className="font-mono text-2xl font-semibold tabular-nums">
+          {preview ? preview.actualKm : '—'}
+        </p>
+      </div>
+      <div>
+        <p className="text-muted-foreground text-xs">{FIELD_LABELS.serviceKm}</p>
+        <p className="font-mono text-2xl font-semibold tabular-nums">
+          {preview ? preview.serviceKm : '—'}
+        </p>
+      </div>
+      <p className="text-muted-foreground col-span-2 text-xs">
+        Calculado automáticamente. El servidor vuelve a calcularlo al guardar.
+      </p>
+    </div>
+  );
+}

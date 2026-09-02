@@ -58,13 +58,28 @@ export function parseIsoDate(value: string): Date | null {
 }
 
 /**
- * Renders a business date for display.
+ * Renders a `yyyy-MM-dd` business date as `dd/MM/yyyy`.
  *
- * Formatted in UTC on purpose: a `@db.Date` carries no time, so converting it
- * into a zone behind UTC would move it to the previous day.
+ * Deliberately string-to-string, with no `Date` and no date library involved.
+ *
+ * A business date is a calendar day: it has no time, no instant and no zone.
+ * Routing it through `Date` to format it means inventing a time, and then
+ * formatting that instant back out through a timezone — two conversions that
+ * can only lose information. An earlier version did exactly that and threw
+ * `RangeError: Invalid time value` in the browser while rendering correctly on
+ * the server, which took the whole form's hydration down with it.
+ *
+ * Reformatting the string cannot fail, needs no library, and is the honest
+ * operation: rearranging three fields the caller already has.
  */
-export function formatBusinessDate(businessDate: Date): string {
-  return formatInTimeZone(businessDate, 'UTC', 'dd/MM/yyyy');
+export function formatBusinessDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+/** The same, for a `@db.Date` value still in `Date` form on the server. */
+export function formatBusinessDateValue(businessDate: Date): string {
+  return formatBusinessDate(toIsoDate(businessDate));
 }
 
 /** Renders an audit instant in the configured business timezone. */

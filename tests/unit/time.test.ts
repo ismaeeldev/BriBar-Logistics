@@ -13,6 +13,7 @@ import {
   businessDateRange,
   formatBusinessDate,
   formatBusinessDateTime,
+  formatBusinessDateValue,
   parseIsoDate,
   toIsoDate,
 } from '@/lib/time/business-date';
@@ -87,12 +88,16 @@ describe('business date (SRS 31.3)', () => {
     expect(businessDate.toISOString()).toBe('2026-09-02T00:00:00.000Z');
   });
 
-  it('renders a business date without shifting it into a zone', () => {
-    // A @db.Date has no time. Formatting it in a zone behind UTC would show
-    // the previous day.
-    const businessDate = new Date('2026-09-02T00:00:00.000Z');
+  it('renders a business date as a pure string rearrangement', () => {
+    // A calendar day has no time and no zone, so formatting it never touches
+    // Date. An earlier version formatted through a timezone library and threw
+    // in the browser while working on the server.
+    expect(formatBusinessDate('2026-09-02')).toBe('02/09/2026');
+    expect(formatBusinessDate('2026-01-05')).toBe('05/01/2026');
+  });
 
-    expect(formatBusinessDate(businessDate)).toBe('02/09/2026');
+  it('renders a @db.Date value via the Date-taking wrapper', () => {
+    expect(formatBusinessDateValue(new Date('2026-09-02T00:00:00.000Z'))).toBe('02/09/2026');
   });
 
   it('renders an audit instant in the business timezone', () => {

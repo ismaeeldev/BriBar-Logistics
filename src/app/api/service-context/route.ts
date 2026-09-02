@@ -17,8 +17,8 @@
 import { requireUser } from '@/lib/auth/session';
 import { ok } from '@/lib/http/api-response';
 import { parseSearchParams, withRouteHandler } from '@/lib/http/route-handler';
-import { toIsoDate } from '@/lib/time/business-date';
 import { uuidSchema } from '@/modules/shared/schemas/common';
+import { toServiceContextDto } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 import { z } from 'zod';
 
@@ -37,9 +37,7 @@ export const GET = withRouteHandler(async (request) => {
 
   const context = await serviceService.getContext(actor, driverId);
 
-  return ok({
-    ...context,
-    // A calendar day, not an instant (SRS 31.3).
-    serviceDate: toIsoDate(context.serviceDate),
-  });
+  // The same DTO the pages hand to the form, so both doors return an
+  // identical shape (SRS 31.3: a calendar day, not an instant).
+  return ok(toServiceContextDto(context));
 });

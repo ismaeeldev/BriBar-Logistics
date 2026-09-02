@@ -42,6 +42,20 @@ export const authConfig = {
   secret: env.AUTH_SECRET,
 
   /**
+   * Required when self-hosting.
+   *
+   * Auth.js verifies the request host against its own expectation and refuses
+   * the session when they differ, which is the right default for a deployment
+   * behind an unknown proxy. SRS 4.4 puts this on BRIBAR's own private
+   * subdomain, behind whatever reverse proxy the host provides, so the header
+   * is trusted here and `AUTH_URL` pins the canonical origin instead.
+   *
+   * Without it the symptom is confusing rather than obvious: sign-in succeeds
+   * and sets a cookie, then every subsequent request reports no session.
+   */
+  trustHost: true,
+
+  /**
    * JWT rather than a database session table.
    *
    * The credentials provider requires it — Auth.js does not support database

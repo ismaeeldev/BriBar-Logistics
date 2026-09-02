@@ -102,3 +102,46 @@ export function toServiceDetail(service: ServiceWithRelations): ServiceDetail {
     routeIsActive: service.route.isActive,
   };
 }
+
+/**
+ * The Add Service context, as a client component receives it.
+ *
+ * `ServiceContext.serviceDate` is a `Date`. Passing it straight to a client
+ * component looks harmless — Next.js does serialise Dates — but it made the
+ * form crash on hydration with `RangeError: Invalid time value`: the server
+ * render formatted a real Date, and the client received something the
+ * formatter rejected, so `<ServiceForm>` never mounted. The form still
+ * submitted, because a server action posts a plain HTML form, which is exactly
+ * what made it hard to spot: everything worked except the live preview and the
+ * route-change refresh.
+ *
+ * Converting at the boundary removes the ambiguity. A client component gets
+ * strings and numbers; only the server handles `Date`.
+ */
+export interface ServiceContextDto {
+  driver: { id: string; name: string };
+  /** `yyyy-MM-dd`. */
+  serviceDate: string;
+  defaultVehicleId: string | null;
+  vehicles: { id: string; registrationPlate: string; referenceName: string | null }[];
+  routes: {
+    id: string;
+    code: string;
+    name: string;
+    origin: string;
+    destination: string;
+    isDefault: boolean;
+  }[];
+  defaultRouteId: string | null;
+}
+
+export function toServiceContextDto(context: {
+  driver: { id: string; name: string };
+  serviceDate: Date;
+  defaultVehicleId: string | null;
+  vehicles: { id: string; registrationPlate: string; referenceName: string | null }[];
+  routes: ServiceContextDto['routes'];
+  defaultRouteId: string | null;
+}): ServiceContextDto {
+  return { ...context, serviceDate: toIsoDate(context.serviceDate) };
+}
