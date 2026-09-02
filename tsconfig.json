@@ -1,10 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -13,11 +12,36 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+
+    // --- Correctness -------------------------------------------------------
+    // `strict` alone still permits several patterns that cause real bugs in a
+    // data-heavy application, so the checks below are enabled on top of it.
+    "strict": true,
+
+    // `array[i]` is typed `T | undefined` rather than `T`. Every list read in
+    // this codebase - a filtered route set, a page of services - is a place
+    // where an out-of-range index is possible.
+    "noUncheckedIndexedAccess": true,
+
+    // Optional properties cannot be assigned `undefined` explicitly. This is
+    // what keeps "field absent" and "field cleared" distinct in the PATCH
+    // schemas, where the difference decides whether a driver's default vehicle
+    // is left alone or removed.
+    "exactOptionalPropertyTypes": true,
+
+    // A `case` cannot silently fall through. The service state machine
+    // switches on status; a missing `break` there would act on the wrong
+    // branch.
+    "noFallthroughCasesInSwitch": true,
+
+    // Overriding a base member requires the `override` keyword.
+    "noImplicitOverride": true,
+
+    // Index signatures must be read with bracket notation, so a typo in a
+    // dynamic key is a compile error rather than `undefined` at runtime.
+    "noPropertyAccessFromIndexSignature": true,
+
+    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
     }

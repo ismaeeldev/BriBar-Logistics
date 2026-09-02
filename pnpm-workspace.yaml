@@ -1,3 +1,18 @@
+# Build scripts are opt-in under pnpm. Each entry below is a package whose
+# postinstall we have reviewed and want to run; everything else stays blocked,
+# which is the point of the policy (an npm install should not execute arbitrary
+# code from the dependency tree).
 allowBuilds:
+  # Bundler used by Vitest. Downloads its own prebuilt binary.
+  esbuild: true
+  # Native msgpack accelerator pulled in by the Vitest worker pool.
+  msgpackr-extract: true
+  # Cloudflare's workerd runtime, reached only through a transitive dev
+  # dependency. Nothing in this project runs on it.
+  workerd: false
+  # Image processing. Not used; Next.js falls back to its own optimiser.
   sharp: false
   unrs-resolver: false
+  # Prisma's engine download. Required - without it the client cannot connect.
+  '@prisma/engines': true
+  prisma: true

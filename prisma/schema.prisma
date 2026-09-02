@@ -1,0 +1,321 @@
+// BRIBAR Logistics - V1 data model.
+//
+// Implements SRS section 19 (Database Design). Design rules carried through
+// every model below:
+//
+//   * UUIDv7 primary keys - collision-safe (19.1) and time-ordered, so inserts
+//     stay at the right edge of the B-tree instead of fragmenting it the way
+//     random UUIDv4 does.
+//   * snake_case table and column names via @map, so raw SQL, the Neon console
+//     and any future reporting tool (28.6) see conventional PostgreSQL naming
+//     while the TypeScript layer stays camelCase.
+//   * onDelete: Restrict on every reference from a historical record. Master
+//     data that a service points at is deactivated, never deleted (21.5).
+//   * timestamptz everywhere - audit timestamps are stored in UTC and rendered
+//     in APP_TIMEZONE by the presentation layer (31.3).
+//
+// Invariants PostgreSQL can enforce but the Prisma schema language cannot
+// express - mileage ordering, the calculated-column formulas, one default
+// route per driver, approval-metadata consistency - live in CHECK constraints
+// and partial indexes added by the initial migration. They are the last line
+// of defence behind the Zod schemas and the service layer, not a replacement
+// for either.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// Prisma 7 removed `url` and `directUrl` from this block. Migration and
+// introspection connection details now live in `prisma.config.ts`, and the
+// runtime client receives a driver adapter instead of a connection string
+// (see src/lib/db/prisma.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// SRS 8.2. Additional roles may be added later without touching the
+/// authentication model.
+enum Role {
+  ADMIN
+  DRIVER
+
+  @@map("role")
+}
+
+/// SRS 11.1. V1 has exactly two business states. The status-history table
+/// (21.2) exists so further states can be introduced without redesigning
+/// `services`.
+enum ServiceStatus {
+  PENDING_APPROVAL
+  APPROVED
+
+  @@map("service_status")
+}
+
+/// SRS 19.9. Entity families the audit log can describe.
+enum AuditEntityType {
+  SERVICE
+  USER
+  VEHICLE
+  ROUTE
+  DRIVER_ROUTE
+
+  @@map("audit_entity_type")
+}
+
+/// SRS 19.9. Kept coarse on purpose: an action names what changed, the
+/// before/after JSON says how.
+enum AuditAction {
+  CREATE
+  UPDATE
+  APPROVE
+  ACTIVATE
+  DEACTIVATE
+  ASSIGN_ROUTES
+
+  @@map("audit_action")
+}
+
+// ---------------------------------------------------------------------------
+// Master data
+// ---------------------------------------------------------------------------
+
+/// SRS 19.3. Drivers and administrators share one identity table so a future
+/// role can be added without a second authentication path (28.5).
+model User {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String @db.VarChar(120)
+
+  /// Unique login identifier, normalised to lower case by the application
+  /// layer so logins are case-insensitive without a functional index.
+  loginIdentifier String @unique(map: "users_login_identifier_key") @map("login_identifier") @db.VarChar(64)
+
+  /// Argon2id hash. Never selected into any API response (SRS 22.1).
+  passwordHash String @map("password_hash") @db.VarChar(255)
+
+  role Role
+
+  /// SRS 12.5. Preselected on Add Service; the driver may pick another active
+  /// vehicle. Nullable because administrators have no vehicle.
+  defaultVehicleId String? @map("default_vehicle_id") @db.Uuid
+
+  /// SRS 12.4. Deactivation blocks login and preserves history.
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  defaultVehicle   Vehicle?               @relation("UserDefaultVehicle", fields: [defaultVehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  services         Service[]              @relation("ServiceDriver")
+  approvedServices Service[]              @relation("ServiceApprover")
+  routeAssignments DriverRoute[]
+  statusChanges    ServiceStatusHistory[]
+  auditEntries     AuditLog[]
+
+  /// Backs the admin user list and every "active drivers" picker.
+  @@index([role, isActive], map: "users_role_is_active_idx")
+  @@index([defaultVehicleId], map: "users_default_vehicle_id_idx")
+  @@map("users")
+}
+
+/// SRS 19.4.
+model Vehicle {
+  id                String  @id @default(uuid(7)) @db.Uuid
+  registrationPlate String  @unique(map: "vehicles_registration_plate_key") @map("registration_plate") @db.VarChar(32)
+  referenceName     String? @map("reference_name") @db.VarChar(120)
+
+  /// SRS 13.4. Inactive vehicles disappear from new-service selection but stay
+  /// attached to the services that already reference them.
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  defaultForUsers User[]    @relation("UserDefaultVehicle")
+  services        Service[]
+
+  @@index([isActive], map: "vehicles_is_active_idx")
+  @@map("vehicles")
+}
+
+/// SRS 19.5. Displayed to users as "Route/Contract" (6.2).
+model Route {
+  id   String @id @default(uuid(7)) @db.Uuid
+  code String @unique(map: "routes_code_key") @db.VarChar(32)
+  name String @db.VarChar(160)
+
+  /// Current origin and destination. Admin may change them at any time;
+  /// existing services keep their own snapshot (14.5, 21.4).
+  origin      String @db.VarChar(160)
+  destination String @db.VarChar(160)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  driverAssignments DriverRoute[]
+  services          Service[]
+
+  @@index([isActive], map: "routes_is_active_idx")
+  @@map("routes")
+}
+
+/// SRS 19.6. Which routes a driver may select, and which one is preselected.
+///
+/// "Exactly one default per driver" is enforced by a partial unique index
+/// created in the initial migration:
+///
+///   CREATE UNIQUE INDEX driver_routes_one_default_per_driver
+///     ON driver_routes (driver_id) WHERE is_default;
+///
+/// A plain @@unique cannot express the WHERE clause, so it cannot be declared
+/// here.
+model DriverRoute {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  driverId  String   @map("driver_id") @db.Uuid
+  routeId   String   @map("route_id") @db.Uuid
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  driver User  @relation(fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  route  Route @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([driverId, routeId], map: "driver_routes_driver_id_route_id_key")
+  @@index([driverId], map: "driver_routes_driver_id_idx")
+  @@index([routeId], map: "driver_routes_route_id_idx")
+  @@map("driver_routes")
+}
+
+// ---------------------------------------------------------------------------
+// Operational data
+// ---------------------------------------------------------------------------
+
+/// SRS 19.7. One digital route sheet (6.1).
+///
+/// actualKm and serviceKm are stored rather than derived on read: they are the
+/// numbers the business signs off on, and future reporting (28.6) must be able
+/// to aggregate them without recomputing. CHECK constraints in the migration
+/// guarantee they always equal the formulas in 10.1, so a stored value can
+/// never drift from its inputs.
+model Service {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// SRS 19.1. Human-visible Service ID, distinct from the primary key.
+  /// Allocated from a PostgreSQL sequence so concurrent submissions can never
+  /// collide (23.4).
+  serviceCode String @unique(map: "services_service_code_key") @map("service_code") @db.VarChar(32)
+
+  /// Business date in APP_TIMEZONE at creation time (9.2, 31.3).
+  serviceDate DateTime @map("service_date") @db.Date
+
+  /// Always the authenticated driver. Never accepted from the browser (22.4).
+  driverId  String @map("driver_id") @db.Uuid
+  vehicleId String @map("vehicle_id") @db.Uuid
+  routeId   String @map("route_id") @db.Uuid
+
+  /// SRS 14.5. Origin/destination as they stood when this service was written.
+  /// Editing the route master later must not rewrite history.
+  originSnapshot      String @map("origin_snapshot") @db.VarChar(160)
+  destinationSnapshot String @map("destination_snapshot") @db.VarChar(160)
+
+  /// The four odometer readings (6.3). Whole kilometres, monotonic
+  /// non-decreasing - enforced by CHECK services_mileage_sequence.
+  startDashboardKm Int @map("start_dashboard_km")
+  startBaseKm      Int @map("start_base_km")
+  endBaseKm        Int @map("end_base_km")
+  endDashboardKm   Int @map("end_dashboard_km")
+
+  /// Server-calculated (10.2). Never trusted from the browser.
+  actualKm  Int @map("actual_km")
+  serviceKm Int @map("service_km")
+
+  /// Operational clock times with no timezone attached (31.3). Mapped to and
+  /// from "HH:MM" strings by src/lib/time/time-of-day.ts.
+  departureTime DateTime @map("departure_time") @db.Time(0)
+  arrivalTime   DateTime @map("arrival_time") @db.Time(0)
+
+  /// SRS 6.5, 6.6. Optional free text.
+  sites        String? @db.Text
+  observations String? @db.Text
+
+  status ServiceStatus @default(PENDING_APPROVAL)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  /// SRS 11.3. Both set together at approval, both null before it - enforced
+  /// by CHECK services_approval_metadata_consistent.
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(3)
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+
+  driver     User    @relation("ServiceDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  approvedBy User?   @relation("ServiceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  route      Route   @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  statusHistory ServiceStatusHistory[]
+
+  // SRS 19.10. Single-column indexes back the admin filters (16.3); the
+  // composites back the two hot list queries - the admin approval queue and a
+  // driver's own history.
+  @@index([serviceDate], map: "services_service_date_idx")
+  @@index([driverId], map: "services_driver_id_idx")
+  @@index([vehicleId], map: "services_vehicle_id_idx")
+  @@index([routeId], map: "services_route_id_idx")
+  @@index([status], map: "services_status_idx")
+  @@index([createdAt], map: "services_created_at_idx")
+  @@index([status, serviceDate(sort: Desc)], map: "services_status_service_date_idx")
+  @@index([driverId, serviceDate(sort: Desc)], map: "services_driver_id_service_date_idx")
+  @@map("services")
+}
+
+/// SRS 19.8, 21.2. Append-only transition log. Cascades with its service
+/// because it has no meaning without one; every other reference is Restrict.
+model ServiceStatusHistory {
+  id        String @id @default(uuid(7)) @db.Uuid
+  serviceId String @map("service_id") @db.Uuid
+
+  /// Null for the initial transition into PENDING_APPROVAL.
+  fromStatus ServiceStatus? @map("from_status")
+  toStatus   ServiceStatus  @map("to_status")
+
+  changedByUserId String   @map("changed_by_user_id") @db.Uuid
+  changedAt       DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  changedBy User    @relation(fields: [changedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([serviceId, changedAt], map: "service_status_history_service_id_changed_at_idx")
+  @@map("service_status_history")
+}
+
+/// SRS 19.9. Traceability for create/update/approval/master-data changes.
+///
+/// beforeData/afterData hold only the fields the audit writer chose to record.
+/// Password hashes and other secrets must never reach this table (19.9, 22.7);
+/// src/lib/audit owns that redaction.
+model AuditLog {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// Null only for system-initiated actions such as bootstrap seeding.
+  actorUserId String? @map("actor_user_id") @db.Uuid
+
+  entityType AuditEntityType @map("entity_type")
+  entityId   String          @map("entity_id") @db.Uuid
+  action     AuditAction
+
+  beforeData Json?    @map("before_data") @db.JsonB
+  afterData  Json?    @map("after_data") @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  /// SetNull, not Restrict: the audit trail must outlive any future hard
+  /// deletion of an actor without blocking it.
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)], map: "audit_logs_entity_created_at_idx")
+  @@index([actorUserId, createdAt(sort: Desc)], map: "audit_logs_actor_created_at_idx")
+  @@map("audit_logs")
+}

@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files - real secrets never leave the machine (SRS 22.5).
+# The example and the test fixture carry no real credentials and are tracked.
 .env*
+!.env.example
+!.env.test
 
 # vercel
 .vercel
@@ -39,3 +42,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma
+/prisma/*.db
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# os
+Thumbs.db
