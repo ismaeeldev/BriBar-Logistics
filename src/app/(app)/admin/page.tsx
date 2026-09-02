@@ -1,43 +1,165 @@
 /**
- * Admin dashboard (SRS 16).
+ * Admin dashboard (SRS 16.1, 16.2).
  *
- * Phase 2 scope, as with the driver dashboard: the approval queue and the
- * master-data navigation SRS 16.2 requires arrive in Phase 4.
+ * "The Admin Dashboard shall prioritize services awaiting review while
+ * providing direct access to master-data management."
+ *
+ * So the approval queue is the page, not a panel on it. The master-data links
+ * live in the navigation bar above rather than being repeated as tiles here —
+ * duplicating them would push the queue below the fold on a laptop, which
+ * inverts the priority the SRS states.
  */
+import { CheckCircle2, ClipboardCheck } from 'lucide-react';
+import Link from 'next/link';
+
+import { AdminServiceRow } from '@/components/admin/admin-service-row';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  PageHeader,
+} from '@/components/ui/primitives';
+import { Table, TableWrap, Tbody, Th, Thead } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
+import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
 export const metadata = { title: 'Panel de administración' };
 
 export default async function AdminDashboard() {
   const actor = await requireAdmin();
 
-  const [pending, approved] = await Promise.all([
-    serviceRepository.countByStatus(actor, ServiceStatus.PENDING_APPROVAL),
+  const [pending, recentlyApproved, approvedTotal] = await Promise.all([
+    serviceRepository.listRecent(actor, [ServiceStatus.PENDING_APPROVAL], 25),
+    serviceRepository.listRecent(actor, [ServiceStatus.APPROVED], 5),
     serviceRepository.countByStatus(actor, ServiceStatus.APPROVED),
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Panel de administración</h1>
-        <p className="text-sm text-neutral-600">{actor.name}</p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        title="Panel de administración"
+        description={
+          pending.length === 0
+            ? 'No hay servicios pendientes de revisión.'
+            : `${pending.length} ${pending.length === 1 ? 'servicio pendiente' : 'servicios pendientes'} de revisión.`
+        }
+      />
 
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-neutral-200 p-4">
-          <dt className="text-sm text-neutral-600">{SERVICE_STATUS_LABELS.PENDING_APPROVAL}</dt>
-          <dd className="text-3xl font-semibold">{pending}</dd>
-        </div>
-        <div className="rounded-lg border border-neutral-200 p-4">
-          <dt className="text-sm text-neutral-600">{SERVICE_STATUS_LABELS.APPROVED}</dt>
-          <dd className="text-3xl font-semibold">{approved}</dd>
-        </div>
+      <dl className="grid grid-cols-2 gap-3">
+        <Stat
+          label={SERVICE_STATUS_LABELS.PENDING_APPROVAL}
+          value={pending.length}
+          tone={pending.length > 0 ? 'pending' : 'neutral'}
+        />
+        <Stat label={SERVICE_STATUS_LABELS.APPROVED} value={approvedTotal} tone="neutral" />
       </dl>
 
-      <p className="text-sm text-neutral-500">Interfaz completa en la fase 4.</p>
-    </main>
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+            <ClipboardCheck aria-hidden className="text-pending size-4" />
+            Cola de aprobación
+          </h2>
+          <Link
+            href="/admin/services"
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            Ver todos los servicios
+          </Link>
+        </div>
+
+        {pending.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={CheckCircle2}
+              title="Todo al día"
+              description="No queda ningún servicio pendiente de aprobación."
+            />
+          </Card>
+        ) : (
+          <TableWrap>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Fecha</Th>
+                  <Th>ID</Th>
+                  <Th>Conductor</Th>
+                  <Th>Ruta</Th>
+                  <Th>Vehículo</Th>
+                  <Th className="text-right">KM reales</Th>
+                  <Th className="text-right">KM serv.</Th>
+                  <Th />
+                </tr>
+              </Thead>
+              <Tbody>
+                {pending.map((service) => (
+                  <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
+                ))}
+              </Tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </section>
+
+      {recentlyApproved.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-tight">Aprobados recientemente</h2>
+          <TableWrap>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Fecha</Th>
+                  <Th>ID</Th>
+                  <Th>Conductor</Th>
+                  <Th>Ruta</Th>
+                  <Th>Vehículo</Th>
+                  <Th className="text-right">KM reales</Th>
+                  <Th className="text-right">KM serv.</Th>
+                  <Th />
+                </tr>
+              </Thead>
+              <Tbody>
+                {recentlyApproved.map((service) => (
+                  <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
+                ))}
+              </Tbody>
+            </Table>
+          </TableWrap>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'pending' | 'neutral';
+}) {
+  return (
+    <Card>
+      <CardHeader className="border-b-0 pb-0">
+        <CardTitle className="text-muted-foreground font-normal">{label}</CardTitle>
+      </CardHeader>
+      <div className="px-4 pt-1 pb-4">
+        <dd
+          className={
+            tone === 'pending'
+              ? 'text-pending font-mono text-3xl font-semibold'
+              : 'font-mono text-3xl font-semibold'
+          }
+        >
+          {value}
+        </dd>
+      </div>
+    </Card>
   );
 }

@@ -63,7 +63,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
 
       <ServiceForm
         context={toServiceContextDto(context)}
-        action={updateServiceAction.bind(null, id)}
+        action={updateServiceAction.bind(null, id, 'driver')}
         submitLabel="Guardar cambios"
         serviceCode={service.serviceCode}
         initialValues={{

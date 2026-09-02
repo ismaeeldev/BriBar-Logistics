@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { AdminNav } from '@/components/layout/admin-nav';
 import { signOut } from '@/lib/auth';
 import type { Actor } from '@/lib/auth/session';
 import { ROLE_LABELS } from '@/lib/i18n/messages';
@@ -64,6 +65,10 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
           </div>
         </div>
       </header>
+
+      {/* Administrators have four sections to move between; a driver has one
+          screen and needs no navigation at all (SRS 15.1). */}
+      {actor.role === Role.ADMIN ? <AdminNav /> : null}
 
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</div>
     </div>

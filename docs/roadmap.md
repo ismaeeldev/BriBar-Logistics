@@ -122,16 +122,33 @@ flagged overnight.
 - A validation failure lost the odometer readings, against SRS 24.1. The
   action now echoes submitted values back with the errors.
 
-## Phase 4 — Admin UI (4.5 days)
+## Phase 4 — Admin UI ✅
 
-- Admin dashboard with the approval queue.
-- Services list with all five filters (SRS 16.3), service detail with audit
-  metadata, approve and edit.
-- Users: list, create, edit, activate/deactivate, default vehicle, route
-  assignment with default selection.
-- Vehicles and routes: full CRUD with deactivation.
+**Delivered**
 
----
+- Dashboard led by the approval queue, as SRS 16.1 requires — master-data
+  links live in the nav bar rather than as tiles, so the queue is never pushed
+  below the fold.
+- Services list with all five SRS 16.3 filters (date range, driver, vehicle,
+  route, status). Filter state lives in the URL, so a filtered view is
+  shareable and survives back-navigation, and the query is parsed with the
+  same schema `/api/services` uses.
+- Service review with every field SRS 16.4 enumerates, plus the status
+  history. Approve with confirmation, since approval is irreversible
+  (SRS 11.4) and a misplaced tap should not lock a record.
+- Admin service edit, reusing the driver's form with the owner's context and
+  a warning when the service is already approved (SRS 21.3).
+- Users: list, create, edit, activate/deactivate, default vehicle, and route
+  assignment with a checkbox per route and one radio for the default —
+  a radio group expresses "at most one" natively (SRS 12.6). An administrator
+  cannot demote or deactivate themselves.
+- Vehicles and routes: full CRUD with deactivation. No delete anywhere; the
+  `onDelete: Restrict` foreign keys would refuse it regardless (SRS 21.5).
+
+**Verified in a real browser**: sign-in as administrator, the approval round
+trip (including the recorded approver, timestamp and status history), the
+status filter, vehicle creation with plate normalisation, moving a driver's
+default route between routes, and the self-edit guard.
 
 ## Phase 5 — Polish and testing (5.0 days)
 

@@ -1,0 +1,66 @@
+/**
+ * Edit a route/contract (SRS 14.2, 17.3 `/admin/routes/[id]`).
+ *
+ * The assigned-driver count is loaded so the deactivation hint can say how many
+ * people the change affects, before it is made rather than after one of them
+ * reports a missing route.
+ */
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { updateRouteAction } from '@/app/(app)/admin/actions';
+import { RouteForm } from '@/components/admin/route-form';
+import { PageHeader } from '@/components/ui/primitives';
+import { requireAdmin } from '@/lib/auth/session';
+import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { routeService } from '@/modules/routes/service/route.service';
+
+export const metadata = { title: 'Editar ruta' };
+
+export default async function EditRoutePage({ params }: { params: Promise<{ id: string }> }) {
+  const actor = await requireAdmin();
+  const { id } = await params;
+
+  let route;
+  let assignedDriverCount;
+  try {
+    [route, assignedDriverCount] = await Promise.all([
+      routeService.getById(actor, id),
+      routeService.countAssignedDrivers(actor, id),
+    ]);
+  } catch (error) {
+    if (isAppError(error) && error.code === ErrorCode.NOT_FOUND) notFound();
+    throw error;
+  }
+
+  return (
+    <div className="space-y-5">
+      <Link
+        href="/admin/routes"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Rutas
+      </Link>
+
+      <PageHeader
+        title="Editar ruta / contrato"
+        description={`${route.code} · ${route.name}`}
+      />
+
+      <RouteForm
+        action={updateRouteAction.bind(null, id)}
+        submitLabel="Guardar cambios"
+        assignedDriverCount={assignedDriverCount}
+        initial={{
+          code: route.code,
+          name: route.name,
+          origin: route.origin,
+          destination: route.destination,
+          isActive: route.isActive,
+        }}
+      />
+    </div>
+  );
+}

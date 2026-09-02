@@ -9,9 +9,11 @@ Built to `BRIBAR_Logistics_V1_SRS.pdf` v1.0. Comments throughout the codebase
 cite the clause a piece of behaviour implements, so a rule can be traced from
 requirement to code to test.
 
-**Status: Phases 1–3 complete** — data model, authentication, the service
-layer, every API endpoint, and the full mobile-first driver interface. The
-admin interface follows in Phase 4. See [`docs/roadmap.md`](docs/roadmap.md).
+**Status: Phases 1–4 complete** — data model, authentication, the service
+layer, every API endpoint, and both interfaces. What remains is Phase 5
+(accessibility, concurrency and performance passes, the full SRS 27 acceptance
+run) and Phase 6 (Neon, deployment, UAT). See
+[`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 

@@ -163,6 +163,15 @@ export async function createServiceAction(
 
 export async function updateServiceAction(
   serviceId: string,
+  /**
+   * Where to land after a successful save.
+   *
+   * A driver returns to their own detail page; an administrator to the review
+   * page they came from. Bound by the caller rather than derived from the
+   * actor's role, because the two routes render different pages and the one to
+   * return to is a property of the screen, not of the user.
+   */
+  returnTo: 'driver' | 'admin',
   _state: ServiceFormState,
   formData: FormData,
 ): Promise<ServiceFormState> {
@@ -191,6 +200,14 @@ export async function updateServiceAction(
 
   revalidatePath('/driver');
   revalidatePath('/services');
+  revalidatePath('/admin');
+  revalidatePath('/admin/services');
   revalidatePath(`/services/${serviceId}`);
-  redirect(`/services/${serviceId}?updated=1`);
+  revalidatePath(`/admin/services/${serviceId}`);
+
+  redirect(
+    returnTo === 'admin'
+      ? `/admin/services/${serviceId}?updated=1`
+      : `/services/${serviceId}?updated=1`,
+  );
 }

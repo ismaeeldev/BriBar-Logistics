@@ -1,0 +1,30 @@
+/** Create a route/contract, origin and destination included (SRS 17.3). */
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+
+import { createRouteAction } from '@/app/(app)/admin/actions';
+import { RouteForm } from '@/components/admin/route-form';
+import { PageHeader } from '@/components/ui/primitives';
+import { requireAdmin } from '@/lib/auth/session';
+
+export const metadata = { title: 'Nueva ruta' };
+
+export default async function NewRoutePage() {
+  await requireAdmin();
+
+  return (
+    <div className="space-y-5">
+      <Link
+        href="/admin/routes"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Rutas
+      </Link>
+
+      <PageHeader title="Nueva ruta / contrato" />
+
+      <RouteForm action={createRouteAction} submitLabel="Crear ruta" />
+    </div>
+  );
+}
