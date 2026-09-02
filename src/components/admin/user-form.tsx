@@ -6,7 +6,7 @@ import type { FormState } from '@/app/(app)/admin/actions';
 import { ActiveToggle, EntityForm } from '@/components/admin/entity-form';
 import { Field, Input, Select } from '@/components/ui/field';
 import { Alert, Card, CardBody, CardHeader, CardTitle } from '@/components/ui/primitives';
-import { FIELD_LABELS, ROLE_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, ROLE_LABELS, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 import { Role } from '@/modules/services/domain/service-status';
 
@@ -103,21 +103,17 @@ export function UserForm({
           <Card>
             <CardHeader>
               <CardTitle>{FIELD_LABELS.assignments}</CardTitle>
-              <p className="text-muted-foreground text-xs">
-                El conductor solo podrá elegir entre las rutas marcadas aquí.
-              </p>
+              <p className="text-muted-foreground text-xs">{UI.admin.assignmentsHint}</p>
             </CardHeader>
             <CardBody className="space-y-3">
               {routes.length === 0 ? (
-                <Alert tone="warning">
-                  No hay rutas activas. Cree una ruta antes de asignarla a un conductor.
-                </Alert>
+                <Alert tone="warning">{UI.admin.noActiveRoutes}</Alert>
               ) : (
                 <>
                   <div className="text-muted-foreground grid grid-cols-[auto_auto_1fr] items-center gap-x-3 px-1 text-xs font-medium">
-                    <span>Asignada</span>
-                    <span>Predet.</span>
-                    <span>Ruta</span>
+                    <span>{UI.admin.assignedColumn}</span>
+                    <span>{UI.admin.defaultColumn}</span>
+                    <span>{UI.admin.routeColumn}</span>
                   </div>
 
                   <ul className="divide-y rounded-lg border">
@@ -134,7 +130,7 @@ export function UserForm({
                           <input
                             type="checkbox"
                             name={`route:${route.id}`}
-                            aria-label={`Asignar ${route.code}`}
+                            aria-label={`${UI.admin.assignedColumn}: ${route.code}`}
                             checked={isAssigned}
                             onChange={(event) => toggle(route.id, event.target.checked)}
                             className="border-input accent-primary size-5 rounded"
@@ -143,7 +139,7 @@ export function UserForm({
                             type="radio"
                             name="defaultRouteId"
                             value={route.id}
-                            aria-label={`Ruta predeterminada: ${route.code}`}
+                            aria-label={`${FIELD_LABELS.defaultRoute}: ${route.code}`}
                             checked={defaultRouteId === route.id}
                             onChange={() => {
                               setDefaultRouteId(route.id);
@@ -163,10 +159,7 @@ export function UserForm({
                   </ul>
 
                   {assigned.size > 0 && !defaultRouteId ? (
-                    <Alert tone="warning">
-                      Sin ruta predeterminada, el conductor tendrá que elegirla en cada
-                      servicio.
-                    </Alert>
+                    <Alert tone="warning">{UI.admin.noDefaultWarning}</Alert>
                   ) : null}
                 </>
               )}
@@ -193,7 +186,7 @@ export function UserForm({
             label={FIELD_LABELS.loginIdentifier}
             required
             errors={fieldErrors?.['loginIdentifier']}
-            hint="Minúsculas, sin espacios. Se usa para iniciar sesión."
+            hint={UI.admin.loginHint}
           >
             {(props) => (
               <Input
@@ -220,11 +213,7 @@ export function UserForm({
             required={!isEditing}
             optional={isEditing}
             errors={fieldErrors?.['password']}
-            hint={
-              isEditing
-                ? 'Déjelo en blanco para no cambiar la contraseña actual.'
-                : 'Mínimo 12 caracteres. Comuníquesela al conductor de forma segura.'
-            }
+            hint={isEditing ? UI.admin.passwordHintEdit : UI.admin.passwordHintCreate}
           >
             {(props) => (
               <Input
@@ -252,19 +241,14 @@ export function UserForm({
             )}
           </Field>
 
-          {isSelf ? (
-            <Alert tone="info">
-              No puede cambiar su propio rol ni desactivar su cuenta. Pida a otro administrador
-              que lo haga.
-            </Alert>
-          ) : null}
+          {isSelf ? <Alert tone="info">{UI.admin.selfEditNotice}</Alert> : null}
 
           {isDriver ? (
             <Field
               label={FIELD_LABELS.defaultVehicle}
               optional
               errors={fieldErrors?.['defaultVehicleId']}
-              hint="Se preselecciona al crear un servicio. El conductor puede cambiarlo."
+              hint={UI.admin.defaultVehicleHint}
             >
               {(props) => (
                 <Select
@@ -272,7 +256,7 @@ export function UserForm({
                   name="defaultVehicleId"
                   defaultValue={values?.['defaultVehicleId'] ?? initial?.defaultVehicleId ?? ''}
                 >
-                  <option value="">Sin vehículo predeterminado</option>
+                  <option value="">{UI.common.none}</option>
                   {vehicles.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
                       {vehicle.registrationPlate}
@@ -286,7 +270,7 @@ export function UserForm({
 
           <ActiveToggle
             defaultChecked={values ? values['isActive'] === 'on' : (initial?.isActive ?? true)}
-            hint="Una cuenta inactiva no puede iniciar sesión. Sus servicios anteriores se conservan."
+            hint={UI.admin.accountActiveHint}
           />
         </>
       )}

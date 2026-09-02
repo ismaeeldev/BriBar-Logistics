@@ -7,6 +7,7 @@ import { useActionState } from 'react';
 import type { FormState } from '@/app/(app)/admin/actions';
 import { Button } from '@/components/ui/button';
 import { Alert, Card, CardBody } from '@/components/ui/primitives';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 
 /**
  * The shell every master-data form sits in.
@@ -56,7 +57,7 @@ export function EntityForm({
           {isPending ? (
             <>
               <Loader2 aria-hidden className="size-5 animate-spin" />
-              Guardando…
+              {UI.common.saving}
             </>
           ) : (
             <>
@@ -96,7 +97,7 @@ export function ActiveToggle({
           className="border-input accent-primary mt-0.5 size-5 shrink-0 rounded"
         />
         <label htmlFor="isActive" className="flex-1 cursor-pointer text-sm font-medium">
-          Activo
+          {FIELD_LABELS.isActive}
           <span className="text-muted-foreground mt-0.5 block text-xs font-normal">{hint}</span>
         </label>
       </div>

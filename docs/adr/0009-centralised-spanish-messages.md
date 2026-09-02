@@ -1,4 +1,4 @@
-# 9. One message catalogue rather than inline Spanish strings
+# 9. One message catalogue rather than inline strings
 
 **Status:** Accepted
 
@@ -42,9 +42,23 @@ component with no way to be sure it was complete.
 validation message, and a database-constraint message. Composed from one constant,
 the three cannot drift.
 
-**Nothing is lost if translation is ever wanted.** This file is the seam. Adding a
-second locale means changing the constants into a keyed lookup, not hunting for
-strings.
+**Nothing is lost if translation is ever wanted.** That seam was used sooner
+than expected. The developer building and reviewing the system does not read
+Spanish, and a behaviour you cannot read is a behaviour you cannot verify — so
+`src/lib/i18n/locales/en.ts` now mirrors the Spanish dictionary, selected by
+`NEXT_PUBLIC_APP_LOCALE` (`pnpm dev:en`).
+
+It is a development locale, not a product feature: SRS 29 excludes a
+multi-language interface, so there is deliberately **no switcher in the
+application** and Spanish is the default everywhere, including any production
+build. A `Dictionary` interface binds the two together, so adding a string to
+one locale without the other is a compile error rather than a page rendering a
+missing key.
+
+Adding English also forced the file to become what this ADR always claimed it
+was. Twenty-eight components still held their own inline strings — headings,
+buttons, hints, empty states — so "the client can review the entire wording in
+one file" was not yet true. It is now.
 
 The cost is one indirection between a schema and its message, and a small amount
 of ceremony in the domain layer — returning `{ code, field }` instead of a

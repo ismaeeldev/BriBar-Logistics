@@ -4,6 +4,7 @@ import { AlertCircle } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { useId } from 'react';
 
+import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -80,7 +81,9 @@ export function Field({
           </span>
         ) : null}
         {optional ? (
-          <span className="text-muted-foreground ml-1.5 text-xs font-normal">(opcional)</span>
+          <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+            {UI.common.optional}
+          </span>
         ) : null}
       </label>
 

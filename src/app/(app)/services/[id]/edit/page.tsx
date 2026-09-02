@@ -19,6 +19,7 @@ import { ServiceForm } from '@/components/services/service-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireUser } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { canEdit } from '@/modules/services/domain/service-status';
 import {
   toServiceContextDto,
@@ -26,7 +27,7 @@ import {
 } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Editar servicio' };
+export const metadata = { title: UI.service.editTitle };
 
 export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireUser();
@@ -56,15 +57,15 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Volver al servicio
+        {UI.service.backToService}
       </Link>
 
-      <PageHeader title="Editar servicio" description={`#${service.serviceCode}`} />
+      <PageHeader title={UI.service.editTitle} description={`#${service.serviceCode}`} />
 
       <ServiceForm
         context={toServiceContextDto(context)}
         action={updateServiceAction.bind(null, id, 'driver')}
-        submitLabel="Guardar cambios"
+        submitLabel={UI.common.save}
         serviceCode={service.serviceCode}
         initialValues={{
           vehicleId: service.vehicle.id,

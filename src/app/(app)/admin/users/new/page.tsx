@@ -13,10 +13,11 @@ import { createUserAction } from '@/app/(app)/admin/actions';
 import { UserForm } from '@/components/admin/user-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
+import { UI } from '@/lib/i18n/messages';
 import { routeService } from '@/modules/routes/service/route.service';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
 
-export const metadata = { title: 'Nueva cuenta' };
+export const metadata = { title: UI.admin.newAccount };
 
 export default async function NewUserPage() {
   const actor = await requireAdmin();
@@ -33,14 +34,14 @@ export default async function NewUserPage() {
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Conductores
+        {UI.nav.drivers}
       </Link>
 
-      <PageHeader title="Nueva cuenta" />
+      <PageHeader title={UI.admin.newAccount} />
 
       <UserForm
         action={createUserAction}
-        submitLabel="Crear cuenta"
+        submitLabel={UI.admin.createAccount}
         routes={routes.map((route) => ({
           id: route.id,
           code: route.code,

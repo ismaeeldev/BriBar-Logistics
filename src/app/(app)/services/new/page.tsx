@@ -12,10 +12,11 @@ import { ServiceForm } from '@/components/services/service-form';
 import { Alert, PageHeader } from '@/components/ui/primitives';
 import { requireUser } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { toServiceContextDto } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Añadir servicio' };
+export const metadata = { title: UI.service.addTitle };
 
 export default async function NewServicePage() {
   const actor = await requireUser();
@@ -32,8 +33,8 @@ export default async function NewServicePage() {
       return (
         <div className="space-y-6">
           <BackLink />
-          <PageHeader title="Añadir servicio" />
-          <Alert tone="warning" title="Configuración pendiente">
+          <PageHeader title={UI.service.addTitle} />
+          <Alert tone="warning" title={UI.service.configurationRequired}>
             {error.message}
           </Alert>
         </div>
@@ -45,16 +46,13 @@ export default async function NewServicePage() {
   return (
     <div className="space-y-5">
       <BackLink />
-      <PageHeader
-        title="Añadir servicio"
-        description="Registre la hoja de ruta del servicio completado."
-      />
+      <PageHeader title={UI.service.addTitle} description={UI.service.addSubtitle} />
 
       {context.routes.length === 1 ? (
         <Alert tone="info">
           <span className="inline-flex items-center gap-1.5">
             <AlertTriangle aria-hidden className="size-3.5" />
-            Solo tiene una ruta asignada. Si necesita otra, pídasela a un administrador.
+            {UI.service.onlyOneRoute}
           </span>
         </Alert>
       ) : null}
@@ -62,7 +60,7 @@ export default async function NewServicePage() {
       <ServiceForm
         context={toServiceContextDto(context)}
         action={createServiceAction}
-        submitLabel="Enviar servicio"
+        submitLabel={UI.service.submit}
       />
     </div>
   );
@@ -75,7 +73,7 @@ function BackLink() {
       className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
     >
       <ArrowLeft aria-hidden className="size-4" />
-      Volver
+      {UI.common.back}
     </Link>
   );
 }

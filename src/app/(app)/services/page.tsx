@@ -13,17 +13,17 @@ import Link from 'next/link';
 import { ServiceCard } from '@/components/services/service-card';
 import { Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { requireUser } from '@/lib/auth/session';
-import { SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceFilterSchema } from '@/modules/services/schemas/service.schema';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Historial de servicios' };
+export const metadata = { title: UI.driver.history };
 
 const FILTERS = [
-  { value: '', label: 'Todos' },
+  { value: '', label: UI.common.all },
   { value: ServiceStatus.PENDING_APPROVAL, label: SERVICE_STATUS_LABELS.PENDING_APPROVAL },
   { value: ServiceStatus.APPROVED, label: SERVICE_STATUS_LABELS.APPROVED },
 ] as const;
@@ -47,10 +47,7 @@ export default async function ServiceHistoryPage({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Historial"
-        description={`${total} ${total === 1 ? 'servicio' : 'servicios'}`}
-      />
+      <PageHeader title={UI.driver.history} description={UI.driver.serviceCount(total)} />
 
       {/* Status filter. Links rather than a client-side control: the state
           lives in the URL, so a filtered view is shareable and survives a
@@ -80,12 +77,8 @@ export default async function ServiceHistoryPage({
         {items.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
-            title="No hay servicios"
-            description={
-              activeStatus
-                ? 'Pruebe con otro filtro.'
-                : 'Los servicios que registre aparecerán aquí.'
-            }
+            title={UI.driver.noServices}
+            description={activeStatus ? UI.driver.noServicesFiltered : UI.driver.noServicesHint}
           />
         ) : (
           <div>
@@ -97,23 +90,26 @@ export default async function ServiceHistoryPage({
       </Card>
 
       {totalPages > 1 ? (
-        <nav className="flex items-center justify-between gap-3" aria-label="Paginación">
+        <nav
+          className="flex items-center justify-between gap-3"
+          aria-label={UI.common.pagination}
+        >
           <PageLink
             page={pagination.page - 1}
             status={activeStatus}
             disabled={pagination.page <= 1}
           >
-            Anterior
+            {UI.common.previous}
           </PageLink>
           <span className="text-muted-foreground text-sm">
-            Página {pagination.page} de {totalPages}
+            {UI.common.pageOf(pagination.page, totalPages)}
           </span>
           <PageLink
             page={pagination.page + 1}
             status={activeStatus}
             disabled={pagination.page >= totalPages}
           >
-            Siguiente
+            {UI.common.next}
           </PageLink>
         </nav>
       ) : null}

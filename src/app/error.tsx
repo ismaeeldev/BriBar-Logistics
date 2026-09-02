@@ -11,6 +11,8 @@
  */
 import { useEffect } from 'react';
 
+import { UI } from '@/lib/i18n/messages';
+
 export default function GlobalError({
   error,
   reset,
@@ -26,19 +28,19 @@ export default function GlobalError({
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">Se ha producido un error</h1>
-      <p className="text-muted-foreground max-w-sm text-sm">
-        No hemos podido completar la operación. Inténtelo de nuevo en unos momentos.
-      </p>
+      <h1 className="text-xl font-semibold tracking-tight">{UI.errors.errorTitle}</h1>
+      <p className="text-muted-foreground max-w-sm text-sm">{UI.errors.errorHint}</p>
       {error.digest ? (
-        <p className="text-muted-foreground font-mono text-xs">Ref. {error.digest}</p>
+        <p className="text-muted-foreground font-mono text-xs">
+          {UI.errors.reference} {error.digest}
+        </p>
       ) : null}
       <button
         type="button"
         onClick={reset}
         className="bg-primary text-primary-foreground hover:bg-primary-hover mt-2 inline-flex h-11 items-center rounded-lg px-5 text-sm font-medium transition-colors"
       >
-        Reintentar
+        {UI.errors.retry}
       </button>
     </main>
   );

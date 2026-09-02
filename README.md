@@ -76,7 +76,8 @@ exercise. Sample data is skipped when `NODE_ENV=production`.
 
 | Command                             | Purpose                                                      |
 | ----------------------------------- | ------------------------------------------------------------ |
-| `pnpm dev`                          | Development server                                           |
+| `pnpm dev`                          | Development server (Spanish, as the client sees it)          |
+| `pnpm dev:en`                       | Development server in English, for building and reviewing    |
 | `pnpm build`                        | Production build (regenerates the Prisma client first)       |
 | `pnpm verify`                       | `typecheck` + `lint` + unit tests — run before every commit  |
 | `pnpm typecheck`                    | `tsc --noEmit`                                               |

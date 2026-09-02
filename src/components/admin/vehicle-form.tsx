@@ -3,7 +3,7 @@
 import type { FormState } from '@/app/(app)/admin/actions';
 import { ActiveToggle, EntityForm } from '@/components/admin/entity-form';
 import { Field, Input } from '@/components/ui/field';
-import { FIELD_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 
 /** Create/edit a vehicle (SRS 13.1, 13.3). */
 export function VehicleForm({
@@ -23,7 +23,7 @@ export function VehicleForm({
             label={FIELD_LABELS.registrationPlate}
             required
             errors={fieldErrors?.['registrationPlate']}
-            hint="Se guarda en mayúsculas. Debe ser única."
+            hint={UI.admin.plateHint}
           >
             {(props) => (
               <Input
@@ -42,7 +42,7 @@ export function VehicleForm({
             label={FIELD_LABELS.referenceName}
             optional
             errors={fieldErrors?.['referenceName']}
-            hint="Una referencia interna, por ejemplo «Volvo FH16 - Unidad 1»."
+            hint={UI.admin.vehicleNameHint}
           >
             {(props) => (
               <Input
@@ -56,7 +56,7 @@ export function VehicleForm({
 
           <ActiveToggle
             defaultChecked={values ? values['isActive'] === 'on' : (initial?.isActive ?? true)}
-            hint="Un vehículo inactivo no se ofrece para nuevos servicios, pero sigue asociado a los servicios ya registrados."
+            hint={UI.admin.vehicleActiveHint}
           />
         </>
       )}

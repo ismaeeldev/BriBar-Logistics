@@ -18,12 +18,12 @@ import {
   PageHeader,
 } from '@/components/ui/primitives';
 import { requireDriver } from '@/lib/auth/session';
-import { SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
-export const metadata = { title: 'Mis servicios' };
+export const metadata = { title: UI.driver.myServices };
 
 export default async function DriverDashboard() {
   const actor = await requireDriver();
@@ -36,8 +36,8 @@ export default async function DriverDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Hola, ${actor.name.split(' ')[0]}`}
-        description="Panel del conductor"
+        title={UI.driver.greeting(actor.name.split(' ')[0] ?? actor.name)}
+        description={UI.driver.panelSubtitle}
       />
 
       {/*
@@ -50,7 +50,7 @@ export default async function DriverDashboard() {
         className="bg-primary text-primary-foreground hover:bg-primary-hover flex h-14 w-full items-center justify-center gap-2.5 rounded-xl text-base font-semibold shadow-xs transition-colors sm:h-13 sm:w-auto sm:px-8"
       >
         <Plus aria-hidden className="size-5" />
-        Añadir servicio
+        {UI.driver.addService}
       </Link>
 
       {/* SRS 15.2: Pending Approval list. */}
@@ -67,8 +67,8 @@ export default async function DriverDashboard() {
         {pending.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
-            title="No hay servicios pendientes"
-            description="Los servicios que envíe aparecerán aquí hasta que un administrador los apruebe."
+            title={UI.driver.noPending}
+            description={UI.driver.noPendingHint}
           />
         ) : (
           <div>
@@ -82,17 +82,14 @@ export default async function DriverDashboard() {
       {/* SRS 15.2: recent/Approved list, plus the link to the full history. */}
       <Card className="overflow-hidden">
         <CardHeader className="flex items-center justify-between">
-          <CardTitle>Aprobados recientemente</CardTitle>
+          <CardTitle>{UI.driver.recentlyApproved}</CardTitle>
           <Link href="/services" className="text-primary text-xs font-medium hover:underline">
-            Ver historial
+            {UI.driver.viewHistory}
           </Link>
         </CardHeader>
 
         {recent.length === 0 ? (
-          <EmptyState
-            title="Todavía no hay servicios aprobados"
-            description="Aquí verá sus últimos servicios aprobados."
-          />
+          <EmptyState title={UI.driver.noApproved} description={UI.driver.noApprovedHint} />
         ) : (
           <div>
             {recent.map((service) => (

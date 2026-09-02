@@ -16,6 +16,7 @@ import { ServiceFilters } from '@/components/admin/service-filters';
 import { Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Th, Thead } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 import { routeRepository } from '@/modules/routes/repository/route.repository';
 import { Role } from '@/modules/services/domain/service-status';
@@ -25,7 +26,7 @@ import { serviceService } from '@/modules/services/service/service.service';
 import { userRepository } from '@/modules/users/repository/user.repository';
 import { vehicleRepository } from '@/modules/vehicles/repository/vehicle.repository';
 
-export const metadata = { title: 'Servicios' };
+export const metadata = { title: UI.admin.servicesTitle };
 
 export default async function AdminServicesPage({
   searchParams,
@@ -53,10 +54,7 @@ export default async function AdminServicesPage({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Servicios"
-        description={`${total} ${total === 1 ? 'servicio' : 'servicios'}`}
-      />
+      <PageHeader title={UI.admin.servicesTitle} description={UI.driver.serviceCount(total)} />
 
       <ServiceFilters
         drivers={drivers.map((driver) => ({ id: driver.id, label: driver.name }))}
@@ -74,8 +72,8 @@ export default async function AdminServicesPage({
         <Card>
           <EmptyState
             icon={ClipboardList}
-            title="No hay servicios"
-            description="Ningún servicio coincide con los filtros aplicados."
+            title={UI.driver.noServices}
+            description={UI.admin.noServicesMatch}
           />
         </Card>
       ) : (
@@ -83,13 +81,13 @@ export default async function AdminServicesPage({
           <Table>
             <Thead>
               <tr>
-                <Th>Fecha</Th>
-                <Th>ID</Th>
-                <Th>Conductor</Th>
-                <Th>Ruta</Th>
-                <Th>Vehículo</Th>
-                <Th className="text-right">KM reales</Th>
-                <Th className="text-right">KM serv.</Th>
+                <Th>{FIELD_LABELS.serviceDate}</Th>
+                <Th>{FIELD_LABELS.serviceCode}</Th>
+                <Th>{FIELD_LABELS.driver}</Th>
+                <Th>{UI.admin.routeColumn}</Th>
+                <Th>{FIELD_LABELS.vehicle}</Th>
+                <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
+                <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
                 <Th />
               </tr>
             </Thead>
@@ -103,19 +101,22 @@ export default async function AdminServicesPage({
       )}
 
       {totalPages > 1 ? (
-        <nav className="flex items-center justify-between gap-3" aria-label="Paginación">
+        <nav
+          className="flex items-center justify-between gap-3"
+          aria-label={UI.common.pagination}
+        >
           <PageLink params={params} page={pagination.page - 1} disabled={pagination.page <= 1}>
-            Anterior
+            {UI.common.previous}
           </PageLink>
           <span className="text-muted-foreground text-sm">
-            Página {pagination.page} de {totalPages}
+            {UI.common.pageOf(pagination.page, totalPages)}
           </span>
           <PageLink
             params={params}
             page={pagination.page + 1}
             disabled={pagination.page >= totalPages}
           >
-            Siguiente
+            {UI.common.next}
           </PageLink>
         </nav>
       ) : null}

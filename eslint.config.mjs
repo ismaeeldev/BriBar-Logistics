@@ -47,7 +47,10 @@ const eslintConfig = defineConfig([
     // that validation, and are how a deployment ends up running with a missing
     // timezone or a placeholder secret.
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/lib/env.ts', 'src/lib/logger.ts'],
+    // `src/lib/i18n/messages.ts` reads NEXT_PUBLIC_APP_LOCALE, which is not a
+    // secret and must be readable from client components - the validated `env`
+    // object throws in a browser by design.
+    ignores: ['src/lib/env.ts', 'src/lib/logger.ts', 'src/lib/i18n/messages.ts'],
     rules: {
       'no-restricted-properties': [
         'error',

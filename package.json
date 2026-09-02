@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:en": "dotenv -e .env.en -- next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
@@ -27,7 +28,8 @@
     "db:set-service-start": "tsx scripts/set-service-code-start.ts",
     "db:reset": "prisma migrate reset",
     "db:test:prepare": "dotenv -e .env.test -- prisma migrate deploy",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "build:en": "dotenv -e .env.en -- pnpm build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

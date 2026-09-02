@@ -10,10 +10,10 @@ import { redirect } from 'next/navigation';
 import { LoginSubmit } from '@/components/auth/login-submit';
 import { Alert } from '@/components/ui/primitives';
 import { signIn } from '@/lib/auth';
-import { AUTH } from '@/lib/i18n/messages';
+import { AUTH, FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { credentialsSchema } from '@/modules/users/schemas/user.schema';
 
-export const metadata = { title: 'Iniciar sesión' };
+export const metadata = { title: UI.auth.signIn };
 
 /**
  * Auth.js signals a successful credentials sign-in by throwing a redirect, so
@@ -79,8 +79,8 @@ export default async function LoginPage({
             BL
           </span>
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">BRIBAR Logistics</h1>
-            <p className="text-muted-foreground text-sm">Acceso interno</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{UI.common.appName}</h1>
+            <p className="text-muted-foreground text-sm">{UI.auth.internalAccess}</p>
           </div>
         </header>
 
@@ -96,7 +96,7 @@ export default async function LoginPage({
             */}
             <div className="space-y-1.5">
               <label htmlFor="loginIdentifier" className="block text-sm font-medium">
-                Usuario
+                {FIELD_LABELS.loginIdentifier}
               </label>
               <input
                 id="loginIdentifier"
@@ -114,7 +114,7 @@ export default async function LoginPage({
 
             <div className="space-y-1.5">
               <label htmlFor="password" className="block text-sm font-medium">
-                Contraseña
+                {FIELD_LABELS.password}
               </label>
               <input
                 id="password"
@@ -130,9 +130,7 @@ export default async function LoginPage({
           </form>
         </div>
 
-        <p className="text-muted-foreground text-center text-xs">
-          Si ha olvidado su contraseña, contacte con un administrador.
-        </p>
+        <p className="text-muted-foreground text-center text-xs">{UI.auth.forgotPassword}</p>
       </div>
     </main>
   );

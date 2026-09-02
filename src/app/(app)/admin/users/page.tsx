@@ -10,11 +10,11 @@ import Link from 'next/link';
 import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
-import { ROLE_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, ROLE_LABELS, UI } from '@/lib/i18n/messages';
 import { toUserDto } from '@/modules/users/service/user.presenter';
 import { userService } from '@/modules/users/service/user.service';
 
-export const metadata = { title: 'Conductores' };
+export const metadata = { title: UI.nav.drivers };
 
 export default async function AdminUsersPage({
   searchParams,
@@ -28,37 +28,37 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Conductores y administradores"
-        description={`${users.length} ${users.length === 1 ? 'cuenta' : 'cuentas'}`}
+        title={UI.admin.usersTitle}
+        description={UI.admin.accountCount(users.length)}
         action={
           <Link
             href="/admin/users/new"
             className="bg-primary text-primary-foreground hover:bg-primary-hover inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors"
           >
             <Plus aria-hidden className="size-4" />
-            Nueva
+            {UI.common.newFeminine}
           </Link>
         }
       />
 
-      {flags.created ? <Alert tone="success" title="Cuenta creada" /> : null}
-      {flags.updated ? <Alert tone="success" title="Cuenta actualizada" /> : null}
+      {flags.created ? <Alert tone="success" title={UI.admin.accountCreated} /> : null}
+      {flags.updated ? <Alert tone="success" title={UI.admin.accountUpdated} /> : null}
 
       {users.length === 0 ? (
         <Card>
-          <EmptyState icon={Users} title="No hay cuentas" />
+          <EmptyState icon={Users} title={UI.admin.noAccounts} />
         </Card>
       ) : (
         <TableWrap>
           <Table>
             <Thead>
               <tr>
-                <Th>Nombre</Th>
-                <Th>Usuario</Th>
-                <Th>Rol</Th>
-                <Th>Vehículo predet.</Th>
-                <Th>Ruta predet.</Th>
-                <Th>Estado</Th>
+                <Th>{FIELD_LABELS.name}</Th>
+                <Th>{FIELD_LABELS.loginIdentifier}</Th>
+                <Th>{FIELD_LABELS.role}</Th>
+                <Th>{FIELD_LABELS.defaultVehicle}</Th>
+                <Th>{FIELD_LABELS.defaultRoute}</Th>
+                <Th>{UI.common.status}</Th>
                 <Th />
               </tr>
             </Thead>
@@ -68,7 +68,9 @@ export default async function AdminUsersPage({
                   <Td className="font-medium whitespace-nowrap">
                     {user.name}
                     {user.id === actor.userId ? (
-                      <span className="text-muted-foreground ml-1.5 text-xs">(usted)</span>
+                      <span className="text-muted-foreground ml-1.5 text-xs">
+                        {UI.common.you}
+                      </span>
                     ) : null}
                   </Td>
                   <Td className="text-muted-foreground font-mono">{user.loginIdentifier}</Td>
@@ -85,7 +87,7 @@ export default async function AdminUsersPage({
                   </Td>
                   <Td>
                     <Badge tone={user.isActive ? 'approved' : 'neutral'}>
-                      {user.isActive ? 'Activa' : 'Inactiva'}
+                      {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
                     </Badge>
                   </Td>
                   <Td className="text-right">
@@ -93,7 +95,7 @@ export default async function AdminUsersPage({
                       href={`/admin/users/${user.id}`}
                       className="text-primary text-xs font-medium hover:underline"
                     >
-                      Editar
+                      {UI.common.edit}
                     </Link>
                   </Td>
                 </Tr>

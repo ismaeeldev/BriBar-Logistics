@@ -7,7 +7,7 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/primitives';
-import { FIELD_LABELS, SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 
 /**
  * The five filters SRS 16.3 requires: date range, driver, vehicle,
@@ -72,7 +72,7 @@ export function ServiceFilters({
           aria-expanded={isOpen}
           className="flex items-center gap-2 text-sm font-medium"
         >
-          Filtros
+          {UI.admin.filters}
           {activeCount > 0 ? (
             <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-xs">
               {activeCount}
@@ -88,7 +88,7 @@ export function ServiceFilters({
             onClick={() => router.push('/admin/services')}
           >
             <X aria-hidden />
-            Limpiar
+            {UI.admin.clearFilters}
           </Button>
         ) : null}
       </div>
@@ -100,7 +100,7 @@ export function ServiceFilters({
       */}
       <CardBody hidden={!isOpen} className="border-t">
         <form onSubmit={apply} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Desde">
+          <Field label={UI.admin.from}>
             {(props) => (
               <Input
                 {...props}
@@ -111,16 +111,16 @@ export function ServiceFilters({
             )}
           </Field>
 
-          <Field label="Hasta">
+          <Field label={UI.admin.to}>
             {(props) => (
               <Input {...props} type="date" name="dateTo" defaultValue={current('dateTo')} />
             )}
           </Field>
 
-          <Field label="Estado">
+          <Field label={UI.common.status}>
             {(props) => (
               <Select {...props} name="status" defaultValue={current('status')}>
-                <option value="">Todos</option>
+                <option value="">{UI.common.all}</option>
                 <option value="PENDING_APPROVAL">
                   {SERVICE_STATUS_LABELS.PENDING_APPROVAL}
                 </option>
@@ -132,7 +132,7 @@ export function ServiceFilters({
           <Field label={FIELD_LABELS.driver}>
             {(props) => (
               <Select {...props} name="driverId" defaultValue={current('driverId')}>
-                <option value="">Todos</option>
+                <option value="">{UI.common.all}</option>
                 {drivers.map((driver) => (
                   <option key={driver.id} value={driver.id}>
                     {driver.label}
@@ -145,7 +145,7 @@ export function ServiceFilters({
           <Field label={FIELD_LABELS.vehicle}>
             {(props) => (
               <Select {...props} name="vehicleId" defaultValue={current('vehicleId')}>
-                <option value="">Todos</option>
+                <option value="">{UI.common.all}</option>
                 {vehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
                     {vehicle.label}
@@ -158,7 +158,7 @@ export function ServiceFilters({
           <Field label={FIELD_LABELS.route}>
             {(props) => (
               <Select {...props} name="routeId" defaultValue={current('routeId')}>
-                <option value="">Todas</option>
+                <option value="">{UI.common.allFeminine}</option>
                 {routes.map((route) => (
                   <option key={route.id} value={route.id}>
                     {route.label}
@@ -170,7 +170,7 @@ export function ServiceFilters({
 
           <div className="sm:col-span-2 lg:col-span-3">
             <Button type="submit" block className="sm:w-auto">
-              Aplicar filtros
+              {UI.admin.applyFilters}
             </Button>
           </div>
         </form>

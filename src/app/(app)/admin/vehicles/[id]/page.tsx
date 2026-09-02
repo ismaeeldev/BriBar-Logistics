@@ -14,9 +14,10 @@ import { VehicleForm } from '@/components/admin/vehicle-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
 
-export const metadata = { title: 'Editar vehículo' };
+export const metadata = { title: UI.admin.editVehicle };
 
 export default async function EditVehiclePage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireAdmin();
@@ -37,14 +38,14 @@ export default async function EditVehiclePage({ params }: { params: Promise<{ id
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Vehículos
+        {UI.admin.vehiclesTitle}
       </Link>
 
-      <PageHeader title="Editar vehículo" description={vehicle.registrationPlate} />
+      <PageHeader title={UI.admin.editVehicle} description={vehicle.registrationPlate} />
 
       <VehicleForm
         action={updateVehicleAction.bind(null, id)}
-        submitLabel="Guardar cambios"
+        submitLabel={UI.common.save}
         initial={{
           registrationPlate: vehicle.registrationPlate,
           referenceName: vehicle.referenceName,

@@ -4,6 +4,7 @@ import { ClipboardList, Route, Truck, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -17,10 +18,10 @@ import { cn } from '@/lib/utils/cn';
  * A client component only because the active item depends on the current path.
  */
 const ITEMS = [
-  { href: '/admin/services', label: 'Servicios', icon: ClipboardList },
-  { href: '/admin/users', label: 'Conductores', icon: Users },
-  { href: '/admin/vehicles', label: 'Vehículos', icon: Truck },
-  { href: '/admin/routes', label: 'Rutas', icon: Route },
+  { href: '/admin/services', label: UI.nav.services, icon: ClipboardList },
+  { href: '/admin/users', label: UI.nav.drivers, icon: Users },
+  { href: '/admin/vehicles', label: UI.nav.vehicles, icon: Truck },
+  { href: '/admin/routes', label: UI.nav.routes, icon: Route },
 ] as const;
 
 export function AdminNav() {
@@ -28,7 +29,7 @@ export function AdminNav() {
 
   return (
     <nav
-      aria-label="Administración"
+      aria-label={UI.admin.panelTitle}
       className="bg-card/80 sticky top-14 z-10 border-b backdrop-blur-sm"
     >
       <div className="mx-auto flex w-full max-w-5xl gap-1 overflow-x-auto px-2">

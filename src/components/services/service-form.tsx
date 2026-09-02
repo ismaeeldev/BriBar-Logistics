@@ -14,7 +14,7 @@ import {
   TimeInput,
 } from '@/components/ui/field';
 import { Alert, Card, CardBody, CardHeader, CardTitle } from '@/components/ui/primitives';
-import { FIELD_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { formatBusinessDate } from '@/lib/time/business-date';
 import { calculateMileage, validateMileage } from '@/modules/services/domain/mileage';
 import type { ServiceContextDto } from '@/modules/services/service/service.presenter';
@@ -166,13 +166,13 @@ export function ServiceForm({
       {/* ---------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Datos del servicio</CardTitle>
-          <p className="text-muted-foreground text-xs">Rellenados automáticamente</p>
+          <CardTitle>{UI.service.detailsSection}</CardTitle>
+          <p className="text-muted-foreground text-xs">{UI.service.detailsHint}</p>
         </CardHeader>
         <CardBody className="grid gap-4 sm:grid-cols-2">
           <ReadOnlyValue
             label={FIELD_LABELS.serviceCode}
-            value={serviceCode ? `#${serviceCode}` : 'Se asignará al guardar'}
+            value={serviceCode ? `#${serviceCode}` : UI.service.idOnSave}
             mono={Boolean(serviceCode)}
           />
           <ReadOnlyValue
@@ -193,7 +193,7 @@ export function ServiceForm({
       {/* ---------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Ruta y vehículo</CardTitle>
+          <CardTitle>{UI.service.routeSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
           <Field label={FIELD_LABELS.route} required errors={fieldErrors?.['routeId']}>
@@ -207,7 +207,9 @@ export function ServiceForm({
                 {context.routes.map((route) => (
                   <option key={route.id} value={route.id}>
                     {route.code} — {route.name}
-                    {route.isDefault ? ' (predeterminada)' : ''}
+                    {route.isDefault
+                      ? ` (${UI.admin.defaultColumn.toLowerCase().replace('.', '')})`
+                      : ''}
                   </option>
                 ))}
               </Select>
@@ -229,7 +231,7 @@ export function ServiceForm({
             label={FIELD_LABELS.vehicle}
             required
             errors={fieldErrors?.['vehicleId']}
-            hint="Puede cambiarlo si hoy conduce otro vehículo."
+            hint={UI.service.vehicleHint}
           >
             {(props) => (
               <Select
@@ -260,10 +262,8 @@ export function ServiceForm({
       {/* ---------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Kilometraje</CardTitle>
-          <p className="text-muted-foreground text-xs">
-            Lecturas del cuentakilómetros, en orden de la ruta
-          </p>
+          <CardTitle>{UI.service.mileageSection}</CardTitle>
+          <p className="text-muted-foreground text-xs">{UI.service.mileageHint}</p>
         </CardHeader>
         <CardBody className="space-y-4">
           {ORDERED_KM_FIELDS.map(({ name, label }) => (
@@ -291,7 +291,7 @@ export function ServiceForm({
       {/* ---------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Horario</CardTitle>
+          <CardTitle>{UI.service.timesSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -329,7 +329,7 @@ export function ServiceForm({
           <CheckboxField
             name="endsNextDay"
             label={FIELD_LABELS.endsNextDay}
-            hint="Marque esta casilla si el servicio terminó después de medianoche."
+            hint={UI.service.overnightHint}
             defaultChecked={
               echoed ? echoed['endsNextDay'] === 'true' : (initialValues?.endsNextDay ?? false)
             }
@@ -346,7 +346,7 @@ export function ServiceForm({
       {/* ---------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Notas</CardTitle>
+          <CardTitle>{UI.service.notesSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
           <Field label={FIELD_LABELS.sites} optional errors={fieldErrors?.['sites']}>
@@ -389,7 +389,7 @@ export function ServiceForm({
             {isPending ? (
               <>
                 <Loader2 aria-hidden className="size-5 animate-spin" />
-                Guardando…
+                {UI.common.saving}
               </>
             ) : (
               <>
@@ -430,9 +430,7 @@ function MileagePreview({
           {preview ? preview.serviceKm : '—'}
         </p>
       </div>
-      <p className="text-muted-foreground col-span-2 text-xs">
-        Calculado automáticamente. El servidor vuelve a calcularlo al guardar.
-      </p>
+      <p className="text-muted-foreground col-span-2 text-xs">{UI.service.calculatedHint}</p>
     </div>
   );
 }

@@ -21,13 +21,13 @@ import {
 import { requireUser } from '@/lib/auth/session';
 import { env } from '@/lib/env';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
-import { FIELD_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { formatBusinessDate, formatBusinessDateTime } from '@/lib/time/business-date';
 import { canEdit } from '@/modules/services/domain/service-status';
 import { toServiceDetail } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Detalle del servicio' };
+export const metadata = { title: UI.driver.serviceDetail };
 
 export default async function ServiceDetailPage({
   params,
@@ -59,16 +59,16 @@ export default async function ServiceDetailPage({
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Historial
+        {UI.driver.history}
       </Link>
 
       {/* SRS 23.3: "confirmation feedback after successful submission". */}
       {flags.created ? (
-        <Alert tone="success" title="Servicio enviado">
-          Su servicio está pendiente de aprobación.
+        <Alert tone="success" title={UI.service.submitted}>
+          {UI.service.submittedHint}
         </Alert>
       ) : null}
-      {flags.updated ? <Alert tone="success" title="Cambios guardados" /> : null}
+      {flags.updated ? <Alert tone="success" title={UI.service.saved} /> : null}
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1.5">
@@ -89,7 +89,7 @@ export default async function ServiceDetailPage({
             className="border-input bg-card hover:bg-muted inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors"
           >
             <Pencil aria-hidden className="size-4" />
-            Editar
+            {UI.common.edit}
           </Link>
         ) : null}
       </div>
@@ -97,14 +97,12 @@ export default async function ServiceDetailPage({
       {/* SRS 11.4: a driver keeps read access after approval but loses editing.
           Saying so beats silently removing the button. */}
       {!editable && service.status === 'APPROVED' ? (
-        <Alert tone="info">
-          Este servicio está aprobado. Para cualquier corrección, contacte con un administrador.
-        </Alert>
+        <Alert tone="info">{UI.service.approvedReadOnly}</Alert>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>Kilometraje</CardTitle>
+          <CardTitle>{UI.service.mileageSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
           {/* The two numbers the business signs off on, given the most weight. */}
@@ -138,7 +136,7 @@ export default async function ServiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Ruta y vehículo</CardTitle>
+          <CardTitle>{UI.service.routeSection}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
@@ -162,7 +160,9 @@ export default async function ServiceDetailPage({
                   {/* SRS 13.4: a deactivated vehicle stays visible on its
                       historical services, and is marked rather than hidden. */}
                   {!service.vehicleIsActive ? (
-                    <span className="text-muted-foreground text-xs">(dado de baja)</span>
+                    <span className="text-muted-foreground text-xs">
+                      {UI.common.deactivated}
+                    </span>
                   ) : null}
                 </span>
               }
@@ -174,7 +174,7 @@ export default async function ServiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Horario</CardTitle>
+          <CardTitle>{UI.service.timesSection}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
@@ -185,7 +185,7 @@ export default async function ServiceDetailPage({
                 <span className="inline-flex items-center gap-1.5">
                   <span className="font-mono">{service.arrivalTime}</span>
                   {service.endsNextDay ? (
-                    <span className="text-muted-foreground text-xs">(día siguiente)</span>
+                    <span className="text-muted-foreground text-xs">{UI.service.nextDay}</span>
                   ) : null}
                 </span>
               }
@@ -197,7 +197,7 @@ export default async function ServiceDetailPage({
       {service.sites || service.observations ? (
         <Card>
           <CardHeader>
-            <CardTitle>Notas</CardTitle>
+            <CardTitle>{UI.service.notesSection}</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
             {service.sites ? (
@@ -220,21 +220,21 @@ export default async function ServiceDetailPage({
           in APP_TIMEZONE; the columns are UTC (SRS 31.3). */}
       <Card>
         <CardHeader>
-          <CardTitle>Registro</CardTitle>
+          <CardTitle>{UI.service.record}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
             <DetailRow
-              label="Creado"
+              label={UI.service.created}
               value={formatBusinessDateTime(new Date(service.createdAt), env.APP_TIMEZONE)}
             />
             <DetailRow
-              label="Última modificación"
+              label={UI.service.lastUpdated}
               value={formatBusinessDateTime(new Date(service.updatedAt), env.APP_TIMEZONE)}
             />
             {service.approvedAt ? (
               <DetailRow
-                label="Aprobado"
+                label={UI.service.approvedAt}
                 value={`${formatBusinessDateTime(new Date(service.approvedAt), env.APP_TIMEZONE)} · ${
                   service.approvedBy?.name ?? '—'
                 }`}

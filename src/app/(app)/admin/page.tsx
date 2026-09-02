@@ -22,12 +22,12 @@ import {
 } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Th, Thead } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
-import { SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
-export const metadata = { title: 'Panel de administración' };
+export const metadata = { title: UI.admin.panelTitle };
 
 export default async function AdminDashboard() {
   const actor = await requireAdmin();
@@ -41,11 +41,11 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Panel de administración"
+        title={UI.admin.panelTitle}
         description={
           pending.length === 0
-            ? 'No hay servicios pendientes de revisión.'
-            : `${pending.length} ${pending.length === 1 ? 'servicio pendiente' : 'servicios pendientes'} de revisión.`
+            ? UI.admin.nothingPending
+            : UI.admin.pendingSummary(pending.length)
         }
       />
 
@@ -62,13 +62,13 @@ export default async function AdminDashboard() {
         <div className="flex items-baseline justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
             <ClipboardCheck aria-hidden className="text-pending size-4" />
-            Cola de aprobación
+            {UI.admin.approvalQueue}
           </h2>
           <Link
             href="/admin/services"
             className="text-primary text-xs font-medium hover:underline"
           >
-            Ver todos los servicios
+            {UI.admin.viewAllServices}
           </Link>
         </div>
 
@@ -76,8 +76,8 @@ export default async function AdminDashboard() {
           <Card>
             <EmptyState
               icon={CheckCircle2}
-              title="Todo al día"
-              description="No queda ningún servicio pendiente de aprobación."
+              title={UI.admin.allClear}
+              description={UI.admin.allClearHint}
             />
           </Card>
         ) : (
@@ -85,13 +85,13 @@ export default async function AdminDashboard() {
             <Table>
               <Thead>
                 <tr>
-                  <Th>Fecha</Th>
-                  <Th>ID</Th>
-                  <Th>Conductor</Th>
-                  <Th>Ruta</Th>
-                  <Th>Vehículo</Th>
-                  <Th className="text-right">KM reales</Th>
-                  <Th className="text-right">KM serv.</Th>
+                  <Th>{FIELD_LABELS.serviceDate}</Th>
+                  <Th>{FIELD_LABELS.serviceCode}</Th>
+                  <Th>{FIELD_LABELS.driver}</Th>
+                  <Th>{UI.admin.routeColumn}</Th>
+                  <Th>{FIELD_LABELS.vehicle}</Th>
+                  <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
+                  <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
                   <Th />
                 </tr>
               </Thead>
@@ -107,18 +107,18 @@ export default async function AdminDashboard() {
 
       {recentlyApproved.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold tracking-tight">Aprobados recientemente</h2>
+          <h2 className="text-sm font-semibold tracking-tight">{UI.driver.recentlyApproved}</h2>
           <TableWrap>
             <Table>
               <Thead>
                 <tr>
-                  <Th>Fecha</Th>
-                  <Th>ID</Th>
-                  <Th>Conductor</Th>
-                  <Th>Ruta</Th>
-                  <Th>Vehículo</Th>
-                  <Th className="text-right">KM reales</Th>
-                  <Th className="text-right">KM serv.</Th>
+                  <Th>{FIELD_LABELS.serviceDate}</Th>
+                  <Th>{FIELD_LABELS.serviceCode}</Th>
+                  <Th>{FIELD_LABELS.driver}</Th>
+                  <Th>{UI.admin.routeColumn}</Th>
+                  <Th>{FIELD_LABELS.vehicle}</Th>
+                  <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
+                  <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
                   <Th />
                 </tr>
               </Thead>

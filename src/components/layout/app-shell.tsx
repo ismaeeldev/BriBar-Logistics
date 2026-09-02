@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { AdminNav } from '@/components/layout/admin-nav';
 import { signOut } from '@/lib/auth';
 import type { Actor } from '@/lib/auth/session';
-import { ROLE_LABELS } from '@/lib/i18n/messages';
+import { ROLE_LABELS, UI } from '@/lib/i18n/messages';
 import { Role } from '@/modules/services/domain/service-status';
 
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
           <Link href={home} className="flex min-w-0 items-center gap-2.5">
             <BribarMark />
             <span className="truncate text-sm font-semibold tracking-tight">
-              BRIBAR Logistics
+              {UI.common.appName}
             </span>
           </Link>
 
@@ -56,8 +56,8 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
                 type="submit"
                 variant="ghost"
                 size="icon"
-                aria-label="Cerrar sesión"
-                title="Cerrar sesión"
+                aria-label={UI.common.signOut}
+                title={UI.common.signOut}
               >
                 <LogOut />
               </Button>

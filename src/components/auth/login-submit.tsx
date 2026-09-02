@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useFormStatus } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
+import { UI } from '@/lib/i18n/messages';
 
 /**
  * The sign-in button, with its own pending state.
@@ -24,10 +25,10 @@ export function LoginSubmit() {
       {pending ? (
         <>
           <Loader2 aria-hidden className="size-5 animate-spin" />
-          Comprobando…
+          {UI.auth.checking}
         </>
       ) : (
-        'Iniciar sesión'
+        UI.auth.signIn
       )}
     </Button>
   );

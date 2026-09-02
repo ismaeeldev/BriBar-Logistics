@@ -18,13 +18,14 @@ import { UserForm } from '@/components/admin/user-form';
 import { Alert, PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { routeService } from '@/modules/routes/service/route.service';
 import { type Role } from '@/modules/services/domain/service-status';
 import { toUserDto } from '@/modules/users/service/user.presenter';
 import { userService } from '@/modules/users/service/user.service';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
 
-export const metadata = { title: 'Editar cuenta' };
+export const metadata = { title: UI.admin.editAccount };
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireAdmin();
@@ -60,7 +61,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     ...inactiveAssigned.map((route) => ({
       id: route.id,
       code: route.code,
-      name: `${route.name} (inactiva)`,
+      name: `${route.name} ${UI.common.inactiveMarker}`,
       isActive: false,
     })),
   ];
@@ -72,22 +73,20 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Conductores
+        {UI.nav.drivers}
       </Link>
 
-      <PageHeader title="Editar cuenta" description={user.name} />
+      <PageHeader title={UI.admin.editAccount} description={user.name} />
 
       {inactiveAssigned.length > 0 ? (
-        <Alert tone="warning" title="Rutas inactivas asignadas">
-          Este conductor tiene {inactiveAssigned.length}{' '}
-          {inactiveAssigned.length === 1 ? 'ruta desactivada' : 'rutas desactivadas'}. No
-          aparecerán al crear un servicio hasta que se reactiven.
+        <Alert tone="warning" title={UI.admin.inactiveRoutesTitle}>
+          {UI.admin.inactiveRoutesHint(inactiveAssigned.length)}
         </Alert>
       ) : null}
 
       <UserForm
         action={updateUserAction.bind(null, id)}
-        submitLabel="Guardar cambios"
+        submitLabel={UI.common.save}
         isSelf={user.id === actor.userId}
         routes={routeOptions}
         vehicles={vehicles.map((vehicle) => ({

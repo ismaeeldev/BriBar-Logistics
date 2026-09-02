@@ -27,13 +27,13 @@ import {
 import { requireAdmin } from '@/lib/auth/session';
 import { env } from '@/lib/env';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
-import { FIELD_LABELS, SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { formatBusinessDate, formatBusinessDateTime } from '@/lib/time/business-date';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { toServiceDetail } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Revisar servicio' };
+export const metadata = { title: UI.admin.reviewTitle };
 
 export default async function AdminServiceDetailPage({
   params,
@@ -65,10 +65,10 @@ export default async function AdminServiceDetailPage({
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Servicios
+        {UI.admin.servicesTitle}
       </Link>
 
-      {flags.updated ? <Alert tone="success" title="Cambios guardados" /> : null}
+      {flags.updated ? <Alert tone="success" title={UI.service.saved} /> : null}
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
@@ -90,7 +90,7 @@ export default async function AdminServiceDetailPage({
           className="border-input bg-card hover:bg-muted inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors"
         >
           <Pencil aria-hidden className="size-4" />
-          Editar
+          {UI.common.edit}
         </Link>
       </div>
 
@@ -98,7 +98,7 @@ export default async function AdminServiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Kilometraje</CardTitle>
+          <CardTitle>{UI.service.mileageSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
           <div className="bg-muted grid grid-cols-2 gap-3 rounded-lg p-3">
@@ -131,7 +131,7 @@ export default async function AdminServiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Ruta y vehículo</CardTitle>
+          <CardTitle>{UI.service.routeSection}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
@@ -144,7 +144,9 @@ export default async function AdminServiceDetailPage({
                     <span className="text-muted-foreground"> · {service.route.name}</span>
                   </span>
                   {!service.routeIsActive ? (
-                    <span className="text-muted-foreground text-xs">(inactiva)</span>
+                    <span className="text-muted-foreground text-xs">
+                      {UI.common.inactiveMarker}
+                    </span>
                   ) : null}
                 </span>
               }
@@ -160,7 +162,9 @@ export default async function AdminServiceDetailPage({
                 <span className="inline-flex items-center gap-1.5">
                   <span className="font-mono">{service.vehicle.registrationPlate}</span>
                   {!service.vehicleIsActive ? (
-                    <span className="text-muted-foreground text-xs">(dado de baja)</span>
+                    <span className="text-muted-foreground text-xs">
+                      {UI.common.deactivated}
+                    </span>
                   ) : null}
                 </span>
               }
@@ -171,7 +175,7 @@ export default async function AdminServiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Horario</CardTitle>
+          <CardTitle>{UI.service.timesSection}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
@@ -182,7 +186,7 @@ export default async function AdminServiceDetailPage({
                 <span className="inline-flex items-center gap-1.5">
                   <span className="font-mono">{service.arrivalTime}</span>
                   {service.endsNextDay ? (
-                    <span className="text-muted-foreground text-xs">(día siguiente)</span>
+                    <span className="text-muted-foreground text-xs">{UI.service.nextDay}</span>
                   ) : null}
                 </span>
               }
@@ -194,7 +198,7 @@ export default async function AdminServiceDetailPage({
       {service.sites || service.observations ? (
         <Card>
           <CardHeader>
-            <CardTitle>Notas del conductor</CardTitle>
+            <CardTitle>{UI.service.driverNotesSection}</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
             {service.sites ? (
@@ -216,24 +220,24 @@ export default async function AdminServiceDetailPage({
       {/* SRS 16.4 and 21.1: the audit metadata an administrator reviews. */}
       <Card>
         <CardHeader>
-          <CardTitle>Auditoría</CardTitle>
+          <CardTitle>{UI.admin.auditSection}</CardTitle>
         </CardHeader>
         <CardBody>
           <dl className="divide-y">
             <DetailRow
-              label="Creado"
+              label={UI.service.created}
               value={formatBusinessDateTime(new Date(service.createdAt), env.APP_TIMEZONE)}
             />
             <DetailRow
-              label="Última modificación"
+              label={UI.service.lastUpdated}
               value={formatBusinessDateTime(new Date(service.updatedAt), env.APP_TIMEZONE)}
             />
             <DetailRow
-              label="Aprobado"
+              label={UI.service.approvedAt}
               value={
                 service.approvedAt
                   ? `${formatBusinessDateTime(new Date(service.approvedAt), env.APP_TIMEZONE)} · ${service.approvedBy?.name ?? '—'}`
-                  : 'Pendiente'
+                  : UI.admin.pending
               }
             />
           </dl>
@@ -242,7 +246,9 @@ export default async function AdminServiceDetailPage({
               needs no redesign, and this list renders whatever it holds. */}
           {history.length > 0 ? (
             <div className="mt-4 space-y-2 border-t pt-4">
-              <p className="text-muted-foreground text-xs font-medium">Historial de estados</p>
+              <p className="text-muted-foreground text-xs font-medium">
+                {UI.admin.statusHistory}
+              </p>
               <ol className="space-y-1.5">
                 {history.map((entry) => (
                   <li key={entry.id} className="flex items-baseline gap-2 text-sm">

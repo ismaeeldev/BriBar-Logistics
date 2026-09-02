@@ -14,9 +14,10 @@ import { RouteForm } from '@/components/admin/route-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { routeService } from '@/modules/routes/service/route.service';
 
-export const metadata = { title: 'Editar ruta' };
+export const metadata = { title: UI.admin.editRoute };
 
 export default async function EditRoutePage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireAdmin();
@@ -41,17 +42,14 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Rutas
+        {UI.admin.routesTitle}
       </Link>
 
-      <PageHeader
-        title="Editar ruta / contrato"
-        description={`${route.code} · ${route.name}`}
-      />
+      <PageHeader title={UI.admin.editRoute} description={`${route.code} · ${route.name}`} />
 
       <RouteForm
         action={updateRouteAction.bind(null, id)}
-        submitLabel="Guardar cambios"
+        submitLabel={UI.common.save}
         assignedDriverCount={assignedDriverCount}
         initial={{
           code: route.code,

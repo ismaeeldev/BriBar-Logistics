@@ -19,6 +19,7 @@ import { ServiceForm } from '@/components/services/service-form';
 import { Alert, PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import {
   toServiceContextDto,
@@ -26,7 +27,7 @@ import {
 } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
-export const metadata = { title: 'Editar servicio' };
+export const metadata = { title: UI.service.editTitle };
 
 export default async function AdminEditServicePage({
   params,
@@ -53,11 +54,11 @@ export default async function AdminEditServicePage({
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Volver al servicio
+        {UI.service.backToService}
       </Link>
 
       <PageHeader
-        title="Editar servicio"
+        title={UI.service.editTitle}
         description={`#${service.serviceCode} · ${service.driver.name}`}
       />
 
@@ -65,16 +66,15 @@ export default async function AdminEditServicePage({
           record. Saying so before the fact is better than only auditing it
           after. */}
       {service.status === ServiceStatus.APPROVED ? (
-        <Alert tone="warning" title="Este servicio ya está aprobado">
-          La modificación quedará registrada en la auditoría. El servicio seguirá aprobado y el
-          conductor no recuperará permiso de edición.
+        <Alert tone="warning" title={UI.admin.editingApproved}>
+          {UI.admin.editingApprovedHint}
         </Alert>
       ) : null}
 
       <ServiceForm
         context={toServiceContextDto(context)}
         action={updateServiceAction.bind(null, id, 'admin')}
-        submitLabel="Guardar cambios"
+        submitLabel={UI.common.save}
         serviceCode={service.serviceCode}
         initialValues={{
           vehicleId: service.vehicle.id,

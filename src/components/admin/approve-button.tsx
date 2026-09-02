@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { approveServiceAction } from '@/app/(app)/admin/actions';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/primitives';
+import { UI } from '@/lib/i18n/messages';
 
 /**
  * Approve (SRS 11.3).
@@ -32,9 +33,7 @@ export function ApproveButton({ serviceId }: { serviceId: string }) {
         setIsConfirming(false);
       } catch (caught) {
         setError(
-          caught instanceof Error && caught.message
-            ? caught.message
-            : 'No se ha podido aprobar el servicio.',
+          caught instanceof Error && caught.message ? caught.message : UI.admin.approveFailed,
         );
       }
     });
@@ -46,7 +45,7 @@ export function ApproveButton({ serviceId }: { serviceId: string }) {
         {error ? <Alert tone="error">{error}</Alert> : null}
         <Button type="button" size="lg" block onClick={() => setIsConfirming(true)}>
           <CheckCircle2 aria-hidden className="size-5" />
-          Aprobar servicio
+          {UI.admin.approve}
         </Button>
       </div>
     );
@@ -56,23 +55,22 @@ export function ApproveButton({ serviceId }: { serviceId: string }) {
     <div className="space-y-3">
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <Alert tone="warning" title="¿Aprobar este servicio?">
-        Una vez aprobado, el conductor ya no podrá modificarlo. Solo un administrador podrá
-        corregirlo.
+      <Alert tone="warning" title={UI.admin.confirmApprove}>
+        {UI.admin.confirmApproveHint}
       </Alert>
 
       <div className="flex gap-2">
         <Button type="button" variant="secondary" block onClick={() => setIsConfirming(false)}>
-          Cancelar
+          {UI.common.cancel}
         </Button>
         <Button type="button" block onClick={approve} disabled={isPending}>
           {isPending ? (
             <>
               <Loader2 aria-hidden className="size-4 animate-spin" />
-              Aprobando…
+              {UI.admin.approving}
             </>
           ) : (
-            'Confirmar aprobación'
+            UI.admin.confirmApproveAction
           )}
         </Button>
       </div>

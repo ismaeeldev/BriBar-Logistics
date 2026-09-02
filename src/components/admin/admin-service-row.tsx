@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { ServiceStatusBadge } from '@/components/ui/primitives';
 import { Td, Tr } from '@/components/ui/table';
+import { UI } from '@/lib/i18n/messages';
 import { formatBusinessDate } from '@/lib/time/business-date';
 import type { ServiceListItem } from '@/modules/services/service/service.presenter';
 
@@ -40,7 +41,7 @@ export function AdminServiceRow({
             href={`/admin/services/${service.id}`}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap transition-colors"
           >
-            Revisar
+            {UI.admin.review}
             <ChevronRight aria-hidden className="size-3.5" />
           </Link>
         </div>

@@ -12,9 +12,10 @@ import Link from 'next/link';
 import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
 
-export const metadata = { title: 'Vehículos' };
+export const metadata = { title: UI.admin.vehiclesTitle };
 
 export default async function AdminVehiclesPage({
   searchParams,
@@ -28,28 +29,28 @@ export default async function AdminVehiclesPage({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Vehículos"
-        description={`${vehicles.length} en total`}
+        title={UI.admin.vehiclesTitle}
+        description={UI.common.total(vehicles.length)}
         action={
           <Link
             href="/admin/vehicles/new"
             className="bg-primary text-primary-foreground hover:bg-primary-hover inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors"
           >
             <Plus aria-hidden className="size-4" />
-            Nuevo
+            {UI.common.new}
           </Link>
         }
       />
 
-      {flags.created ? <Alert tone="success" title="Vehículo creado" /> : null}
-      {flags.updated ? <Alert tone="success" title="Vehículo actualizado" /> : null}
+      {flags.created ? <Alert tone="success" title={UI.admin.vehicleCreated} /> : null}
+      {flags.updated ? <Alert tone="success" title={UI.admin.vehicleUpdated} /> : null}
 
       {vehicles.length === 0 ? (
         <Card>
           <EmptyState
             icon={Truck}
-            title="No hay vehículos"
-            description="Dé de alta un vehículo para que los conductores puedan registrar servicios."
+            title={UI.admin.noVehicles}
+            description={UI.admin.noVehiclesHint}
           />
         </Card>
       ) : (
@@ -57,9 +58,9 @@ export default async function AdminVehiclesPage({
           <Table>
             <Thead>
               <tr>
-                <Th>Matrícula</Th>
-                <Th>Nombre</Th>
-                <Th>Estado</Th>
+                <Th>{FIELD_LABELS.registrationPlate}</Th>
+                <Th>{FIELD_LABELS.name}</Th>
+                <Th>{UI.common.status}</Th>
                 <Th />
               </tr>
             </Thead>
@@ -72,7 +73,7 @@ export default async function AdminVehiclesPage({
                   <Td className="text-muted-foreground">{vehicle.referenceName ?? '—'}</Td>
                   <Td>
                     <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
-                      {vehicle.isActive ? 'Activo' : 'Inactivo'}
+                      {vehicle.isActive ? UI.common.active : UI.common.inactive}
                     </Badge>
                   </Td>
                   <Td className="text-right">
@@ -80,7 +81,7 @@ export default async function AdminVehiclesPage({
                       href={`/admin/vehicles/${vehicle.id}`}
                       className="text-primary text-xs font-medium hover:underline"
                     >
-                      Editar
+                      {UI.common.edit}
                     </Link>
                   </Td>
                 </Tr>

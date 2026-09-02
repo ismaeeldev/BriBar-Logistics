@@ -6,8 +6,9 @@ import { createRouteAction } from '@/app/(app)/admin/actions';
 import { RouteForm } from '@/components/admin/route-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
+import { UI } from '@/lib/i18n/messages';
 
-export const metadata = { title: 'Nueva ruta' };
+export const metadata = { title: UI.admin.newRoute };
 
 export default async function NewRoutePage() {
   await requireAdmin();
@@ -19,12 +20,12 @@ export default async function NewRoutePage() {
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Rutas
+        {UI.admin.routesTitle}
       </Link>
 
-      <PageHeader title="Nueva ruta / contrato" />
+      <PageHeader title={UI.admin.newRoute} />
 
-      <RouteForm action={createRouteAction} submitLabel="Crear ruta" />
+      <RouteForm action={createRouteAction} submitLabel={UI.admin.createRoute} />
     </div>
   );
 }

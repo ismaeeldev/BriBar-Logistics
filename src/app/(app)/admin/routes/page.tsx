@@ -7,9 +7,10 @@ import Link from 'next/link';
 import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
+import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { routeService } from '@/modules/routes/service/route.service';
 
-export const metadata = { title: 'Rutas' };
+export const metadata = { title: UI.admin.routesTitle };
 
 export default async function AdminRoutesPage({
   searchParams,
@@ -23,28 +24,28 @@ export default async function AdminRoutesPage({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Rutas / Contratos"
-        description={`${routes.length} en total`}
+        title={UI.admin.routesTitle}
+        description={UI.common.total(routes.length)}
         action={
           <Link
             href="/admin/routes/new"
             className="bg-primary text-primary-foreground hover:bg-primary-hover inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors"
           >
             <Plus aria-hidden className="size-4" />
-            Nueva
+            {UI.common.newFeminine}
           </Link>
         }
       />
 
-      {flags.created ? <Alert tone="success" title="Ruta creada" /> : null}
-      {flags.updated ? <Alert tone="success" title="Ruta actualizada" /> : null}
+      {flags.created ? <Alert tone="success" title={UI.admin.routeCreated} /> : null}
+      {flags.updated ? <Alert tone="success" title={UI.admin.routeUpdated} /> : null}
 
       {routes.length === 0 ? (
         <Card>
           <EmptyState
             icon={RouteIcon}
-            title="No hay rutas"
-            description="Cree una ruta y asígnela a un conductor para que pueda registrar servicios."
+            title={UI.admin.noRoutes}
+            description={UI.admin.noRoutesHint}
           />
         </Card>
       ) : (
@@ -52,11 +53,11 @@ export default async function AdminRoutesPage({
           <Table>
             <Thead>
               <tr>
-                <Th>Código</Th>
-                <Th>Nombre</Th>
-                <Th>Origen</Th>
-                <Th>Destino</Th>
-                <Th>Estado</Th>
+                <Th>{FIELD_LABELS.routeCode}</Th>
+                <Th>{FIELD_LABELS.name}</Th>
+                <Th>{FIELD_LABELS.origin}</Th>
+                <Th>{FIELD_LABELS.destination}</Th>
+                <Th>{UI.common.status}</Th>
                 <Th />
               </tr>
             </Thead>
@@ -71,7 +72,7 @@ export default async function AdminRoutesPage({
                   </Td>
                   <Td>
                     <Badge tone={route.isActive ? 'approved' : 'neutral'}>
-                      {route.isActive ? 'Activa' : 'Inactiva'}
+                      {route.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
                     </Badge>
                   </Td>
                   <Td className="text-right">
@@ -79,7 +80,7 @@ export default async function AdminRoutesPage({
                       href={`/admin/routes/${route.id}`}
                       className="text-primary text-xs font-medium hover:underline"
                     >
-                      Editar
+                      {UI.common.edit}
                     </Link>
                   </Td>
                 </Tr>
