@@ -26,6 +26,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Role } from '@prisma/client';
 
 import { ARGON2_OPTIONS } from '../src/lib/auth/password';
+import { SERVICE_CODE_SEQUENCE } from '../src/modules/services/domain/service-code';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
 if (!DATABASE_URL) {
@@ -72,9 +73,9 @@ async function seedAdministrator(): Promise<string> {
 async function seedSampleData(): Promise<void> {
   const vehicles = await Promise.all(
     [
-      { registrationPlate: 'AA-01-BB', referenceName: 'Volvo FH16 - Unit 1' },
-      { registrationPlate: 'CC-02-DD', referenceName: 'Scania R450 - Unit 2' },
-      { registrationPlate: 'EE-03-FF', referenceName: 'Retired trailer unit', isActive: false },
+      { registrationPlate: '1234 ABC', referenceName: 'Volvo FH16 - Unidad 1' },
+      { registrationPlate: '5678 DEF', referenceName: 'Scania R450 - Unidad 2' },
+      { registrationPlate: '9012 GHI', referenceName: 'Remolque retirado', isActive: false },
     ].map((vehicle) =>
       prisma.vehicle.upsert({
         where: { registrationPlate: vehicle.registrationPlate },
@@ -87,28 +88,28 @@ async function seedSampleData(): Promise<void> {
   const routes = await Promise.all(
     [
       {
-        code: 'LIS-PRT-01',
-        name: 'Lisboa - Porto Daily',
-        origin: 'Lisboa Distribution Centre',
-        destination: 'Porto Terminal North',
+        code: 'MAD-BCN-01',
+        name: 'Madrid - Barcelona diario',
+        origin: 'Centro logístico Madrid Sur',
+        destination: 'Terminal Barcelona Zona Franca',
       },
       {
-        code: 'LIS-FAR-02',
-        name: 'Lisboa - Faro Southbound',
-        origin: 'Lisboa Distribution Centre',
-        destination: 'Faro Regional Depot',
+        code: 'MAD-VAL-02',
+        name: 'Madrid - Valencia',
+        origin: 'Centro logístico Madrid Sur',
+        destination: 'Almacén Valencia Puerto',
       },
       {
-        code: 'PRT-BRG-03',
-        name: 'Porto - Braga Shuttle',
-        origin: 'Porto Terminal North',
-        destination: 'Braga Client Site',
+        code: 'MAD-ZGZ-03',
+        name: 'Madrid - Zaragoza lanzadera',
+        origin: 'Centro logístico Madrid Sur',
+        destination: 'Plataforma PLAZA Zaragoza',
       },
       {
-        code: 'OLD-ROUTE-99',
-        name: 'Discontinued contract',
-        origin: 'Setubal Yard',
-        destination: 'Evora Warehouse',
+        code: 'ANT-99',
+        name: 'Contrato finalizado',
+        origin: 'Nave Getafe',
+        destination: 'Almacén Toledo',
         isActive: false,
       },
     ].map((route) =>
@@ -122,10 +123,10 @@ async function seedSampleData(): Promise<void> {
   // A driver configured exactly as SRS 9.2 expects: one default vehicle, one
   // default route, and additional assigned routes to choose from.
   const configuredDriver = await prisma.user.upsert({
-    where: { loginIdentifier: 'driver1' },
+    where: { loginIdentifier: 'conductor1' },
     create: {
-      name: 'Ana Ferreira',
-      loginIdentifier: 'driver1',
+      name: 'Ana García',
+      loginIdentifier: 'conductor1',
       passwordHash,
       role: Role.DRIVER,
       isActive: true,
@@ -137,10 +138,10 @@ async function seedSampleData(): Promise<void> {
   // A second driver with *no* configuration, so the "Admin configuration
   // required" path in SRS 24.2 has something to exercise during UAT.
   await prisma.user.upsert({
-    where: { loginIdentifier: 'driver2' },
+    where: { loginIdentifier: 'conductor2' },
     create: {
-      name: 'Bruno Costa',
-      loginIdentifier: 'driver2',
+      name: 'Bruno Martín',
+      loginIdentifier: 'conductor2',
       passwordHash,
       role: Role.DRIVER,
       isActive: true,
@@ -161,14 +162,41 @@ async function seedSampleData(): Promise<void> {
 
   console.log(`  vehicles       ${vehicles.length} (1 inactive)`);
   console.log(`  routes         ${routes.length} (1 inactive)`);
-  console.log('  drivers        driver1 (configured), driver2 (unconfigured)');
-  console.log(`  driver1 login  driver1 / ${demoPassword}`);
+  console.log('  drivers        conductor1 (configured), conductor2 (unconfigured)');
+  console.log(`  driver login   conductor1 / ${demoPassword}`);
+}
+
+/**
+ * Service IDs must continue the client's existing numbering
+ * (`docs/open-questions.md` #2), and the migration cannot know where that
+ * starts. A sequence still sitting at its initial value on a real deployment
+ * means the application is about to re-issue IDs already printed on the
+ * client's paperwork - worth a loud warning rather than a silent collision.
+ */
+async function warnIfServiceSequenceUnset(): Promise<void> {
+  const [row] = await prisma.$queryRawUnsafe<{ last_value: bigint; is_called: boolean }[]>(
+    `SELECT last_value, is_called FROM "${SERVICE_CODE_SEQUENCE}"`,
+  );
+
+  if (!row || row.is_called) return;
+
+  console.warn(
+    [
+      '',
+      '  WARNING  The Service ID sequence is still at its initial value.',
+      '           Before go-live, continue the numbering from 01Servicios:',
+      '',
+      '             pnpm db:set-service-start <highest existing Service ID>',
+      '',
+    ].join('\n'),
+  );
 }
 
 async function main(): Promise<void> {
   console.log(`Seeding BRIBAR Logistics (${isProduction ? 'production' : 'development'})`);
 
   await seedAdministrator();
+  await warnIfServiceSequenceUnset();
 
   if (isProduction) {
     console.log('  sample data    skipped in production (SRS 31.2)');

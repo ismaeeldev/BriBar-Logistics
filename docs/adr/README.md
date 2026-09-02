@@ -7,13 +7,15 @@ A decision here is one where a competent developer could reasonably have chosen
 otherwise. Choices the SRS dictates (Prisma, Neon, Auth.js, Next.js) are not
 recorded; they are requirements.
 
-| #                                              | Decision                                                     | Status   |
-| ---------------------------------------------- | ------------------------------------------------------------ | -------- |
-| [0001](0001-local-postgres-for-development.md) | Local Docker PostgreSQL for development, Neon for deployment | Accepted |
-| [0002](0002-layered-modules.md)                | Layered modules with a dependency-free domain core           | Accepted |
-| [0003](0003-service-id-from-a-sequence.md)     | Service IDs from a PostgreSQL sequence                       | Accepted |
-| [0004](0004-argon2id-for-passwords.md)         | Argon2id rather than bcrypt                                  | Accepted |
-| [0005](0005-store-calculated-mileage.md)       | Store calculated mileage, guarded by CHECK constraints       | Accepted |
-| [0006](0006-time-of-day-representation.md)     | Clock times as PostgreSQL `time`, mapped to `"HH:MM"`        | Accepted |
-| [0007](0007-strict-request-schemas.md)         | Reject unknown request keys rather than stripping them       | Accepted |
-| [0008](0008-prisma-7-pinned.md)                | Pin Prisma to 7.10.0 and use the `pg` driver adapter         | Accepted |
+| #                                                | Decision                                                     | Status   |
+| ------------------------------------------------ | ------------------------------------------------------------ | -------- |
+| [0001](0001-local-postgres-for-development.md)   | Local Docker PostgreSQL for development, Neon for deployment | Accepted |
+| [0002](0002-layered-modules.md)                  | Layered modules with a dependency-free domain core           | Accepted |
+| [0003](0003-service-id-from-a-sequence.md)       | Service IDs from a PostgreSQL sequence                       | Accepted |
+| [0004](0004-argon2id-for-passwords.md)           | Argon2id rather than bcrypt                                  | Accepted |
+| [0005](0005-store-calculated-mileage.md)         | Store calculated mileage, guarded by CHECK constraints       | Accepted |
+| [0006](0006-time-of-day-representation.md)       | Clock times as PostgreSQL `time`, mapped to `"HH:MM"`        | Accepted |
+| [0007](0007-strict-request-schemas.md)           | Reject unknown request keys rather than stripping them       | Accepted |
+| [0008](0008-prisma-7-pinned.md)                  | Pin Prisma to 7.10.0 and use the `pg` driver adapter         | Accepted |
+| [0009](0009-centralised-spanish-messages.md)     | One message catalogue rather than inline Spanish strings     | Accepted |
+| [0010](0010-administrators-may-file-services.md) | Administrators may file services on a driver's behalf        | Accepted |

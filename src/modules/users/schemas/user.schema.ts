@@ -3,6 +3,7 @@
  */
 import { z } from 'zod';
 
+import { AUTH, FIELD_LABELS, VALIDATION } from '@/lib/i18n/messages';
 import { booleanSchema, requiredText, uuidSchema } from '@/modules/shared/schemas/common';
 import { Role } from '@/modules/services/domain/service-status';
 
@@ -36,13 +37,10 @@ const OBVIOUS_PASSWORDS = new Set([
 ]);
 
 export const passwordSchema = z
-  .string({ error: 'A password is required.' })
-  .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters.`)
-  .max(PASSWORD_MAX_LENGTH, `Use ${PASSWORD_MAX_LENGTH} characters or fewer.`)
-  .refine(
-    (value) => !OBVIOUS_PASSWORDS.has(value.toLowerCase()),
-    'That password is too easy to guess. Choose another.',
-  );
+  .string({ error: VALIDATION.required(FIELD_LABELS.password) })
+  .min(PASSWORD_MIN_LENGTH, VALIDATION.passwordTooShort(PASSWORD_MIN_LENGTH))
+  .max(PASSWORD_MAX_LENGTH, VALIDATION.passwordTooLong(PASSWORD_MAX_LENGTH))
+  .refine((value) => !OBVIOUS_PASSWORDS.has(value.toLowerCase()), VALIDATION.passwordTooCommon);
 
 /**
  * Login identifier (SRS 19.3).
@@ -54,19 +52,16 @@ export const passwordSchema = z
 export const loginIdentifierSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
   z
-    .string({ error: 'A login identifier is required.' })
-    .min(3, 'Login identifier must be at least 3 characters.')
+    .string({ error: VALIDATION.required(FIELD_LABELS.loginIdentifier) })
+    .min(3, VALIDATION.tooShort(FIELD_LABELS.loginIdentifier, 3))
     .max(
       LOGIN_IDENTIFIER_MAX_LENGTH,
-      `Login identifier must be ${LOGIN_IDENTIFIER_MAX_LENGTH} characters or fewer.`,
+      VALIDATION.tooLong(FIELD_LABELS.loginIdentifier, LOGIN_IDENTIFIER_MAX_LENGTH),
     )
-    .regex(
-      /^[a-z0-9][a-z0-9._-]*$/,
-      'Login identifier may contain only lowercase letters, numbers, dots, hyphens and underscores.',
-    ),
+    .regex(/^[a-z0-9][a-z0-9._-]*$/, VALIDATION.loginIdentifierFormat),
 );
 
-export const roleSchema = z.enum(Role, { error: 'Choose either Administrator or Driver.' });
+export const roleSchema = z.enum(Role, { error: VALIDATION.roleRequired });
 
 /** One row of `driver_routes` (SRS 12.6, 19.6). */
 export const routeAssignmentSchema = z.strictObject({
@@ -98,7 +93,7 @@ function checkRouteAssignments(
       ctx.addIssue({
         code: 'custom',
         path: ['assignments', index, 'routeId'],
-        message: 'That route is already in the list.',
+        message: VALIDATION.duplicateRoute,
       });
     }
     seen.add(assignment.routeId);
@@ -108,7 +103,7 @@ function checkRouteAssignments(
     ctx.addIssue({
       code: 'custom',
       path: ['assignments'],
-      message: 'Only one route can be the default.',
+      message: VALIDATION.onlyOneDefaultRoute,
     });
   }
 }
@@ -147,7 +142,7 @@ function checkUserShape(value: UserShape, ctx: z.RefinementCtx): void {
     ctx.addIssue({
       code: 'custom',
       path: ['password'],
-      message: 'The password must not contain the login identifier.',
+      message: VALIDATION.passwordContainsLogin,
     });
   }
 
@@ -160,14 +155,14 @@ function checkUserShape(value: UserShape, ctx: z.RefinementCtx): void {
       ctx.addIssue({
         code: 'custom',
         path: ['defaultVehicleId'],
-        message: 'Administrators do not have a default vehicle.',
+        message: VALIDATION.adminHasNoVehicle,
       });
     }
     if (value.assignments && value.assignments.length > 0) {
       ctx.addIssue({
         code: 'custom',
         path: ['assignments'],
-        message: 'Administrators are not assigned routes.',
+        message: VALIDATION.adminHasNoRoutes,
       });
     }
   }
@@ -180,7 +175,7 @@ function checkUserShape(value: UserShape, ctx: z.RefinementCtx): void {
  */
 export const createUserSchema = z
   .strictObject({
-    name: requiredText('Name', NAME_MAX_LENGTH, 2),
+    name: requiredText(FIELD_LABELS.name, NAME_MAX_LENGTH, 2),
     loginIdentifier: loginIdentifierSchema,
     password: passwordSchema,
     role: roleSchema,
@@ -210,7 +205,7 @@ export type CreateUserInput = z.output<typeof createUserSchema>;
  */
 export const updateUserSchema = z
   .strictObject({
-    name: requiredText('Name', NAME_MAX_LENGTH, 2).optional(),
+    name: requiredText(FIELD_LABELS.name, NAME_MAX_LENGTH, 2).optional(),
     loginIdentifier: loginIdentifierSchema.optional(),
     password: passwordSchema.optional(),
     role: roleSchema.optional(),
@@ -231,9 +226,9 @@ export type UpdateUserInput = z.output<typeof updateUserSchema>;
 export const credentialsSchema = z.object({
   loginIdentifier: z
     .string()
-    .min(1, 'Enter your login identifier.')
+    .min(1, AUTH.loginIdentifierRequired)
     .max(LOGIN_IDENTIFIER_MAX_LENGTH),
-  password: z.string().min(1, 'Enter your password.').max(PASSWORD_MAX_LENGTH),
+  password: z.string().min(1, AUTH.passwordRequired).max(PASSWORD_MAX_LENGTH),
 });
 
 export type CredentialsInput = z.output<typeof credentialsSchema>;

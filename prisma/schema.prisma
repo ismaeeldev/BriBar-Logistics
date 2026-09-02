@@ -237,6 +237,15 @@ model Service {
   departureTime DateTime @map("departure_time") @db.Time(0)
   arrivalTime   DateTime @map("arrival_time") @db.Time(0)
 
+  /// Whether the arrival falls on the day after `serviceDate`.
+  ///
+  /// SRS 31.3 declines overnight logic "unless a later business rule requires
+  /// it"; the client has since required one - a same-day service whose arrival
+  /// precedes its departure is a typo and must be rejected. Two bare clock
+  /// times cannot distinguish that from a real overnight run, so this flag
+  /// does. Enforced by CHECK services_times_consistent.
+  endsNextDay Boolean @default(false) @map("ends_next_day")
+
   /// SRS 6.5, 6.6. Optional free text.
   sites        String? @db.Text
   observations String? @db.Text

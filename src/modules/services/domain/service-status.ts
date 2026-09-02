@@ -7,17 +7,17 @@
  * reasons.
  *
  * First, SRS 21.2 requires the design to admit further states without a
- * redesign. A rejection state, or a two-stage approval, becomes an entry in
- * the transition table below plus a predicate change - not a hunt through
- * route handlers for every place a status was compared.
+ * redesign. A rejection state, or a two-stage approval, becomes an entry in the
+ * transition table below plus a predicate change — not a hunt through route
+ * handlers for every place a status was compared.
  *
  * Second, SRS 11.5 and Appendix B 34.3 are emphatic that the edit lock is an
  * authorisation rule, not a hidden button. Naming the rule once, here, means
  * the API and the UI ask the same function rather than each reimplementing it,
  * and the two cannot drift apart.
  *
- * Pure and framework-free: no Prisma, no session, no request. Callers pass the
- * facts in.
+ * Pure and framework-free: no Prisma, no session, no request, no messages.
+ * Callers pass the facts in.
  */
 
 /** Mirrors the `ServiceStatus` enum in the Prisma schema. */
@@ -40,7 +40,7 @@ export type Role = (typeof Role)[keyof typeof Role];
  * Permitted transitions (SRS 34.1).
  *
  * `APPROVED` is terminal in V1: SRS 11.4 forbids returning a service to
- * pending, and 29 excludes a rejection workflow.
+ * pending, and SRS 29 excludes a rejection workflow.
  */
 export const SERVICE_TRANSITIONS: Readonly<Record<ServiceStatus, readonly ServiceStatus[]>> =
   Object.freeze({
@@ -76,11 +76,30 @@ export function canView(actor: ServiceActor, subject: ServiceSubject): boolean {
 }
 
 /**
+ * Who a new service may be recorded against.
+ *
+ * SRS 9.5 says "the Driver field shall always reflect the authenticated user",
+ * and SRS 17.2 leaves administrator access to `/services/new` to operational
+ * need. The client has asked for it (`docs/open-questions.md` #7), so an
+ * administrator may file a service on a driver's behalf and 9.5 holds for
+ * drivers only.
+ *
+ * The weakening is deliberate and bounded. A driver can still never name
+ * anyone but themselves — `driverId` is rejected outright by the driver's
+ * request schema — and every administrator-filed service is written to the
+ * audit log with the acting administrator recorded separately from the driver
+ * who owns it, so "who entered this" stays answerable (SRS 21.1).
+ */
+export function canCreateFor(actor: ServiceActor, driverId: string): boolean {
+  return actor.role === Role.ADMIN || actor.userId === driverId;
+}
+
+/**
  * SRS 11.2, 11.4 and Appendix B 34.2.
  *
  * A driver may edit their own service only while it is pending. An
  * administrator may edit any service in any state, including after approval,
- * and doing so does not restore the driver's access - which falls out of this
+ * and doing so does not restore the driver's access — which falls out of this
  * function taking the actor's role rather than a mutable per-service flag.
  */
 export function canEdit(actor: ServiceActor, subject: ServiceSubject): boolean {
@@ -98,9 +117,3 @@ export function canApprove(actor: ServiceActor, subject: ServiceSubject): boolea
 export function isTerminal(status: ServiceStatus): boolean {
   return SERVICE_TRANSITIONS[status].length === 0;
 }
-
-/** Client-facing labels, kept in the client's own terminology (SRS 23.3). */
-export const SERVICE_STATUS_LABELS: Readonly<Record<ServiceStatus, string>> = Object.freeze({
-  [ServiceStatus.PENDING_APPROVAL]: 'Pending Approval',
-  [ServiceStatus.APPROVED]: 'Approved',
-});

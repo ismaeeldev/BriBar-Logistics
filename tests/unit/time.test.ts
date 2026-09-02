@@ -66,12 +66,12 @@ describe('time of day', () => {
 
 describe('business date (SRS 31.3)', () => {
   it('uses the calendar day in the configured timezone, not in UTC', () => {
-    // 23:30 UTC on 1 September is already 00:30 on 2 September in Lisbon
-    // summer time. Deriving the date from the UTC instant would file this
-    // service under the wrong day.
+    // 23:30 UTC on 1 September is already 01:30 on 2 September in Madrid
+    // summer time (CEST, UTC+2). Deriving the date from the UTC instant would
+    // file this service under the wrong day.
     const instant = new Date('2026-09-01T23:30:00.000Z');
 
-    expect(toIsoDate(businessDateFor(instant, 'Europe/Lisbon'))).toBe('2026-09-02');
+    expect(toIsoDate(businessDateFor(instant, 'Europe/Madrid'))).toBe('2026-09-02');
     expect(toIsoDate(businessDateFor(instant, 'UTC'))).toBe('2026-09-01');
   });
 
@@ -82,7 +82,7 @@ describe('business date (SRS 31.3)', () => {
   });
 
   it('produces a date pinned to UTC midnight, as a @db.Date column expects', () => {
-    const businessDate = businessDateFor(new Date('2026-09-02T12:00:00.000Z'), 'Europe/Lisbon');
+    const businessDate = businessDateFor(new Date('2026-09-02T12:00:00.000Z'), 'Europe/Madrid');
 
     expect(businessDate.toISOString()).toBe('2026-09-02T00:00:00.000Z');
   });
@@ -98,7 +98,7 @@ describe('business date (SRS 31.3)', () => {
   it('renders an audit instant in the business timezone', () => {
     const instant = new Date('2026-09-02T09:15:00.000Z');
 
-    expect(formatBusinessDateTime(instant, 'Europe/Lisbon')).toBe('02/09/2026 10:15');
+    expect(formatBusinessDateTime(instant, 'Europe/Madrid')).toBe('02/09/2026 11:15');
     expect(formatBusinessDateTime(instant, 'UTC')).toBe('02/09/2026 09:15');
   });
 
@@ -127,36 +127,32 @@ describe('business date (SRS 31.3)', () => {
   });
 });
 
-describe('service code (SRS 19.1)', () => {
-  it('formats prefix, business date and zero-padded sequence', () => {
-    expect(formatServiceCode('SRV', new Date('2026-09-02T00:00:00.000Z'), 42)).toBe(
-      'SRV-20260902-000042',
-    );
+describe('service code (SRS 19.1, client decision #2)', () => {
+  it('renders a sequence value as a plain decimal number', () => {
+    // The client's 01Servicios register numbers services sequentially, and the
+    // new system continues that series. No prefix, no date, no padding -
+    // anything added here would break continuity with records the business
+    // already treats as authoritative.
+    expect(formatServiceCode(42)).toBe('42');
+    expect(formatServiceCode(1)).toBe('1');
+    expect(formatServiceCode(1_248)).toBe('1248');
   });
 
-  it('accepts a bigint sequence value, which is what nextval returns', () => {
-    expect(formatServiceCode('SRV', new Date('2026-09-02T00:00:00.000Z'), 7n)).toBe(
-      'SRV-20260902-000007',
-    );
-  });
-
-  it('widens rather than truncates past the padding width', () => {
-    expect(formatServiceCode('SRV', new Date('2026-09-02T00:00:00.000Z'), 1_234_567)).toBe(
-      'SRV-20260902-1234567',
-    );
-  });
-
-  it('honours a configured prefix', () => {
-    expect(formatServiceCode('BRB', new Date('2026-01-05T00:00:00.000Z'), 1)).toBe(
-      'BRB-20260105-000001',
-    );
+  it('accepts the bigint that nextval returns', () => {
+    expect(formatServiceCode(7n)).toBe('7');
+    expect(formatServiceCode(9_007_199_254_740_993n)).toBe('9007199254740993');
   });
 
   it('recognises its own output', () => {
-    const code = formatServiceCode('SRV', new Date('2026-09-02T00:00:00.000Z'), 42);
+    expect(isServiceCode(formatServiceCode(42))).toBe(true);
+    expect(isServiceCode('1')).toBe(true);
+  });
 
-    expect(isServiceCode(code)).toBe(true);
-    expect(isServiceCode('SRV-2026-42')).toBe(false);
-    expect(isServiceCode('not a code')).toBe(false);
+  it('rejects anything that is not a bare positive number', () => {
+    // Leading zeroes are rejected so admin search treats "007" as a search
+    // term rather than as service 7.
+    for (const value of ['007', '', '-1', '1.5', 'SRV-42', '42a', ' 42']) {
+      expect(isServiceCode(value)).toBe(false);
+    }
   });
 });

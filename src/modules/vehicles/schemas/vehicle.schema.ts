@@ -3,6 +3,7 @@
  */
 import { z } from 'zod';
 
+import { FIELD_LABELS, VALIDATION } from '@/lib/i18n/messages';
 import { booleanSchema, optionalText } from '@/modules/shared/schemas/common';
 
 export const REGISTRATION_PLATE_MAX_LENGTH = 32;
@@ -22,21 +23,18 @@ export const registrationPlateSchema = z.preprocess(
   (value) =>
     typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').toUpperCase() : value,
   z
-    .string({ error: 'Registration plate is required.' })
-    .min(2, 'Registration plate must be at least 2 characters.')
+    .string({ error: VALIDATION.required(FIELD_LABELS.registrationPlate) })
+    .min(2, VALIDATION.tooShort(FIELD_LABELS.registrationPlate, 2))
     .max(
       REGISTRATION_PLATE_MAX_LENGTH,
-      `Registration plate must be ${REGISTRATION_PLATE_MAX_LENGTH} characters or fewer.`,
+      VALIDATION.tooLong(FIELD_LABELS.registrationPlate, REGISTRATION_PLATE_MAX_LENGTH),
     )
-    .regex(
-      /^[A-Z0-9][A-Z0-9 -]*$/,
-      'Registration plate may contain only letters, numbers, spaces and hyphens.',
-    ),
+    .regex(/^[A-Z0-9][A-Z0-9 -]*$/, VALIDATION.plateFormat),
 );
 
 export const createVehicleSchema = z.strictObject({
   registrationPlate: registrationPlateSchema,
-  referenceName: optionalText('Vehicle name', REFERENCE_NAME_MAX_LENGTH),
+  referenceName: optionalText(FIELD_LABELS.referenceName, REFERENCE_NAME_MAX_LENGTH),
   /** SRS 13.3. New vehicles are selectable immediately unless told otherwise. */
   isActive: booleanSchema.default(true),
 });

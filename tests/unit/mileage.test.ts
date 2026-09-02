@@ -1,5 +1,6 @@
 /**
- * SRS 26.3 (Mileage Tests), clause by clause.
+ * SRS 26.3 (Mileage Tests), clause by clause, plus the client's tightening of
+ * the ordering rule (`docs/open-questions.md` #4).
  *
  * These run against pure functions with no database, which is the point of
  * SRS 30.1: the arithmetic the client signs off on is verifiable in
@@ -55,44 +56,26 @@ describe('validateMileage', () => {
     expect(isValidMileage(VALID)).toBe(true);
   });
 
-  it('accepts the zero-distance edge case (SRS 26.3)', () => {
-    // All four readings equal: operationally real, and SRS 26.3 lists this as
-    // a case to test rather than to reject.
-    const readings = {
-      startDashboardKm: 5_000,
-      startBaseKm: 5_000,
-      endBaseKm: 5_000,
-      endDashboardKm: 5_000,
-    };
-
-    expect(validateMileage(readings)).toEqual([]);
-    expect(calculateMileage(readings)).toEqual({ actualKm: 0, serviceKm: 0 });
-  });
-
-  it('accepts a zero-length service inside a non-zero route', () => {
-    expect(validateMileage({ ...VALID, startBaseKm: 10_050, endBaseKm: 10_050 })).toEqual([]);
-  });
-
-  it('rejects End Dashboard lower than Start Dashboard (SRS 26.3)', () => {
-    // Reported against endDashboardKm via its comparison with endBaseKm, which
-    // is the field the driver needs to correct.
-    expect(codesFor({ ...VALID, endDashboardKm: 9_000 })).toContain(
-      'END_DASHBOARD_BEFORE_END_BASE',
-    );
-  });
-
-  it('rejects End Base lower than Start Base (SRS 26.3)', () => {
-    expect(codesFor({ ...VALID, endBaseKm: 10_010 })).toContain('END_BASE_BEFORE_START_BASE');
-  });
-
-  it('rejects Start Base lower than Start Dashboard (SRS 26.3)', () => {
+  it('rejects Start Base below Start Dashboard (SRS 26.3)', () => {
     expect(codesFor({ ...VALID, startBaseKm: 9_990 })).toContain(
       'START_BASE_BEFORE_START_DASHBOARD',
     );
   });
 
+  it('rejects End Base below Start Base (SRS 26.3)', () => {
+    expect(codesFor({ ...VALID, endBaseKm: 10_010 })).toContain(
+      'END_BASE_NOT_AFTER_START_BASE',
+    );
+  });
+
   it('rejects End Base higher than End Dashboard (SRS 26.3)', () => {
     expect(codesFor({ ...VALID, endBaseKm: 10_500 })).toContain(
+      'END_DASHBOARD_BEFORE_END_BASE',
+    );
+  });
+
+  it('rejects End Dashboard lower than Start Dashboard (SRS 26.3)', () => {
+    expect(codesFor({ ...VALID, endDashboardKm: 9_000 })).toContain(
       'END_DASHBOARD_BEFORE_END_BASE',
     );
   });
@@ -136,11 +119,60 @@ describe('validateMileage', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.code).toBe('NOT_A_WHOLE_NUMBER');
   });
+});
 
-  it('never yields a negative Actual Km or Service Km for accepted input (SRS 10.3)', () => {
-    // Property check across the boundary conditions: whenever validation
-    // passes, both calculated values must be non-negative.
+describe('the client tightening: no zero-distance services (decision #4)', () => {
+  it('rejects a service where all four readings are equal', () => {
+    // SRS 26.3 left this to "operational acceptability"; the client ruled it
+    // out, so what the original spec listed as an edge case to test is now an
+    // edge case to reject.
+    expect(
+      codesFor({
+        startDashboardKm: 5_000,
+        startBaseKm: 5_000,
+        endBaseKm: 5_000,
+        endDashboardKm: 5_000,
+      }),
+    ).toEqual(['END_BASE_NOT_AFTER_START_BASE']);
+  });
+
+  it('rejects a zero-length service inside a non-zero route', () => {
+    // The truck moved, but the contracted leg covered no distance.
+    expect(codesFor({ ...VALID, startBaseKm: 10_050, endBaseKm: 10_050 })).toEqual([
+      'END_BASE_NOT_AFTER_START_BASE',
+    ]);
+  });
+
+  it('still accepts a truck that starts the day parked at the loading base', () => {
+    // The reason only the middle link is strict. Start Dashboard equals Start
+    // Base whenever the vehicle is already at the base; rejecting that would
+    // block a routine real case.
+    expect(validateMileage({ ...VALID, startDashboardKm: 10_020 })).toEqual([]);
+  });
+
+  it('still accepts a truck that ends the day parked at the unloading base', () => {
+    expect(validateMileage({ ...VALID, endDashboardKm: 10_080 })).toEqual([]);
+  });
+
+  it('accepts the minimum viable service: one kilometre under contract', () => {
+    expect(
+      validateMileage({
+        startDashboardKm: 500,
+        startBaseKm: 500,
+        endBaseKm: 501,
+        endDashboardKm: 501,
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('invariants that must hold for every accepted input', () => {
+  it('always yields Actual Km > 0 and Service Km > 0', () => {
+    // The point of the design: one strict comparison in the middle of the
+    // chain forces both calculated values positive, so neither needs its own
+    // rule. Exhaustive over the boundary conditions.
     const points = [0, 1, 2, 3];
+    let accepted = 0;
 
     for (const a of points) {
       for (const b of points) {
@@ -154,15 +186,21 @@ describe('validateMileage', () => {
             };
             if (!isValidMileage(readings)) continue;
 
+            accepted += 1;
             const { actualKm, serviceKm } = calculateMileage(readings);
-            expect(actualKm).toBeGreaterThanOrEqual(0);
-            expect(serviceKm).toBeGreaterThanOrEqual(0);
-            // SRS 10.3, stated separately but implied by the ordering chain.
+
+            expect(actualKm).toBeGreaterThan(0);
+            expect(serviceKm).toBeGreaterThan(0);
+            // SRS 10.3, stated separately and implied by the ordering chain.
             expect(serviceKm).toBeLessThanOrEqual(actualKm);
           }
         }
       }
     }
+
+    // Guards the guard: if a future change rejected everything, the loop above
+    // would pass vacuously.
+    expect(accepted).toBeGreaterThan(0);
   });
 });
 

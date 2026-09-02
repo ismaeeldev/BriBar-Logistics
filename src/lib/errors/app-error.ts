@@ -16,6 +16,8 @@
  * has to know how these map onto status codes.
  */
 
+import { ERRORS } from '@/lib/i18n/messages';
+
 /**
  * Stable, machine-readable failure identifiers. The UI switches on these
  * rather than on prose, so wording can change without breaking a client.
@@ -89,7 +91,7 @@ export function isAppError(error: unknown): error is AppError {
 
 export function validationFailed(
   fieldErrors: FieldErrors,
-  message = 'Some fields need attention.',
+  message: string = ERRORS.validationFailed,
 ): AppError {
   return new AppError(ErrorCode.VALIDATION_FAILED, message, { fieldErrors });
 }
@@ -102,13 +104,11 @@ export function businessRuleViolation(message: string, fieldErrors?: FieldErrors
   return new AppError(ErrorCode.BUSINESS_RULE_VIOLATION, message, { fieldErrors });
 }
 
-export function unauthenticated(message = 'You need to sign in to continue.'): AppError {
+export function unauthenticated(message: string = ERRORS.unauthenticated): AppError {
   return new AppError(ErrorCode.UNAUTHENTICATED, message);
 }
 
-export function forbidden(
-  message = 'You do not have permission to perform this action.',
-): AppError {
+export function forbidden(message: string = ERRORS.forbidden): AppError {
   return new AppError(ErrorCode.FORBIDDEN, message);
 }
 
@@ -119,8 +119,8 @@ export function forbidden(
  * by owner so this falls out naturally rather than needing a decision at each
  * call site.
  */
-export function notFound(entity = 'The requested record'): AppError {
-  return new AppError(ErrorCode.NOT_FOUND, `${entity} could not be found.`);
+export function notFound(entity?: string): AppError {
+  return new AppError(ErrorCode.NOT_FOUND, ERRORS.notFound(entity));
 }
 
 /**
@@ -145,9 +145,5 @@ export function configurationRequired(message: string): AppError {
  * is preserved for the server-side log only (SRS 24.5).
  */
 export function internalError(cause?: unknown): AppError {
-  return new AppError(
-    ErrorCode.INTERNAL_ERROR,
-    'Something went wrong on our side. Please try again.',
-    { cause },
-  );
+  return new AppError(ErrorCode.INTERNAL_ERROR, ERRORS.internal, { cause });
 }

@@ -1,40 +1,41 @@
 /**
  * Translates Prisma's error codes into the application's error taxonomy.
  *
- * This lives in the data-access layer on purpose. It is the only module
- * outside repositories that needs to know Prisma exists, which keeps the HTTP
- * wrapper and the service layer free of ORM specifics (SRS 4.2, 30.1).
+ * This lives in the data-access layer on purpose. It is the only module outside
+ * repositories that needs to know Prisma exists, which keeps the HTTP wrapper
+ * and the service layer free of ORM specifics (SRS 4.2, 30.1).
  *
  * Only constraint violations that represent a *race* are translated. A unique
- * violation the application should have prevented - submitting a duplicate
- * vehicle plate, say - is still worth reporting as a clean 409 rather than a
+ * violation the application should have prevented — submitting a duplicate
+ * vehicle plate, say — is still worth reporting as a clean 409 rather than a
  * 500, because the pre-check and the insert are not atomic and a concurrent
  * request can always slip between them.
  */
 import { Prisma } from '@prisma/client';
 
 import {
-  type AppError,
   businessRuleViolation,
   conflict,
   notFound,
+  type AppError,
 } from '@/lib/errors/app-error';
+import { CONSTRAINT_MESSAGES } from '@/lib/i18n/messages';
 
-/** Constraint names created by the initial migration, mapped to plain English. */
-const CONSTRAINT_MESSAGES: Record<string, string> = {
-  users_login_identifier_key: 'That login identifier is already in use.',
-  vehicles_registration_plate_key: 'That registration plate is already registered.',
-  routes_code_key: 'That route code is already in use.',
-  services_service_code_key: 'That Service ID was already issued. Please submit again.',
-  driver_routes_driver_id_route_id_key: 'That route is already assigned to this driver.',
-  driver_routes_one_default_per_driver: 'A driver can only have one default route.',
-  services_mileage_sequence: 'Odometer readings must not decrease across the route.',
-  services_mileage_non_negative: 'Odometer readings cannot be negative.',
-  services_actual_km_formula: 'Actual Km must equal End Dashboard KM minus Start Dashboard KM.',
-  services_service_km_formula: 'Service Km must equal End Base KM minus Start Base KM.',
-  services_service_km_within_actual: 'Service Km cannot exceed Actual Km.',
-  services_approval_metadata_consistent:
-    'Approval details are inconsistent with the service status.',
+/** Constraint names from the migrations, mapped to their user-facing message. */
+const MESSAGE_BY_CONSTRAINT: Record<string, string> = {
+  users_login_identifier_key: CONSTRAINT_MESSAGES.loginIdentifierTaken,
+  vehicles_registration_plate_key: CONSTRAINT_MESSAGES.plateTaken,
+  routes_code_key: CONSTRAINT_MESSAGES.routeCodeTaken,
+  services_service_code_key: CONSTRAINT_MESSAGES.serviceCodeTaken,
+  driver_routes_driver_id_route_id_key: CONSTRAINT_MESSAGES.routeAlreadyAssigned,
+  driver_routes_one_default_per_driver: CONSTRAINT_MESSAGES.onlyOneDefaultRoute,
+  services_mileage_sequence: CONSTRAINT_MESSAGES.mileageSequence,
+  services_mileage_non_negative: CONSTRAINT_MESSAGES.mileageNegative,
+  services_actual_km_formula: CONSTRAINT_MESSAGES.actualKmFormula,
+  services_service_km_formula: CONSTRAINT_MESSAGES.serviceKmFormula,
+  services_service_km_within_actual: CONSTRAINT_MESSAGES.serviceKmWithinActual,
+  services_approval_metadata_consistent: CONSTRAINT_MESSAGES.approvalMetadata,
+  services_times_consistent: CONSTRAINT_MESSAGES.serviceTimes,
 };
 
 /**
@@ -67,26 +68,21 @@ export function translatePrismaError(error: unknown): AppError | null {
   }
 
   const constraint = constraintNameOf(error);
-  const known = constraint ? CONSTRAINT_MESSAGES[constraint] : undefined;
+  const known = constraint ? MESSAGE_BY_CONSTRAINT[constraint] : undefined;
 
   switch (error.code) {
     // Unique constraint violated.
     case 'P2002':
-      return conflict(known ?? 'That value is already in use.');
+      return conflict(known ?? CONSTRAINT_MESSAGES.valueInUse);
 
-    // Foreign key constraint violated - the referenced record does not exist,
+    // Foreign key constraint violated — the referenced record does not exist,
     // or a Restrict rule blocked a delete because history still points at it.
     case 'P2003':
-      return businessRuleViolation(
-        'That record is still referenced by existing data and cannot be changed. ' +
-          'Deactivate it instead (SRS 21.5).',
-      );
+      return businessRuleViolation(CONSTRAINT_MESSAGES.stillReferenced);
 
     // A required relation would be broken.
     case 'P2014':
-      return businessRuleViolation(
-        'That change would break a required relationship between records.',
-      );
+      return businessRuleViolation(CONSTRAINT_MESSAGES.brokenRelation);
 
     // An operation targeted a row that no longer exists. Under an optimistic
     // update this is the race in SRS 24.4, not a genuine 404, but the caller
@@ -96,7 +92,7 @@ export function translatePrismaError(error: unknown): AppError | null {
 
     // CHECK constraint violations arrive here because Prisma has no dedicated
     // code for them. If the constraint is one of ours, the rule was bypassed
-    // upstream - report it as a business-rule failure rather than a 500 so the
+    // upstream — report it as a business-rule failure rather than a 500 so the
     // user sees something actionable.
     case 'P2010':
     case 'P2011':

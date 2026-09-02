@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  adminCreateServiceSchema,
   approveServiceSchema,
   createServiceSchema,
   serviceFilterSchema,
@@ -121,6 +122,41 @@ describe('createServiceSchema — rejected input', () => {
     expect(errorPaths(result)).toContain('endBaseKm');
   });
 
+  it('applies the client tightening: no zero-distance service (decision #4)', () => {
+    const result = createServiceSchema.safeParse({ ...validService, endBaseKm: 10_020 });
+
+    expect(result.success).toBe(false);
+    expect(errorPaths(result)).toContain('endBaseKm');
+  });
+
+  it('applies the same-day time rule from the domain layer (decision #3)', () => {
+    const result = createServiceSchema.safeParse({
+      ...validService,
+      departureTime: '15:30',
+      arrivalTime: '07:45',
+    });
+
+    expect(result.success).toBe(false);
+    expect(errorPaths(result)).toContain('arrivalTime');
+  });
+
+  it('accepts the same times when the service is flagged as overnight', () => {
+    const result = createServiceSchema.safeParse({
+      ...validService,
+      departureTime: '22:00',
+      arrivalTime: '02:00',
+      endsNextDay: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('defaults endsNextDay to false, which is what makes the rule bite', () => {
+    const result = createServiceSchema.safeParse(validService);
+
+    expect(result.data?.endsNextDay).toBe(false);
+  });
+
   it('rejects a malformed time', () => {
     const result = createServiceSchema.safeParse({ ...validService, departureTime: '7:45' });
 
@@ -134,6 +170,9 @@ describe('createServiceSchema — mass assignment (SRS 22.4, 9.6)', () => {
   // overriding any of them; declaring the schema strict turns "ignored" into
   // "rejected", which is what makes the rule testable.
   const forbidden = {
+    // SRS 9.5 is absolute for drivers even though an administrator may now
+    // file on a driver's behalf: the driver's schema has no such field, so a
+    // driver cannot reach it by any path (client decision #7).
     driverId: '0199a1b2-c3d4-7000-8000-0000000000ff',
     status: 'APPROVED',
     actualKm: 99_999,
@@ -154,6 +193,34 @@ describe('createServiceSchema — mass assignment (SRS 22.4, 9.6)', () => {
       expect(result.success).toBe(false);
     });
   }
+
+  it('accepts driverId on the administrator schema only', () => {
+    const driverId = '0199a1b2-c3d4-7000-8000-0000000000ff';
+
+    expect(createServiceSchema.safeParse({ ...validService, driverId }).success).toBe(false);
+    expect(adminCreateServiceSchema.safeParse({ ...validService, driverId }).success).toBe(
+      true,
+    );
+  });
+
+  it('requires the administrator to say whose service it is', () => {
+    // Defaulting to the acting administrator would silently create a service
+    // owned by someone who does not drive.
+    const result = adminCreateServiceSchema.safeParse(validService);
+
+    expect(result.success).toBe(false);
+    expect(errorPaths(result)).toContain('driverId');
+  });
+
+  it('still rejects server-owned fields on the administrator schema', () => {
+    const result = adminCreateServiceSchema.safeParse({
+      ...validService,
+      driverId: '0199a1b2-c3d4-7000-8000-0000000000ff',
+      status: 'APPROVED',
+    });
+
+    expect(result.success).toBe(false);
+  });
 
   it('rejects the approve endpoint being handed approval metadata', () => {
     expect(approveServiceSchema.safeParse({}).success).toBe(true);

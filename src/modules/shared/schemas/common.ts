@@ -6,6 +6,9 @@
  * "server-side"; sharing the schema is how both columns stay true of the same
  * code rather than of two drifting copies.
  *
+ * Messages come from `src/lib/i18n/messages.ts` — the interface is Spanish, and
+ * a validation message is interface text like any other.
+ *
  * Two conventions run through this file:
  *
  *   * **Strings are trimmed before validation.** A name of `"   "` is empty,
@@ -13,17 +16,15 @@
  *   * **Empty optional fields normalise to `undefined`.** SRS 9.4 requires a
  *     blank Sites or Observations not to block submission, and storing `""`
  *     next to `NULL` for "nothing entered" makes every later query ambiguous.
- *
- * Messages are written for the driver holding the phone, not for a developer
- * reading a stack trace (SRS 23.3, 24.1).
  */
 import { z } from 'zod';
 
-import { MAX_ODOMETER_KM } from '@/modules/services/domain/mileage';
+import { VALIDATION } from '@/lib/i18n/messages';
 import { TIME_OF_DAY_PATTERN, type TimeOfDay } from '@/lib/time/time-of-day';
+import { MAX_ODOMETER_KM } from '@/modules/services/domain/mileage';
 
 /** Record identifier. Always server-issued; never constructed by a client. */
-export const uuidSchema = z.uuid({ error: 'That record reference is not valid.' });
+export const uuidSchema = z.uuid({ error: VALIDATION.invalidReference });
 
 /**
  * Turns a blank or whitespace-only string into `undefined` so `.optional()`
@@ -40,31 +41,47 @@ export function requiredText(label: string, maxLength: number, minLength = 1) {
   return z.preprocess(
     emptyToUndefined,
     z
-      .string({ error: `${label} is required.` })
-      .min(minLength, `${label} must be at least ${minLength} characters.`)
-      .max(maxLength, `${label} must be ${maxLength} characters or fewer.`),
-  );
-}
-
-/** An optional, trimmed text field. Blank input becomes `undefined`. */
-export function optionalText(label: string, maxLength: number) {
-  return z.preprocess(
-    emptyToUndefined,
-    z.string().max(maxLength, `${label} must be ${maxLength} characters or fewer.`).optional(),
+      .string({ error: VALIDATION.required(label) })
+      .min(minLength, VALIDATION.tooShort(label, minLength))
+      .max(maxLength, VALIDATION.tooLong(label, maxLength)),
   );
 }
 
 /**
+ * An optional, trimmed text field. Blank input becomes `undefined`.
+ *
+ * `maxLength` defaults to {@link FREE_TEXT_MAX_LENGTH}, which the client asked
+ * to be effectively unlimited (`docs/open-questions.md` #8).
+ */
+export function optionalText(label: string, maxLength: number = FREE_TEXT_MAX_LENGTH) {
+  return z.preprocess(
+    emptyToUndefined,
+    z.string().max(maxLength, VALIDATION.tooLong(label, maxLength)).optional(),
+  );
+}
+
+/**
+ * Ceiling on the free-text fields (Sites, Observations).
+ *
+ * The client asked for no limit, and the columns are `TEXT`, so there is no
+ * storage reason for one. This is not a business rule — it is a guard against
+ * an unauthenticated request posting a megabyte of text and making the database
+ * pay for it. Ten thousand characters is roughly four pages: no driver will
+ * reach it, and no attacker gets a cheap write amplifier.
+ */
+export const FREE_TEXT_MAX_LENGTH = 10_000;
+
+/**
  * One odometer reading (SRS 10.3).
  *
- * Accepts a numeric string so an HTML number input works without the form
- * layer having to coerce, but rejects blank rather than coercing it to zero -
+ * Accepts a numeric string so an HTML number input works without the form layer
+ * having to coerce, but rejects blank rather than coercing it to zero —
  * `Number("")` is `0`, and silently recording a missing reading as zero would
  * pass every ordering check while corrupting the data.
  *
  * This validates a reading in isolation. The relationships *between* the four
- * readings live in `validateMileage`, because they are domain rules rather
- * than field shapes.
+ * readings live in `validateMileage`, because they are domain rules rather than
+ * field shapes.
  */
 export const odometerKmSchema = z.preprocess(
   (value) => {
@@ -73,10 +90,10 @@ export const odometerKmSchema = z.preprocess(
     return trimmed === '' ? undefined : Number(trimmed);
   },
   z
-    .number({ error: 'Enter a whole number of kilometres.' })
-    .int('Enter a whole number of kilometres.')
-    .min(0, 'Kilometres cannot be negative.')
-    .max(MAX_ODOMETER_KM, 'That reading looks too large. Check it and try again.'),
+    .number({ error: VALIDATION.invalidNumber })
+    .int(VALIDATION.invalidNumber)
+    .min(0, VALIDATION.invalidNumber)
+    .max(MAX_ODOMETER_KM, VALIDATION.invalidNumber),
 );
 
 /**
@@ -88,16 +105,13 @@ export const odometerKmSchema = z.preprocess(
 export const timeOfDaySchema = z.preprocess(
   emptyToUndefined,
   z
-    .string({ error: 'Enter a time in 24-hour HH:MM format.' })
-    .regex(TIME_OF_DAY_PATTERN, 'Enter a time in 24-hour HH:MM format, for example 07:45.')
+    .string({ error: VALIDATION.invalidTime })
+    .regex(TIME_OF_DAY_PATTERN, VALIDATION.invalidTime)
     .transform((value) => value as TimeOfDay),
 );
 
 /** A `yyyy-MM-dd` calendar day, for admin date filters (SRS 16.3). */
-export const isoDateSchema = z.preprocess(
-  emptyToUndefined,
-  z.iso.date('Enter a date as YYYY-MM-DD.'),
-);
+export const isoDateSchema = z.preprocess(emptyToUndefined, z.iso.date(VALIDATION.invalidDate));
 
 /** Active/inactive toggle, tolerant of the `"true"` a query string carries. */
 export const booleanSchema = z.preprocess((value) => {

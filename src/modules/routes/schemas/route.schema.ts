@@ -6,6 +6,7 @@
  */
 import { z } from 'zod';
 
+import { FIELD_LABELS, VALIDATION } from '@/lib/i18n/messages';
 import { booleanSchema, requiredText } from '@/modules/shared/schemas/common';
 
 export const ROUTE_CODE_MAX_LENGTH = 32;
@@ -19,16 +20,13 @@ export const LOCATION_MAX_LENGTH = 160;
 export const routeCodeSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim().toUpperCase() : value),
   z
-    .string({ error: 'Route code is required.' })
-    .min(2, 'Route code must be at least 2 characters.')
+    .string({ error: VALIDATION.required(FIELD_LABELS.routeCode) })
+    .min(2, VALIDATION.tooShort(FIELD_LABELS.routeCode, 2))
     .max(
       ROUTE_CODE_MAX_LENGTH,
-      `Route code must be ${ROUTE_CODE_MAX_LENGTH} characters or fewer.`,
+      VALIDATION.tooLong(FIELD_LABELS.routeCode, ROUTE_CODE_MAX_LENGTH),
     )
-    .regex(
-      /^[A-Z0-9][A-Z0-9._-]*$/,
-      'Route code may contain only letters, numbers, dots, hyphens and underscores.',
-    ),
+    .regex(/^[A-Z0-9][A-Z0-9._-]*$/, VALIDATION.routeCodeFormat),
 );
 
 /**
@@ -38,9 +36,9 @@ export const routeCodeSchema = z.preprocess(
  */
 export const createRouteSchema = z.strictObject({
   code: routeCodeSchema,
-  name: requiredText('Route/Contract name', ROUTE_NAME_MAX_LENGTH, 2),
-  origin: requiredText('Origin', LOCATION_MAX_LENGTH),
-  destination: requiredText('Destination', LOCATION_MAX_LENGTH),
+  name: requiredText(FIELD_LABELS.routeName, ROUTE_NAME_MAX_LENGTH, 2),
+  origin: requiredText(FIELD_LABELS.origin, LOCATION_MAX_LENGTH),
+  destination: requiredText(FIELD_LABELS.destination, LOCATION_MAX_LENGTH),
   isActive: booleanSchema.default(true),
 });
 

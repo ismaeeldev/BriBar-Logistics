@@ -45,10 +45,31 @@ how Prisma serialises the type.
 `time(0)` discards sub-second precision. A driver reading a clock has no use for
 it, and the column is narrower.
 
-**No ordering rule is applied between departure and arrival.** SRS 31.3 rules
-out overnight-service logic for V1, and a service departing 22:00 and arriving
-02:00 is legitimate, so a naive `arrival > departure` check would reject real
-data. `timeOfDayToMinutes` exists for future duration work and is deliberately
-not used for validation. This is listed in `docs/open-questions.md` because the
-consequence — a transposed pair of times passes validation — is worth the client
-knowing about.
+## The ordering rule, and the flag it needed
+
+The client requires a same-day service whose arrival precedes its departure to be
+rejected (`docs/open-questions.md` #3). SRS 31.3 rules out overnight logic
+"unless a later business rule requires it" — this is that rule.
+
+Two bare clock times cannot carry it. `departs 22:00, arrives 02:00` is either a
+transposition typo or a legitimate overnight run, and nothing in the pair
+distinguishes them. A blanket `arrival > departure` check would make real
+overnight services impossible to record.
+
+So `services` carries one boolean, `ends_next_day`, and the rule reduces to a
+single comparison each way:
+
+| `endsNextDay`     | Rule                                  |
+| ----------------- | ------------------------------------- |
+| `false` (default) | arrival strictly **after** departure  |
+| `true`            | arrival strictly **before** departure |
+
+The second is not arbitrary. An overnight service arriving at or after its
+departure time ran for twenty-four hours or more, which is a data-entry error of
+a different kind rather than a route sheet. Stated together, the two rules say
+"longer than zero and shorter than a day", which `serviceDurationMinutes` makes
+explicit and a property test confirms.
+
+This is the minimum the SRS's escape clause allows: no arrival date column, no
+migration of `time` to `timestamptz`, one flag defaulting to `false` — so a
+driver who simply does not tick the box gets the strict same-day rule.

@@ -1,160 +1,166 @@
-# Open questions
+# Decisions and open questions
 
-Points where the SRS is silent, ambiguous, or defers to "operational
-acceptability". Each has an assumption in force so development is not blocked —
-but each is a place where the client's answer could change behaviour, and
-several get more expensive to change once drivers are entering real data.
+Points where the SRS was silent, ambiguous, or deferred to "operational
+acceptability". All ten were put to the client and answered on 2 September 2026;
+what follows records each answer, what it changed, and what is still outstanding.
 
-Ordered by how much a late answer would cost.
-
----
-
-## 1. Business timezone
-
-**SRS 31.3** requires `APP_TIMEZONE` but never names it. This decides which
-calendar day a service belongs to: a service submitted at 00:30 local time is
-the _previous_ day in UTC, and the wrong zone files it against the wrong date.
-
-**Assumed:** `Europe/Lisbon`, inferred from the Portuguese place names in the
-SRS's own examples.
-
-**Cost if wrong:** low now, high later. Changing it before go-live is a
-one-line environment change. Changing it afterwards means recomputing
-`service_date` on existing records, and any already approved.
+**Two items still need client input** — both at the bottom, both cheap to answer,
+both worth settling before the interface is built.
 
 ---
 
-## 2. Service ID format
+## Resolved
 
-**SRS 19.1** requires a "human-visible Service ID" separate from the primary
-key, and nothing more.
+### 1. Business timezone → `Europe/Madrid`
 
-**Assumed:** `SRV-20260902-000042` — configurable prefix, the business date, and
-a zero-padded value from a PostgreSQL sequence. The prefix is set by
-`SERVICE_CODE_PREFIX`.
+Decides which calendar day a service belongs to. Madrid is CET/CEST (UTC+1/+2),
+so a service submitted at 00:30 local is the _previous_ day in UTC; deriving the
+date from the UTC instant would file it a day early.
 
-Two consequences worth confirming with the client:
+Applied as `APP_TIMEZONE`. `businessDateFor` converts through the zone before
+taking the calendar day, and a unit test pins the midnight-boundary case.
 
-- The sequence is **global, not per-day**. `SRV-20260903-000043` follows
-  `SRV-20260902-000042`; the number does not reset each morning. This is what
-  makes concurrent submission collision-proof (SRS 23.4) without a lock.
-- **Gaps are expected.** A submission that fails validation after allocating a
-  number leaves that number unused. If the client reads gaps as missing
-  paperwork, they need telling.
+### 2. Service IDs → plain sequential numbers, continuing 01Servicios
 
-**Cost if wrong:** low before go-live, high after — issued IDs appear on
+`1`, `2`, `3`, … No prefix, no date, no zero padding. The format built in Phase 1
+(`SRV-20260902-000042`) was dropped: the new system must carry on the numbering
+already in the client's register, and anything added would break continuity with
 records the business treats as authoritative.
 
----
+Two consequences worth knowing:
 
-## 3. Should arrival time be allowed to precede departure time?
+- **The sequence never resets.** It is global, which is what makes concurrent
+  submission collision-proof (SRS 23.4) without a lock.
+- **Gaps are expected.** A submission that fails after allocating a number
+  leaves it unused. Gaps are cosmetic; collisions are data loss.
 
-**SRS 9.3** requires both. **SRS 31.3** says V1 "does not introduce extra
-overnight-service logic". So a service departing 22:00 and arriving 02:00 is
-legitimate, and a naive `arrival > departure` check would reject it.
+> ⚠️ **Deployment step.** The sequence starts at 1. Before go-live it must be
+> advanced past the highest number in 01Servicios, or the system will re-issue
+> IDs already printed on paperwork:
+>
+> ```bash
+> pnpm db:set-service-start 1247
+> ```
+>
+> The script refuses to move the sequence backwards, and `pnpm db:seed` warns
+> while it is still unset.
 
-**Assumed:** no ordering rule between the two times. Both are stored as entered.
+### 3. Arrival before departure → rejected on the same day, allowed overnight
 
-**Consequence:** a typo — 07:45 entered as arrival and 15:30 as departure —
-passes validation and reaches the administrator for review.
+The client's rule: _"if it's conflicting on same day and arrival is less than
+departure then we should reject."_
 
-**Alternative if the client prefers:** warn in the UI without blocking
-submission, which catches the typo without rejecting a real overnight run.
+Two bare clock times cannot express that. `departs 22:00, arrives 02:00` is
+either a transposition typo or a real overnight run, and nothing in the pair
+tells them apart — so rejecting outright would make overnight services impossible
+to record, and accepting outright is the behaviour we were asked to stop.
 
----
+The service therefore carries one extra flag, `endsNextDay`, and the rule becomes
+a single comparison each way:
 
-## 4. Are zero-distance services acceptable?
+| `endsNextDay`     | Rule                                 | Rationale                            |
+| ----------------- | ------------------------------------ | ------------------------------------ |
+| `false` (default) | arrival must be **after** departure  | the client's rule                    |
+| `true`            | arrival must be **before** departure | otherwise the service ran ≥ 24 hours |
 
-**SRS 26.3** lists "zero-distance edge case _if operationally acceptable by
-validation configuration_" — explicitly deferring the decision.
+This is the minimum SRS 31.3's own escape clause allows — no arrival date column,
+no timestamp migration, one boolean. Enforced in the domain layer, in the Zod
+schema, and by the `services_times_consistent` CHECK constraint.
 
-**Assumed:** accepted. All four odometer readings may be equal, giving
-`actualKm = 0` and `serviceKm = 0`. A cancelled or aborted run is operationally
-real, and the ordering constraints use `<=` rather than `<`.
+### 4. Zero-distance services → not acceptable
 
-**Cost if wrong:** low. It is one comparison in the domain layer, one CHECK
-constraint, and their tests.
+One link of the SRS 10.3 chain is now strict:
 
----
+```
+start_dashboard <= start_base < end_base <= end_dashboard
+                              ^ strict
+```
 
-## 5. How does a driver who forgets their password get back in?
+**Only that link**, on the client's instruction to "use the best approach".
+Tightening the outer two would reject a truck that begins the day already parked
+at the loading base — routine and legitimate, since Start Dashboard then equals
+Start Base.
 
-**SRS 12.2** covers an administrator issuing an initial credential. Self-service
-reset is not in scope, and **SRS 29** does not list it as an exclusion either —
-it simply is not addressed.
+Requiring `end_base > start_base` gives `serviceKm > 0` directly, and
+`actualKm >= serviceKm` follows from the outer links, so `actualKm > 0` comes
+free. One comparison delivers both guarantees; a unit test proves it exhaustively
+over the boundary cases.
 
-**Assumed:** an administrator sets a new password through the user edit screen.
+### 5. Forgotten passwords → the administrator sets a new one
+
 No email, no reset link, no security questions. `updateUserSchema` accepts an
-optional password for exactly this.
+optional password for exactly this. Confirms the Phase 1 design; no change.
 
-**Worth confirming:** how the new password reaches the driver. In a two-person
-deployment, verbally is fine; the answer should still be deliberate.
+### 6. Interface language → Spanish
 
----
+Every user-facing string lives in `src/lib/i18n/messages.ts` — validation
+messages, error messages, status labels, field names. One file, so the client can
+review the entire wording of the application without reading code.
 
-## 6. Interface language
+No i18n library and no locale switching (SRS 29 excludes multi-language), but
+centralising the strings costs nothing and is the seam if a second language is
+ever wanted.
 
-**SRS 29** excludes a multi-language UI. It does not say which single language.
-The document is in English; the operational data in it is Portuguese.
+### 7. Administrators may create services for drivers → yes
 
-**Assumed:** English interface, with the client's own field terminology
-preserved verbatim as SRS 23.3 requires — "Route/Contract", "Start Dashboard
-KM", "Pending Approval".
+`/services/new` is open to administrators, with a driver selector.
 
-**Cost if wrong:** moderate and rising. Retrofitting translation after the UI
-is built is far more work than choosing the language before Phase 3.
+SRS 9.5 — "the Driver field shall always reflect the authenticated user" — now
+holds for **drivers only**. The weakening is bounded: a driver's request schema
+has no `driverId` field at all, so a driver still cannot file on anyone else's
+behalf by any path, and every administrator-filed service records the acting
+administrator separately from the owning driver in the audit log.
 
----
+### 8. Free-text limits → none
 
-## 7. Should administrators be able to create services?
+Sites and Observations are unbounded in practice. A 10,000-character ceiling
+remains as a guard against an oversized payload — roughly four pages, so no
+driver will reach it — not as a business rule.
 
-**SRS 17.2** says of `/services/new`: "Access: DRIVER; ADMIN access may be
-omitted unless explicitly needed operationally."
+### 9. Session lifetime → 20 days
 
-**Assumed:** omitted. An administrator can edit and approve any service but
-cannot create one. This keeps SRS 9.5's "the Driver field shall always reflect
-the authenticated user" unconditionally true — no path exists where a service's
-driver is someone other than its creator.
+`SESSION_MAX_AGE_DAYS=20`. Cookies are `Secure` and `HttpOnly` over HTTPS
+(SRS 22.2, 22.6). Every request re-checks `isActive` server-side, so a
+deactivated account loses access immediately rather than at session expiry.
 
-**If the client wants it:** an administrator creating a service on a driver's
-behalf needs a driver selector, which weakens that guarantee and needs its own
-audit treatment. Roughly half a day, and best decided before Phase 2.
+### 10. Vehicle selection → default per driver, changeable
 
----
-
-## 8. Free-text field limits
-
-**SRS 6.5, 6.6** call Sites and Observations optional text with no length given.
-
-**Assumed:** Sites 500 characters, Observations 2,000. Both stored as `TEXT`, so
-raising the limit is a schema-free change to one constant.
-
-**Cost if wrong:** negligible.
+Confirms SRS 12.5 and the Phase 1 design; no change.
 
 ---
 
-## 9. Session lifetime
+## Still outstanding
 
-Not addressed by the SRS. Relevant because drivers use shared phones in some
-fleets.
+### A. The exact Spanish field names
 
-**Assumed for Phase 2:** 30-day rolling session, matching Auth.js defaults, with
-`Secure` and `HttpOnly` cookies over HTTPS (SRS 22.2, 22.6).
+**Blocks:** the driver interface (Phase 3).
 
-**Worth asking:** whether a shorter idle timeout is wanted. It trades a driver
-re-entering their password against a lost phone staying signed in.
+SRS 6.3 says the mileage field names "must be preserved in V1 because they
+correspond to the client's operational workflow" — and states them in English,
+while the client's own register is in Spanish. The terms currently used are a
+careful translation, not the client's originals:
 
----
+| SRS (English)      | Currently shown   |
+| ------------------ | ----------------- |
+| Start Dashboard KM | KM inicial cuadro |
+| Start Base KM      | KM inicial base   |
+| End Base KM        | KM final base     |
+| End Dashboard KM   | KM final cuadro   |
+| Actual Km          | KM reales         |
+| Service Km         | KM de servicio    |
+| Departure Time     | Hora de salida    |
+| Arrival Time       | Hora de llegada   |
+| Sites              | Sitios            |
+| Observations       | Observaciones     |
 
-## 10. Vehicle selection scope
+**What we need:** the column headings as they appear in 01Servicios. Correcting
+them is a single edit to `FIELD_LABELS` — trivial now, and progressively more
+confusing for drivers the longer the wrong terms are on screen.
 
-**SRS 12.5** is explicit — "a Driver may choose another active vehicle from the
-available vehicle list when operationally necessary" — and rules out a
-per-driver vehicle permission matrix for V1.
+### B. The highest Service ID currently in use
 
-**Assumed:** implemented as written. Any active vehicle is selectable by any
-driver.
+**Blocks:** go-live, not development.
 
-Recorded here only because it is the kind of rule a client questions during UAT
-once they see every vehicle in the dropdown. The SRS answer is unambiguous, so
-changing it is a scope change, not a correction.
+Needed for the `pnpm db:set-service-start` step under decision 2. Any number
+works for development; the real one is required before the first real service is
+recorded.

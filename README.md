@@ -24,6 +24,7 @@ See [`docs/roadmap.md`](docs/roadmap.md).
 | ORM        | Prisma 7 with the `pg` driver adapter                        |
 | Validation | Zod 4, schemas shared by client and server                   |
 | Auth       | Auth.js v5 (credentials), Argon2id hashing                   |
+| Language   | Spanish interface, all strings in `src/lib/i18n/messages.ts` |
 | Styling    | Tailwind CSS 4, shadcn/ui                                    |
 | Tests      | Vitest — a unit project and a PostgreSQL integration project |
 
@@ -58,10 +59,14 @@ pnpm db:up && pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
 
-The seed prints the accounts it created. `driver1` is fully configured with a
-default vehicle and three assigned routes; `driver2` deliberately has neither,
+The seed prints the accounts it created. `conductor1` is fully configured with a
+default vehicle and three assigned routes; `conductor2` deliberately has neither,
 so the "administrator configuration required" path in SRS 24.2 has something to
 exercise. Sample data is skipped when `NODE_ENV=production`.
+
+> Before go-live, continue the client's existing Service ID numbering:
+> `pnpm db:set-service-start <highest number in 01Servicios>`. The seed warns
+> until this is done — see [`docs/open-questions.md`](docs/open-questions.md) #2.
 
 ---
 
@@ -82,6 +87,7 @@ exercise. Sample data is skipped when `NODE_ENV=production`.
 | `pnpm db:migrate`                   | Create and apply a migration                                 |
 | `pnpm db:deploy`                    | Apply pending migrations (production)                        |
 | `pnpm db:seed`                      | Bootstrap administrator, plus sample data outside production |
+| `pnpm db:set-service-start <n>`     | Continue the Service ID numbering from the client's register |
 | `pnpm db:reset`                     | Drop, re-migrate and re-seed                                 |
 | `pnpm db:studio`                    | Prisma Studio                                                |
 | `pnpm db:test:prepare`              | Migrate the isolated `bribar_test` database                  |

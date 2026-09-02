@@ -24,6 +24,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:set-service-start": "tsx scripts/set-service-code-start.ts",
     "db:reset": "prisma migrate reset",
     "db:test:prepare": "dotenv -e .env.test -- prisma migrate deploy",
     "lint:fix": "eslint . --fix"

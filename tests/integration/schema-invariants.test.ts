@@ -66,7 +66,7 @@ async function createFixture(): Promise<Fixture> {
 /** A valid service payload; individual tests override the field under test. */
 function serviceData(fixture: Fixture, overrides: Record<string, unknown> = {}) {
   return {
-    serviceCode: `SRV-20260902-${String(Math.floor(Math.random() * 1e6)).padStart(6, '0')}`,
+    serviceCode: String(Math.floor(Math.random() * 1e9)),
     serviceDate: new Date('2026-09-02T00:00:00.000Z'),
     driverId: fixture.driverId,
     vehicleId: fixture.vehicleId,
@@ -100,7 +100,9 @@ describe('mileage constraints (SRS 10.3)', () => {
     expect(service.status).toBe(ServiceStatus.PENDING_APPROVAL);
   });
 
-  it('accepts the zero-distance edge case (SRS 26.3)', async () => {
+  it('rejects a zero-distance service (client decision #4)', async () => {
+    // SRS 26.3 left this to "operational acceptability" and the client ruled
+    // it out, so the middle link of the chain is now strict.
     await expect(
       prisma.service.create({
         data: serviceData(fixture, {
@@ -110,6 +112,24 @@ describe('mileage constraints (SRS 10.3)', () => {
           endDashboardKm: 500,
           actualKm: 0,
           serviceKm: 0,
+        }),
+      }),
+    ).rejects.toThrow(/services_mileage_sequence/);
+  });
+
+  it('accepts a truck that starts and ends parked at the base', async () => {
+    // Only the middle link is strict. Start Dashboard may equal Start Base,
+    // and End Base may equal End Dashboard - both routine when the vehicle is
+    // already at the depot.
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, {
+          startDashboardKm: 10_000,
+          startBaseKm: 10_000,
+          endBaseKm: 10_060,
+          endDashboardKm: 10_060,
+          actualKm: 60,
+          serviceKm: 60,
         }),
       }),
     ).resolves.toBeDefined();
@@ -123,12 +143,18 @@ describe('mileage constraints (SRS 10.3)', () => {
     ).rejects.toThrow(/services_mileage_sequence/);
   });
 
-  it('rejects End Base below Start Base', async () => {
+  it('rejects End Base at or below Start Base', async () => {
     await expect(
       prisma.service.create({
         data: serviceData(fixture, { endBaseKm: 10_010, serviceKm: -10 }),
       }),
     ).rejects.toThrow(/services_mileage_sequence|services_service_km/);
+
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, { endBaseKm: 10_020, serviceKm: 0 }),
+      }),
+    ).rejects.toThrow(/services_mileage_sequence/);
   });
 
   it('rejects End Dashboard below End Base', async () => {
@@ -417,25 +443,97 @@ describe('service code sequence (SRS 19.1, 23.4)', () => {
   });
 
   it('produces a unique service code for each allocated value', async () => {
-    const businessDate = new Date('2026-09-02T00:00:00.000Z');
     const codes = await Promise.all(
-      Array.from({ length: 20 }, async () =>
-        formatServiceCode('SRV', businessDate, await nextSequenceValue()),
-      ),
+      Array.from({ length: 20 }, async () => formatServiceCode(await nextSequenceValue())),
     );
 
     expect(new Set(codes).size).toBe(20);
-    expect(codes[0]).toMatch(/^SRV-20260902-\d{6}$/);
+    expect(codes[0]).toMatch(/^[1-9]\d*$/);
+  });
+
+  it('starts at 1 so the client’s numbering can be continued with setval', async () => {
+    // The sequence is reset by the suite's TRUNCATE ... RESTART IDENTITY, so
+    // the first value here is the value a fresh deployment would issue. Before
+    // go-live it is advanced past the highest ID in 01Servicios.
+    expect(await nextSequenceValue()).toBe(1n);
   });
 
   it('rejects a duplicate service code even if the sequence were bypassed', async () => {
-    const data = serviceData(fixture, { serviceCode: 'SRV-20260902-000001' });
-    await prisma.service.create({ data });
+    await prisma.service.create({ data: serviceData(fixture, { serviceCode: '1247' }) });
 
     await expect(
-      prisma.service.create({
-        data: serviceData(fixture, { serviceCode: 'SRV-20260902-000001' }),
-      }),
+      prisma.service.create({ data: serviceData(fixture, { serviceCode: '1247' }) }),
     ).rejects.toThrow(/services_service_code_key/);
+  });
+});
+
+describe('departure and arrival ordering (client decision #3)', () => {
+  it('accepts a normal same-day service', async () => {
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, {
+          departureTime: timeOfDayToDate(asTimeOfDay('07:45')),
+          arrivalTime: timeOfDayToDate(asTimeOfDay('15:30')),
+          endsNextDay: false,
+        }),
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it('rejects a same-day service whose arrival precedes its departure', async () => {
+    // The transposition typo the client asked us to catch. The database
+    // refuses it even though the write skips every application-level check.
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, {
+          departureTime: timeOfDayToDate(asTimeOfDay('15:30')),
+          arrivalTime: timeOfDayToDate(asTimeOfDay('07:45')),
+          endsNextDay: false,
+        }),
+      }),
+    ).rejects.toThrow(/services_times_consistent/);
+  });
+
+  it('rejects a same-day service that arrives at its departure time', async () => {
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, {
+          departureTime: timeOfDayToDate(asTimeOfDay('07:45')),
+          arrivalTime: timeOfDayToDate(asTimeOfDay('07:45')),
+          endsNextDay: false,
+        }),
+      }),
+    ).rejects.toThrow(/services_times_consistent/);
+  });
+
+  it('accepts an overnight service when the flag is set (SRS 31.3)', async () => {
+    const service = await prisma.service.create({
+      data: serviceData(fixture, {
+        departureTime: timeOfDayToDate(asTimeOfDay('22:00')),
+        arrivalTime: timeOfDayToDate(asTimeOfDay('02:00')),
+        endsNextDay: true,
+      }),
+    });
+
+    expect(service.endsNextDay).toBe(true);
+    expect(dateToTimeOfDay(service.arrivalTime)).toBe('02:00');
+  });
+
+  it('rejects an overnight flag that would make the service 24 hours or more', async () => {
+    await expect(
+      prisma.service.create({
+        data: serviceData(fixture, {
+          departureTime: timeOfDayToDate(asTimeOfDay('07:00')),
+          arrivalTime: timeOfDayToDate(asTimeOfDay('09:00')),
+          endsNextDay: true,
+        }),
+      }),
+    ).rejects.toThrow(/services_times_consistent/);
+  });
+
+  it('defaults endsNextDay to false, so the same-day rule applies by default', async () => {
+    const service = await prisma.service.create({ data: serviceData(fixture) });
+
+    expect(service.endsNextDay).toBe(false);
   });
 });

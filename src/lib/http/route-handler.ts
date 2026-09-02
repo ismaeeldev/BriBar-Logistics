@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 import { translatePrismaError } from '@/lib/db/prisma-errors';
 import { ErrorCode, isAppError, validationFailed, type AppError } from '@/lib/errors/app-error';
+import { ERRORS } from '@/lib/i18n/messages';
 import { logger } from '@/lib/logger';
 
 import { errorResponse, toFieldErrors, type ApiErrorBody } from './api-response';
@@ -60,11 +61,7 @@ function toErrorResponse(error: unknown, request: Request): NextResponse<ApiErro
   });
 
   // Deliberately says nothing (SRS 24.5). The detail is in the log line above.
-  return errorResponse(
-    500,
-    ErrorCode.INTERNAL_ERROR,
-    'Something went wrong on our side. Please try again.',
-  );
+  return errorResponse(500, ErrorCode.INTERNAL_ERROR, ERRORS.internal);
 }
 
 /**
@@ -109,10 +106,7 @@ export async function parseJsonBody<TSchema extends z.ZodType>(
   try {
     raw = await request.json();
   } catch {
-    throw validationFailed(
-      { root: ['The request body was not valid JSON.'] },
-      'The request could not be read.',
-    );
+    throw validationFailed({ root: [ERRORS.malformedBody] }, ERRORS.unreadableRequest);
   }
 
   const parsed = schema.safeParse(raw);
@@ -145,7 +139,7 @@ export function parseSearchParams<TSchema extends z.ZodType>(
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    throw validationFailed(toFieldErrors(parsed.error), 'Some filters were not valid.');
+    throw validationFailed(toFieldErrors(parsed.error), ERRORS.invalidFilters);
   }
 
   return parsed.data;

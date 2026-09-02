@@ -14,6 +14,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeEach } from 'vitest';
 
+import { SERVICE_CODE_SEQUENCE } from '@/modules/services/domain/service-code';
+
 const DATABASE_URL = process.env['DATABASE_URL'];
 
 if (!DATABASE_URL) {
@@ -54,10 +56,19 @@ const TABLES = [
 ] as const;
 
 beforeEach(async () => {
-  // One statement so it is a single transaction; RESTART IDENTITY resets
-  // service_code_seq, keeping generated Service IDs predictable per test.
+  // One statement so it is a single transaction.
   await testPrisma.$executeRawUnsafe(
     `TRUNCATE TABLE ${TABLES.map((table) => `"${table}"`).join(', ')} RESTART IDENTITY CASCADE`,
+  );
+
+  // `RESTART IDENTITY` only resets sequences *owned* by a truncated table's
+  // identity or serial column. `service_code_seq` is standalone - deliberately
+  // so, because its value must survive a rolled-back insert (SRS 23.4) - and
+  // therefore has to be reset by hand. Without this, Service IDs would carry
+  // over between test files and any assertion about a specific number would
+  // depend on execution order.
+  await testPrisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "${SERVICE_CODE_SEQUENCE}" RESTART WITH 1`,
   );
 });
 

@@ -77,6 +77,13 @@ const baseEnvSchema = z.object({
   AUTH_URL: z.url('must be an absolute URL, e.g. https://logistics.bribar.example').optional(),
 
   /**
+   * Session lifetime in days (client decision #9). Also the JWT max age, so a
+   * deactivated user is locked out at the next session refresh at the latest;
+   * every request additionally re-checks `isActive` server-side (SRS 8.3).
+   */
+  SESSION_MAX_AGE_DAYS: z.coerce.number().int().min(1).max(365).default(20),
+
+  /**
    * IANA zone driving every business-facing date (SRS 31.3). Audit timestamps
    * are always UTC; this only decides which calendar day a service belongs to
    * and how timestamps are rendered.
@@ -84,16 +91,7 @@ const baseEnvSchema = z.object({
   APP_TIMEZONE: z
     .string()
     .min(1, 'is required')
-    .refine(isValidTimeZone, 'must be a valid IANA timezone, e.g. Europe/Lisbon'),
-
-  /** Leading segment of the generated Service ID, e.g. SRV-20260902-000042. */
-  SERVICE_CODE_PREFIX: z
-    .string()
-    .regex(
-      /^[A-Z][A-Z0-9]{1,7}$/,
-      'must be 2-8 upper-case letters or digits, starting with a letter',
-    )
-    .default('SRV'),
+    .refine(isValidTimeZone, 'must be a valid IANA timezone, e.g. Europe/Madrid'),
 
   /** Bootstrap administrator, consumed only by `prisma/seed.ts` (SRS 31.2). */
   SEED_ADMIN_NAME: z.string().min(1).default('BRIBAR Administrator'),
