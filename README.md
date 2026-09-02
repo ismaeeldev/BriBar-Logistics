@@ -9,10 +9,9 @@ Built to `BRIBAR_Logistics_V1_SRS.pdf` v1.0. Comments throughout the codebase
 cite the clause a piece of behaviour implements, so a rule can be traced from
 requirement to code to test.
 
-**Status: Phases 1–2 complete** — data model, authentication, the service
-layer and every API endpoint. The user interface follows in Phases 3–4; the
-whole workflow is already exercisable over HTTP. See
-[`docs/roadmap.md`](docs/roadmap.md).
+**Status: Phases 1–3 complete** — data model, authentication, the service
+layer, every API endpoint, and the full mobile-first driver interface. The
+admin interface follows in Phase 4. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
@@ -112,6 +111,12 @@ prisma.config.ts         Prisma 7 CLI configuration
 
 src/
   app/                   App Router pages and route handlers - kept thin
+    (app)/               Authenticated shell: driver dashboard, services
+    login/               Sign-in
+    api/                 SRS 18 endpoints
+  components/
+    ui/                  Design system - native controls, no Radix
+    layout/ services/ auth/
   lib/                   Cross-cutting infrastructure
     env.ts               Zod-validated configuration, parsed once at boot
     logger.ts            Structured JSON logging with secret redaction

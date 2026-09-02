@@ -89,15 +89,38 @@ of the build, and the part a client cannot see.
   whatever the caller.
 - Next.js 16 renamed `middleware.ts` to `proxy.ts`.
 
-## Phase 3 — Driver UI (4.0 days)
+## Phase 3 — Driver UI ✅
 
-- shadcn/ui setup, design tokens, mobile-first layout.
-- Login, driver dashboard, Add Service form, service list, service detail, edit.
-- Live calculated-mileage preview, recomputed server-side on submit.
-- Empty, loading, error and configuration-required states (SRS 24.2).
-- Verified at real phone viewport widths (SRS 26.7).
+**Delivered**
 
----
+- OKLCH design token system with a full dark theme; tabular figures
+  throughout, since odometer readings and Service IDs sit in columns.
+- A tailored component layer, no Radix and no new dependencies. Every form
+  control is native, which is what SRS 9.5 asks for: `<select>` opens the OS
+  picker, `<input type="time">` the OS time picker, `inputMode="numeric"` the
+  numeric keypad.
+- Sign-in, driver dashboard, Add Service, history with status filters and
+  pagination, service detail, edit. Plus 404, error and loading states.
+- Live calculated mileage using the same domain functions the server uses, so
+  the preview cannot disagree with what is stored (SRS 10.2).
+- 44px minimum touch targets, 52px primary actions, 16px input text so iOS
+  does not zoom on focus, sticky action bar clear of the home indicator.
+- Configuration-required state for an unconfigured driver (SRS 24.2).
+
+**Verified in a real browser at 375px**, in both themes: sign-in, the full
+create round trip, the route-change origin/destination refresh, the live
+preview, a rejected same-day time pair, and the same service accepted once
+flagged overnight.
+
+**Three bugs that only a browser would have found**
+
+- `trustHost` unset — sign-in succeeded, then every later request reported no
+  session. Required for any non-Vercel host, including the client's subdomain.
+- A `Date` passed to a client component crashed hydration; the page rendered
+  server-side and the form still submitted, so the only symptom was a dead
+  live preview. Client components now take a serialisable DTO.
+- A validation failure lost the odometer readings, against SRS 24.1. The
+  action now echoes submitted values back with the errors.
 
 ## Phase 4 — Admin UI (4.5 days)
 
