@@ -4,11 +4,12 @@
  * SRS 12.1 names the columns: name, login identifier, role, default vehicle,
  * default route, active state. All six are here.
  */
-import { Plus, Users } from 'lucide-react';
+import { ChevronRight, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 
-import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui/primitives';
-import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
+import { Alert, Badge, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { CardField, ResponsiveList } from '@/components/ui/responsive-list';
+import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, ROLE_LABELS, UI } from '@/lib/i18n/messages';
 import { toUserDto } from '@/modules/users/service/user.presenter';
@@ -44,66 +45,95 @@ export default async function AdminUsersPage({
       {flags.created ? <Alert tone="success" title={UI.admin.accountCreated} /> : null}
       {flags.updated ? <Alert tone="success" title={UI.admin.accountUpdated} /> : null}
 
-      {users.length === 0 ? (
-        <Card>
-          <EmptyState icon={Users} title={UI.admin.noAccounts} />
-        </Card>
-      ) : (
-        <TableWrap>
-          <Table>
-            <Thead>
-              <tr>
-                <Th>{FIELD_LABELS.name}</Th>
-                <Th>{FIELD_LABELS.loginIdentifier}</Th>
-                <Th>{FIELD_LABELS.role}</Th>
-                <Th>{FIELD_LABELS.defaultVehicle}</Th>
-                <Th>{FIELD_LABELS.defaultRoute}</Th>
-                <Th>{UI.common.status}</Th>
-                <Th />
-              </tr>
-            </Thead>
-            <Tbody>
-              {users.map((user) => (
-                <Tr key={user.id}>
-                  <Td className="font-medium whitespace-nowrap">
-                    {user.name}
-                    {user.id === actor.userId ? (
-                      <span className="text-muted-foreground ml-1.5 text-xs">
-                        {UI.common.you}
-                      </span>
-                    ) : null}
-                  </Td>
-                  <Td className="text-muted-foreground font-mono">{user.loginIdentifier}</Td>
-                  <Td>
-                    <Badge tone={user.role === 'ADMIN' ? 'pending' : 'neutral'}>
-                      {ROLE_LABELS[user.role]}
-                    </Badge>
-                  </Td>
-                  <Td className="text-muted-foreground font-mono whitespace-nowrap">
-                    {user.defaultVehicle?.registrationPlate ?? '—'}
-                  </Td>
-                  <Td className="text-muted-foreground font-mono whitespace-nowrap">
-                    {user.defaultRoute?.code ?? '—'}
-                  </Td>
-                  <Td>
-                    <Badge tone={user.isActive ? 'approved' : 'neutral'}>
-                      {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
-                    </Badge>
-                  </Td>
-                  <Td className="text-right">
-                    <Link
-                      href={`/admin/users/${user.id}`}
-                      className="text-primary text-xs font-medium hover:underline"
-                    >
-                      {UI.common.edit}
-                    </Link>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableWrap>
-      )}
+      <ResponsiveList
+        items={users}
+        getKey={(user) => user.id}
+        empty={<EmptyState icon={Users} title={UI.admin.noAccounts} />}
+        head={
+          <tr>
+            <Th>{FIELD_LABELS.name}</Th>
+            <Th>{FIELD_LABELS.loginIdentifier}</Th>
+            <Th>{FIELD_LABELS.role}</Th>
+            <Th className="hidden xl:table-cell">{FIELD_LABELS.defaultVehicle}</Th>
+            <Th className="hidden xl:table-cell">{FIELD_LABELS.defaultRoute}</Th>
+            <Th>{UI.common.status}</Th>
+            <Th />
+          </tr>
+        }
+        row={(user) => (
+          <>
+            <Td className="font-medium whitespace-nowrap">
+              {user.name}
+              {user.id === actor.userId ? (
+                <span className="text-muted-foreground ml-1.5 text-xs">{UI.common.you}</span>
+              ) : null}
+            </Td>
+            <Td className="text-muted-foreground font-mono">{user.loginIdentifier}</Td>
+            <Td>
+              <Badge tone={user.role === 'ADMIN' ? 'pending' : 'neutral'}>
+                {ROLE_LABELS[user.role]}
+              </Badge>
+            </Td>
+            <Td className="text-muted-foreground hidden font-mono whitespace-nowrap xl:table-cell">
+              {user.defaultVehicle?.registrationPlate ?? UI.common.none}
+            </Td>
+            <Td className="text-muted-foreground hidden font-mono whitespace-nowrap xl:table-cell">
+              {user.defaultRoute?.code ?? UI.common.none}
+            </Td>
+            <Td>
+              <Badge tone={user.isActive ? 'approved' : 'neutral'}>
+                {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
+              </Badge>
+            </Td>
+            <Td className="text-right">
+              <Link
+                href={`/admin/users/${user.id}`}
+                className="text-primary text-xs font-medium hover:underline"
+              >
+                {UI.common.edit}
+              </Link>
+            </Td>
+          </>
+        )}
+        card={(user) => (
+          <Link
+            href={`/admin/users/${user.id}`}
+            className="hover:bg-muted/50 block px-4 py-3.5 transition-colors"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {user.name}
+                  {user.id === actor.userId ? (
+                    <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+                      {UI.common.you}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-muted-foreground font-mono text-xs">
+                  {user.loginIdentifier}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Badge tone={user.isActive ? 'approved' : 'neutral'}>
+                  {user.isActive ? UI.common.activeFeminine : UI.common.inactiveFeminine}
+                </Badge>
+                <ChevronRight aria-hidden className="text-muted-foreground size-4" />
+              </div>
+            </div>
+
+            <dl className="mt-2 grid grid-cols-3 gap-3">
+              <CardField label={FIELD_LABELS.role}>{ROLE_LABELS[user.role]}</CardField>
+              <CardField label={FIELD_LABELS.defaultVehicle} mono>
+                {user.defaultVehicle?.registrationPlate ?? UI.common.none}
+              </CardField>
+              <CardField label={FIELD_LABELS.defaultRoute} mono>
+                {user.defaultRoute?.code ?? UI.common.none}
+              </CardField>
+            </dl>
+          </Link>
+        )}
+      />
     </div>
   );
 }

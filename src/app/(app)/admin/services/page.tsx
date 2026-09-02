@@ -11,12 +11,11 @@
 import { ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 
-import { AdminServiceRow } from '@/components/admin/admin-service-row';
+import { AdminServiceList } from '@/components/admin/service-list';
 import { ServiceFilters } from '@/components/admin/service-filters';
-import { Card, EmptyState, PageHeader } from '@/components/ui/primitives';
-import { Table, TableWrap, Tbody, Th, Thead } from '@/components/ui/table';
+import { EmptyState, PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
-import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
+import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 import { routeRepository } from '@/modules/routes/repository/route.repository';
 import { Role } from '@/modules/services/domain/service-status';
@@ -68,37 +67,16 @@ export default async function AdminServicesPage({
         }))}
       />
 
-      {items.length === 0 ? (
-        <Card>
+      <AdminServiceList
+        services={items.map(toServiceListItem)}
+        empty={
           <EmptyState
             icon={ClipboardList}
             title={UI.driver.noServices}
             description={UI.admin.noServicesMatch}
           />
-        </Card>
-      ) : (
-        <TableWrap>
-          <Table>
-            <Thead>
-              <tr>
-                <Th>{FIELD_LABELS.serviceDate}</Th>
-                <Th>{FIELD_LABELS.serviceCode}</Th>
-                <Th>{FIELD_LABELS.driver}</Th>
-                <Th>{UI.admin.routeColumn}</Th>
-                <Th>{FIELD_LABELS.vehicle}</Th>
-                <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
-                <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
-                <Th />
-              </tr>
-            </Thead>
-            <Tbody>
-              {items.map((service) => (
-                <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
-              ))}
-            </Tbody>
-          </Table>
-        </TableWrap>
-      )}
+        }
+      />
 
       {totalPages > 1 ? (
         <nav

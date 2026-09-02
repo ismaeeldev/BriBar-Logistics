@@ -21,7 +21,7 @@ import {
   PageHeader,
 } from '@/components/ui/primitives';
 import { requireDriver } from '@/lib/auth/session';
-import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, NUMBER_LOCALE, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
@@ -71,13 +71,13 @@ export default async function DriverDashboard() {
         />
         <StatTile
           label={FIELD_LABELS.serviceKm}
-          value={data.window.serviceKm.toLocaleString('es-ES')}
+          value={data.window.serviceKm.toLocaleString(NUMBER_LOCALE)}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
         <StatTile
           label={FIELD_LABELS.actualKm}
-          value={data.window.actualKm.toLocaleString('es-ES')}
+          value={data.window.actualKm.toLocaleString(NUMBER_LOCALE)}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />

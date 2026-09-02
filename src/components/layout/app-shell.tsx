@@ -2,39 +2,64 @@ import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { AdminNav } from '@/components/layout/admin-nav';
+import { AdminNavMobile, AdminSidebar } from '@/components/layout/admin-nav';
+import { DriverNavDesktop, DriverNavMobile } from '@/components/layout/driver-nav';
 import { LogoMark } from '@/components/layout/logo';
+import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import type { Actor } from '@/lib/auth/session';
 import { ROLE_LABELS, UI } from '@/lib/i18n/messages';
+import { cn } from '@/lib/utils/cn';
 import { Role } from '@/modules/services/domain/service-status';
-
-import { Button } from '@/components/ui/button';
 
 /**
  * The chrome every authenticated page sits inside.
  *
- * A single sticky header rather than a sidebar. The driver workflow is three
- * screens deep at most, and a sidebar on a phone means a hamburger, a drawer
- * and a focus trap — machinery that buys nothing when the whole navigation is
- * two links.
+ * The two roles get different layouts because they are used on different
+ * machines for different lengths of time. A driver opens this on a phone,
+ * standing up, to record one service; an administrator sits at a desk and works
+ * through a queue. Serving both from one layout means serving neither well.
+ *
+ *   Driver      narrow column, bottom tab bar on a phone, header links above
+ *               `sm`. The content is a form, so the column stays readable
+ *               rather than stretching across a monitor.
+ *
+ *   Admin       full width with a sidebar from `lg` up, chip strip below it.
+ *               These screens are tables and charts, and SRS 23.2 asks them to
+ *               use the desktop space they are given.
+ *
+ * Both navigations render in the markup and CSS decides which is visible, so
+ * there is no layout shift on load and no JavaScript in the decision.
  */
 export function AppShell({ actor, children }: { actor: Actor; children: ReactNode }) {
-  const home = actor.role === Role.ADMIN ? '/admin' : '/driver';
+  const isAdmin = actor.role === Role.ADMIN;
+  const home = isAdmin ? '/admin' : '/driver';
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="bg-card/80 sticky top-0 z-20 border-b backdrop-blur-sm">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
-          <Link
-            href={home}
-            className="text-primary flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80"
-          >
-            <LogoMark className="h-7 w-[2.35rem]" />
-            <span className="text-foreground truncate text-sm font-semibold tracking-tight">
-              {UI.common.appName}
-            </span>
-          </Link>
+        <div
+          className={cn(
+            'mx-auto flex h-14 w-full items-center justify-between gap-3 px-4',
+            isAdmin ? 'max-w-7xl' : 'max-w-3xl',
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-5">
+            <Link
+              href={home}
+              className="text-primary flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80"
+            >
+              <LogoMark className="h-7 w-[2.35rem]" />
+              {/* The wordmark is dropped on the narrowest screens: the mark
+                  identifies the app, and the room is better spent on the
+                  page's own title. */}
+              <span className="text-foreground hidden truncate text-sm font-semibold tracking-tight min-[380px]:inline">
+                {UI.common.appName}
+              </span>
+            </Link>
+
+            {!isAdmin ? <DriverNavDesktop /> : null}
+          </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden text-right sm:block">
@@ -45,10 +70,9 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
             </div>
 
             {/*
-              A form posting to a server action, not a client-side handler.
-              Sign-out is a state change, so it must be a POST — a GET link
-              would let any page on the internet log the user out with an
-              <img> tag.
+              A form posting to a server action, not a link. Sign-out is a state
+              change, so it must be a POST — a GET link would let any page on
+              the internet log the user out with an <img> tag.
             */}
             <form
               action={async () => {
@@ -70,11 +94,27 @@ export function AppShell({ actor, children }: { actor: Actor; children: ReactNod
         </div>
       </header>
 
-      {/* Administrators have four sections to move between; a driver has one
-          screen and needs no navigation at all (SRS 15.1). */}
-      {actor.role === Role.ADMIN ? <AdminNav /> : null}
+      {isAdmin ? <AdminNavMobile /> : null}
 
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</div>
+      <div
+        className={cn(
+          'mx-auto flex w-full flex-1',
+          isAdmin ? 'max-w-7xl gap-6 lg:px-4' : 'max-w-3xl',
+        )}
+      >
+        {isAdmin ? <AdminSidebar /> : null}
+
+        <main
+          className={cn(
+            'min-w-0 flex-1 px-4 py-6',
+            isAdmin ? 'lg:px-0 lg:py-8' : 'pb-24 sm:pb-8',
+          )}
+        >
+          {children}
+        </main>
+      </div>
+
+      {!isAdmin ? <DriverNavMobile /> : null}
     </div>
   );
 }

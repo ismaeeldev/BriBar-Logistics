@@ -319,7 +319,16 @@ export interface Dictionary {
       createRoute: string;
     };
 
-    nav: { services: string; drivers: string; vehicles: string; routes: string };
+    nav: {
+      /** Landmark names, so a screen reader can tell the two navs apart. */
+      adminLabel: string;
+      driverLabel: string;
+      panel: string;
+      services: string;
+      drivers: string;
+      vehicles: string;
+      routes: string;
+    };
 
     errors: {
       notFoundTitle: string;

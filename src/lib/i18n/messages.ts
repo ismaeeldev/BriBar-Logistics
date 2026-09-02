@@ -59,5 +59,14 @@ export const {
   UI,
 } = dictionary;
 
+/**
+ * The tag `Intl` groups digits by.
+ *
+ * Distinct from `LOCALE` on purpose: `Intl` needs a region to know that Spanish
+ * writes 1.234 and English writes 1,234, and a bare 'es' would leave that to
+ * whatever the server happens to be configured with.
+ */
+export const NUMBER_LOCALE = LOCALE === 'en' ? 'en-GB' : 'es-ES';
+
 export type FieldKey = keyof Dictionary['FIELD_LABELS'];
 export type { Dictionary };

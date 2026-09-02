@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils/cn';
  * "Admin tables, filters, and forms shall use available desktop space
  * effectively while remaining usable on smaller screens."
  *
- * A real `<table>`, wrapped in a horizontal scroller. SRS 23.1 forbids
- * horizontal scrolling for the *driver's* core actions, which is why the
- * driver screens use cards; an administrator comparing eight vehicles by plate
- * is better served by aligned columns, and scrolling a short row sideways on a
- * phone is a reasonable trade for that.
+ * A real `<table>`, wrapped in a horizontal scroller. Nothing here decides
+ * *when* a table is the right shape - `ResponsiveList` does that, and composes
+ * these pieces for the `md`-and-up half of every admin list. They stay separate
+ * because the styling of a cell is a different concern from the choice between
+ * a table and a stack of cards.
  *
  * Semantic markup matters here beyond tidiness: a screen reader announces
  * column headers with each cell only if the table is a real one (SRS 23.10).

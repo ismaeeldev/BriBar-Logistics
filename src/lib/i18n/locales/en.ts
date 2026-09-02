@@ -370,6 +370,9 @@ export const en: Dictionary = {
     },
 
     nav: {
+      adminLabel: 'Administration',
+      driverLabel: 'Main',
+      panel: 'Panel',
       services: 'Services',
       drivers: 'Drivers',
       vehicles: 'Vehicles',

@@ -198,4 +198,21 @@
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+
+  /*
+   * A horizontal strip that scrolls without drawing a scrollbar.
+   *
+   * Only for strips whose overflow is already obvious — the admin chip nav
+   * cuts its last chip off at the edge, which says "there is more" on its own.
+   * A phone draws an overlay scrollbar anyway; a narrow desktop window draws a
+   * permanent one that reads as a stray rule under the tabs.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

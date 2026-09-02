@@ -152,7 +152,10 @@ export function ServiceForm({
   const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
 
   return (
-    <form action={formAction} className="space-y-4 pb-28">
+    // Capped rather than fluid. The driver shell is already this narrow, but an
+    // administrator edits the same form inside a full-width panel, and a text
+    // field stretched across a monitor is harder to fill in, not easier.
+    <form action={formAction} className="max-w-3xl space-y-4 pb-28 sm:pb-2">
       {/* A form-level failure that belongs to no single field: a conflict, a
           route that stopped being assignable, an unexpected error. */}
       {state.status === 'error' && state.message ? (
@@ -266,21 +269,26 @@ export function ServiceForm({
           <p className="text-muted-foreground text-xs">{UI.service.mileageHint}</p>
         </CardHeader>
         <CardBody className="space-y-4">
-          {ORDERED_KM_FIELDS.map(({ name, label }) => (
-            <Field key={name} label={label} required errors={fieldErrors?.[name]}>
-              {(props) => (
-                <KmInput
-                  {...props}
-                  name={name}
-                  value={km[name]}
-                  onChange={(event) =>
-                    setKm((current) => ({ ...current, [name]: event.target.value }))
-                  }
-                  placeholder="0"
-                />
-              )}
-            </Field>
-          ))}
+          {/* One field per row on a phone — a driver is thumb-typing four
+              numbers in order. Two columns from `sm`, where the pairs fall out
+              as start readings above end readings. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {ORDERED_KM_FIELDS.map(({ name, label }) => (
+              <Field key={name} label={label} required errors={fieldErrors?.[name]}>
+                {(props) => (
+                  <KmInput
+                    {...props}
+                    name={name}
+                    value={km[name]}
+                    onChange={(event) =>
+                      setKm((current) => ({ ...current, [name]: event.target.value }))
+                    }
+                    placeholder="0"
+                  />
+                )}
+              </Field>
+            ))}
+          </div>
 
           <MileagePreview preview={preview} />
         </CardBody>
@@ -378,14 +386,23 @@ export function ServiceForm({
       </Card>
 
       {/*
-        A sticky action bar. On a form this long the submit button would
-        otherwise sit below the fold with no indication it exists, and a driver
-        would scroll looking for it. `pb-safe` keeps it clear of the iOS home
-        indicator.
+        On a phone the submit is pinned to the bottom of the screen: the form is
+        longer than the viewport, and a driver should never have to scroll
+        hunting for it. `pb-safe` keeps it clear of the iOS home indicator.
+
+        From `sm` up the bar dissolves into an ordinary right-aligned footer.
+        A strip fixed across a monitor reads as a mobile app on a desktop, and
+        with the whole form in view the button no longer needs pinning.
       */}
-      <div className="bg-card/95 pb-safe fixed inset-x-0 bottom-0 z-10 border-t px-4 pt-3 backdrop-blur-sm">
-        <div className="mx-auto max-w-5xl">
-          <Button type="submit" size="lg" block disabled={isPending}>
+      <div className="bg-card/95 pb-safe fixed inset-x-0 bottom-0 z-10 border-t px-4 pt-3 backdrop-blur-sm sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:pt-2 sm:backdrop-blur-none">
+        <div className="mx-auto flex max-w-3xl justify-end">
+          <Button
+            type="submit"
+            size="lg"
+            block
+            className="sm:w-auto sm:min-w-52"
+            disabled={isPending}
+          >
             {isPending ? (
               <>
                 <Loader2 aria-hidden className="size-5 animate-spin" />

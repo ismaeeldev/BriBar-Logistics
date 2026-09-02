@@ -146,65 +146,75 @@ export default async function ServiceDetailPage({
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{UI.service.routeSection}</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <dl className="divide-y">
-            <DetailRow
-              label={FIELD_LABELS.route}
-              value={
-                <span>
-                  {service.route.code}
-                  <span className="text-muted-foreground"> · {service.route.name}</span>
-                </span>
-              }
-            />
-            {/* The snapshot, not the route's current values (SRS 14.5). */}
-            <DetailRow label={FIELD_LABELS.origin} value={service.origin} />
-            <DetailRow label={FIELD_LABELS.destination} value={service.destination} />
-            <DetailRow
-              label={FIELD_LABELS.vehicle}
-              value={
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="font-mono">{service.vehicle.registrationPlate}</span>
-                  {/* SRS 13.4: a deactivated vehicle stays visible on its
+      {/* Two short cards; side by side as soon as the column is wide enough
+          for them, stacked on a phone. */}
+      <div className="grid items-start gap-5 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{UI.service.routeSection}</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <dl className="divide-y">
+              <DetailRow
+                label={FIELD_LABELS.route}
+                value={
+                  <span>
+                    {service.route.code}
+                    <span className="text-muted-foreground"> · {service.route.name}</span>
+                  </span>
+                }
+              />
+              {/* The snapshot, not the route's current values (SRS 14.5). */}
+              <DetailRow label={FIELD_LABELS.origin} value={service.origin} />
+              <DetailRow label={FIELD_LABELS.destination} value={service.destination} />
+              <DetailRow
+                label={FIELD_LABELS.vehicle}
+                value={
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="font-mono">{service.vehicle.registrationPlate}</span>
+                    {/* SRS 13.4: a deactivated vehicle stays visible on its
                       historical services, and is marked rather than hidden. */}
-                  {!service.vehicleIsActive ? (
-                    <span className="text-muted-foreground text-xs">
-                      {UI.common.deactivated}
-                    </span>
-                  ) : null}
-                </span>
-              }
-            />
-            <DetailRow label={FIELD_LABELS.driver} value={service.driver.name} />
-          </dl>
-        </CardBody>
-      </Card>
+                    {!service.vehicleIsActive ? (
+                      <span className="text-muted-foreground text-xs">
+                        {UI.common.deactivated}
+                      </span>
+                    ) : null}
+                  </span>
+                }
+              />
+              <DetailRow label={FIELD_LABELS.driver} value={service.driver.name} />
+            </dl>
+          </CardBody>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{UI.service.timesSection}</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <dl className="divide-y">
-            <DetailRow label={FIELD_LABELS.departureTime} value={service.departureTime} mono />
-            <DetailRow
-              label={FIELD_LABELS.arrivalTime}
-              value={
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="font-mono">{service.arrivalTime}</span>
-                  {service.endsNextDay ? (
-                    <span className="text-muted-foreground text-xs">{UI.service.nextDay}</span>
-                  ) : null}
-                </span>
-              }
-            />
-          </dl>
-        </CardBody>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{UI.service.timesSection}</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <dl className="divide-y">
+              <DetailRow
+                label={FIELD_LABELS.departureTime}
+                value={service.departureTime}
+                mono
+              />
+              <DetailRow
+                label={FIELD_LABELS.arrivalTime}
+                value={
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="font-mono">{service.arrivalTime}</span>
+                    {service.endsNextDay ? (
+                      <span className="text-muted-foreground text-xs">
+                        {UI.service.nextDay}
+                      </span>
+                    ) : null}
+                  </span>
+                }
+              />
+            </dl>
+          </CardBody>
+        </Card>
+      </div>
 
       {service.sites || service.observations ? (
         <Card>

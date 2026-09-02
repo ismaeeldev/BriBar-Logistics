@@ -2,6 +2,8 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 import { ServiceStatusBadge } from '@/components/ui/primitives';
+import { CardField } from '@/components/ui/responsive-list';
+import { FIELD_LABELS } from '@/lib/i18n/messages';
 import { formatBusinessDate } from '@/lib/time/business-date';
 import type { ServiceListItem } from '@/modules/services/service/service.presenter';
 
@@ -52,17 +54,21 @@ export function ServiceCard({ service }: { service: ServiceListItem }) {
         <span className="text-muted-foreground"> · {service.route.name}</span>
       </p>
 
-      <div className="text-muted-foreground mt-1 flex items-center gap-x-3 text-xs">
-        <span className="font-mono">{service.vehicle.registrationPlate}</span>
-        <span aria-hidden className="bg-border size-0.5 rounded-full" />
-        <span>
-          <span className="text-foreground font-mono">{service.actualKm}</span> km reales
-        </span>
-        <span aria-hidden className="bg-border size-0.5 rounded-full" />
-        <span>
-          <span className="text-foreground font-mono">{service.serviceKm}</span> km serv.
-        </span>
-      </div>
+      {/* Labelled fields rather than a run-on meta line: the labels come from
+          the dictionary, so the card reads the same in either locale, and the
+          two mileage figures line up between cards instead of shifting with
+          the length of the plate beside them. */}
+      <dl className="mt-2 grid grid-cols-3 gap-3">
+        <CardField label={FIELD_LABELS.vehicle} mono>
+          {service.vehicle.registrationPlate}
+        </CardField>
+        <CardField label={FIELD_LABELS.actualKm} mono>
+          {service.actualKm}
+        </CardField>
+        <CardField label={FIELD_LABELS.serviceKm} mono>
+          {service.serviceKm}
+        </CardField>
+      </dl>
     </Link>
   );
 }

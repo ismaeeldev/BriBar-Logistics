@@ -6,11 +6,12 @@
  * a filter would make a deactivated vehicle look deleted, which is exactly the
  * confusion SRS 21.5 exists to avoid.
  */
-import { Plus, Truck } from 'lucide-react';
+import { ChevronRight, Plus, Truck } from 'lucide-react';
 import Link from 'next/link';
 
-import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui/primitives';
-import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
+import { Alert, Badge, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { ResponsiveList } from '@/components/ui/responsive-list';
+import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
@@ -45,51 +46,65 @@ export default async function AdminVehiclesPage({
       {flags.created ? <Alert tone="success" title={UI.admin.vehicleCreated} /> : null}
       {flags.updated ? <Alert tone="success" title={UI.admin.vehicleUpdated} /> : null}
 
-      {vehicles.length === 0 ? (
-        <Card>
+      <ResponsiveList
+        items={vehicles}
+        getKey={(vehicle) => vehicle.id}
+        empty={
           <EmptyState
             icon={Truck}
             title={UI.admin.noVehicles}
             description={UI.admin.noVehiclesHint}
           />
-        </Card>
-      ) : (
-        <TableWrap>
-          <Table>
-            <Thead>
-              <tr>
-                <Th>{FIELD_LABELS.registrationPlate}</Th>
-                <Th>{FIELD_LABELS.name}</Th>
-                <Th>{UI.common.status}</Th>
-                <Th />
-              </tr>
-            </Thead>
-            <Tbody>
-              {vehicles.map((vehicle) => (
-                <Tr key={vehicle.id}>
-                  <Td className="font-mono font-medium whitespace-nowrap">
-                    {vehicle.registrationPlate}
-                  </Td>
-                  <Td className="text-muted-foreground">{vehicle.referenceName ?? '—'}</Td>
-                  <Td>
-                    <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
-                      {vehicle.isActive ? UI.common.active : UI.common.inactive}
-                    </Badge>
-                  </Td>
-                  <Td className="text-right">
-                    <Link
-                      href={`/admin/vehicles/${vehicle.id}`}
-                      className="text-primary text-xs font-medium hover:underline"
-                    >
-                      {UI.common.edit}
-                    </Link>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableWrap>
-      )}
+        }
+        head={
+          <tr>
+            <Th>{FIELD_LABELS.registrationPlate}</Th>
+            <Th>{FIELD_LABELS.name}</Th>
+            <Th>{UI.common.status}</Th>
+            <Th />
+          </tr>
+        }
+        row={(vehicle) => (
+          <>
+            <Td className="font-mono font-medium whitespace-nowrap">
+              {vehicle.registrationPlate}
+            </Td>
+            <Td className="text-muted-foreground">{vehicle.referenceName ?? UI.common.none}</Td>
+            <Td>
+              <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
+                {vehicle.isActive ? UI.common.active : UI.common.inactive}
+              </Badge>
+            </Td>
+            <Td className="text-right">
+              <Link
+                href={`/admin/vehicles/${vehicle.id}`}
+                className="text-primary text-xs font-medium hover:underline"
+              >
+                {UI.common.edit}
+              </Link>
+            </Td>
+          </>
+        )}
+        card={(vehicle) => (
+          <Link
+            href={`/admin/vehicles/${vehicle.id}`}
+            className="hover:bg-muted/50 flex items-center justify-between gap-3 px-4 py-3.5 transition-colors"
+          >
+            <div className="min-w-0">
+              <p className="font-mono text-sm font-medium">{vehicle.registrationPlate}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {vehicle.referenceName ?? UI.common.none}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge tone={vehicle.isActive ? 'approved' : 'neutral'}>
+                {vehicle.isActive ? UI.common.active : UI.common.inactive}
+              </Badge>
+              <ChevronRight aria-hidden className="text-muted-foreground size-4" />
+            </div>
+          </Link>
+        )}
+      />
     </div>
   );
 }

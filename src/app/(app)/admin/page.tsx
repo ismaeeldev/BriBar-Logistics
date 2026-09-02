@@ -16,7 +16,7 @@
 import { CheckCircle2, ClipboardCheck, Route as RouteIcon, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
-import { AdminServiceRow } from '@/components/admin/admin-service-row';
+import { AdminServiceList } from '@/components/admin/service-list';
 import { ActivityChart } from '@/components/charts/activity-chart';
 import { RouteBars } from '@/components/charts/route-bars';
 import { StatTile } from '@/components/charts/stat-tile';
@@ -28,32 +28,14 @@ import {
   EmptyState,
   PageHeader,
 } from '@/components/ui/primitives';
-import { Table, TableWrap, Tbody, Th, Thead } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
-import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, NUMBER_LOCALE, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
 import { toServiceListItem } from '@/modules/services/service/service.presenter';
 
 export const metadata = { title: UI.admin.panelTitle };
-
-function ServiceTableHead() {
-  return (
-    <Thead>
-      <tr>
-        <Th>{FIELD_LABELS.serviceDate}</Th>
-        <Th>{FIELD_LABELS.serviceCode}</Th>
-        <Th>{FIELD_LABELS.driver}</Th>
-        <Th>{UI.admin.routeColumn}</Th>
-        <Th>{FIELD_LABELS.vehicle}</Th>
-        <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
-        <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
-        <Th />
-      </tr>
-    </Thead>
-  );
-}
 
 export default async function AdminDashboard() {
   const actor = await requireAdmin();
@@ -92,7 +74,7 @@ export default async function AdminDashboard() {
         />
         <StatTile
           label={FIELD_LABELS.serviceKm}
-          value={data.window.serviceKm.toLocaleString('es-ES')}
+          value={data.window.serviceKm.toLocaleString(NUMBER_LOCALE)}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
@@ -118,26 +100,16 @@ export default async function AdminDashboard() {
           </Link>
         </div>
 
-        {pending.length === 0 ? (
-          <Card>
+        <AdminServiceList
+          services={pending.map(toServiceListItem)}
+          empty={
             <EmptyState
               icon={CheckCircle2}
               title={UI.admin.allClear}
               description={UI.admin.allClearHint}
             />
-          </Card>
-        ) : (
-          <TableWrap>
-            <Table>
-              <ServiceTableHead />
-              <Tbody>
-                {pending.map((service) => (
-                  <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
-                ))}
-              </Tbody>
-            </Table>
-          </TableWrap>
-        )}
+          }
+        />
       </section>
 
       {/* Context, below the work. */}
@@ -176,16 +148,7 @@ export default async function AdminDashboard() {
       {recentlyApproved.length > 0 ? (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold tracking-tight">{UI.driver.recentlyApproved}</h2>
-          <TableWrap>
-            <Table>
-              <ServiceTableHead />
-              <Tbody>
-                {recentlyApproved.map((service) => (
-                  <AdminServiceRow key={service.id} service={toServiceListItem(service)} />
-                ))}
-              </Tbody>
-            </Table>
-          </TableWrap>
+          <AdminServiceList services={recentlyApproved.map(toServiceListItem)} />
         </section>
       ) : null}
     </div>
