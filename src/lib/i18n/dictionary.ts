@@ -156,6 +156,8 @@ export interface Dictionary {
       blockerStatusChanges: (count: number) => string;
       blockerDefaultForUsers: (count: number) => string;
       dangerZone: string;
+      /** The abbreviated count used inside charts, where room is scarce. */
+      servicesShort: (count: number) => string;
       back: string;
       edit: string;
       save: string;
@@ -195,6 +197,9 @@ export interface Dictionary {
       signIn: string;
       checking: string;
       forgotPassword: string;
+      /** Sign-in panel copy, shown only on a wide screen. */
+      panelHeadline: string;
+      panelSubhead: string;
     };
 
     driver: {
@@ -268,6 +273,7 @@ export interface Dictionary {
       allTime: string;
       lastDays: (days: number) => string;
       activityTitle: string;
+      activityChartLabel: (days: number) => string;
       topRoutesTitle: string;
       noRouteActivity: string;
       servicesTitle: string;

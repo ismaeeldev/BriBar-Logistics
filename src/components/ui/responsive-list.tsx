@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { Table, TableWrap, Tbody, Thead, Tr } from '@/components/ui/table';
 import { cn } from '@/lib/utils/cn';
@@ -22,6 +22,11 @@ import { cn } from '@/lib/utils/cn';
  * duplicate markup is display:none rather than a second fetch, and the
  * alternative — picking a layout from a JavaScript media query — flashes the
  * wrong one on every load and breaks without JavaScript.
+ *
+ * Rows arrive in sequence rather than all at once, which reads as the list
+ * being dealt out and gives the eye an order to follow. `.stagger` caps the
+ * delay at ten steps, so a full page of twenty-five is no slower to finish
+ * than a short one.
  */
 export function ResponsiveList<T>({
   items,
@@ -56,8 +61,14 @@ export function ResponsiveList<T>({
           className,
         )}
       >
-        {items.map((item) => (
-          <li key={getKey(item)}>{card(item)}</li>
+        {items.map((item, index) => (
+          <li
+            key={getKey(item)}
+            style={{ '--i': index } as CSSProperties}
+            className="animate-rise stagger"
+          >
+            {card(item)}
+          </li>
         ))}
       </ul>
 
@@ -66,8 +77,14 @@ export function ResponsiveList<T>({
         <Table>
           <Thead>{head}</Thead>
           <Tbody>
-            {items.map((item) => (
-              <Tr key={getKey(item)}>{row(item)}</Tr>
+            {items.map((item, index) => (
+              <Tr
+                key={getKey(item)}
+                style={{ '--i': index } as CSSProperties}
+                className="animate-rise stagger"
+              >
+                {row(item)}
+              </Tr>
             ))}
           </Tbody>
         </Table>

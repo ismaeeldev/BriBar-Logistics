@@ -26,10 +26,10 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
-  PageHeader,
+  PageHero,
 } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
-import { FIELD_LABELS, NUMBER_LOCALE, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
@@ -48,12 +48,24 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHero
+        eyebrow={UI.common.appName}
         title={UI.admin.panelTitle}
         description={
           data.pendingCount === 0
             ? UI.admin.nothingPending
             : UI.admin.pendingSummary(data.pendingCount)
+        }
+        action={
+          data.pendingCount > 0 ? (
+            <Link
+              href="/admin/services?status=PENDING_APPROVAL"
+              className="text-brand-ink inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold shadow-lg transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] sm:w-auto"
+            >
+              <ClipboardCheck aria-hidden className="size-4" />
+              {UI.admin.approvalQueue}
+            </Link>
+          ) : null
         }
       />
 
@@ -61,24 +73,32 @@ export default async function AdminDashboard() {
           is nothing to compare between a count and a distance. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
+          index={0}
+          icon={ClipboardCheck}
           label={SERVICE_STATUS_LABELS.PENDING_APPROVAL}
           value={data.pendingCount}
           tone={data.pendingCount > 0 ? 'pending' : 'neutral'}
           hint={UI.admin.awaitingReview}
         />
         <StatTile
+          index={1}
+          icon={CheckCircle2}
           label={SERVICE_STATUS_LABELS.APPROVED}
           value={data.approvedCount}
           tone="approved"
           hint={UI.admin.allTime}
         />
         <StatTile
+          index={2}
+          icon={RouteIcon}
           label={FIELD_LABELS.serviceKm}
-          value={data.window.serviceKm.toLocaleString(NUMBER_LOCALE)}
+          value={data.window.serviceKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
         <StatTile
+          index={3}
+          icon={TrendingUp}
           label={UI.admin.servicesTitle}
           value={data.window.services}
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
@@ -114,7 +134,7 @@ export default async function AdminDashboard() {
 
       {/* Context, below the work. */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="lift">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp aria-hidden className="text-muted-foreground size-4" />
@@ -127,7 +147,7 @@ export default async function AdminDashboard() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card className="lift">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RouteIcon aria-hidden className="text-muted-foreground size-4" />

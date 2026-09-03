@@ -89,7 +89,7 @@ export function DeleteRecord({
 
       <dialog
         ref={dialog}
-        className="bg-card text-card-foreground m-auto w-[calc(100%-2rem)] max-w-sm rounded-xl border p-5 shadow-lg backdrop:bg-black/40"
+        className="bg-card text-card-foreground open:animate-pop m-auto w-[calc(100%-2rem)] max-w-sm rounded-xl border p-5 shadow-lg backdrop:bg-black/50 backdrop:backdrop-blur-[2px]"
       >
         <h3 className="text-base font-semibold">{UI.common.deleteTitle}</h3>
         <p className="text-muted-foreground mt-2 text-sm">{UI.common.deleteConfirm(name)}</p>

@@ -43,14 +43,18 @@ export function AdminNavMobile() {
               href={href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors',
-                active
-                  ? 'border-primary text-primary'
-                  : 'text-muted-foreground hover:text-foreground border-transparent',
+                'relative flex shrink-0 items-center gap-2 px-3 py-3 text-sm font-medium transition-colors',
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="size-4" />
               {label}
+              {active ? (
+                <span
+                  aria-hidden
+                  className="bg-primary animate-sweep absolute inset-x-0 bottom-0 h-0.5 origin-left rounded-full"
+                />
+              ) : null}
             </Link>
           );
         })}
@@ -83,13 +87,22 @@ export function AdminSidebar() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200',
                   active
                     ? 'bg-primary-subtle text-primary-subtle-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
-                <Icon className="size-4 shrink-0" />
+                {/* A bar that grows down the left edge of the item the reader
+                    just arrived at. It marks the current page a second way, so
+                    the tinted fill is not carrying that alone. */}
+                {active ? (
+                  <span
+                    aria-hidden
+                    className="bg-primary animate-grow absolute top-1.5 bottom-1.5 -left-px w-0.5 origin-center rounded-full"
+                  />
+                ) : null}
+                <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
                 <span className="truncate">{label}</span>
               </Link>
             </li>

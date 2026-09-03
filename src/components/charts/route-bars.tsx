@@ -1,3 +1,6 @@
+import type { CSSProperties } from 'react';
+
+import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
 export interface RouteTotal {
@@ -22,6 +25,11 @@ export interface RouteTotal {
  *
  * Plain divs rather than SVG — a bar chart is a list of proportional widths,
  * and HTML gives text wrapping and hover states for free.
+ *
+ * The bars sweep out from the axis on first paint, one after another. That is
+ * the ranking being drawn rather than an effect: the eye follows the order the
+ * chart is sorted in. It animates a `transform`, not a `width`, so it
+ * composites instead of laying the page out five more times.
  */
 export function RouteBars({ routes, className }: { routes: RouteTotal[]; className?: string }) {
   const peak = Math.max(1, ...routes.map((route) => route.serviceKm));
@@ -42,7 +50,11 @@ export function RouteBars({ routes, className }: { routes: RouteTotal[]; classNa
         const share = (route.serviceKm / peak) * 100;
 
         return (
-          <li key={route.routeId} className="space-y-1.5">
+          <li
+            key={route.routeId}
+            style={{ '--i': index } as CSSProperties}
+            className="animate-rise stagger group space-y-1.5"
+          >
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="min-w-0 truncate">
                 <span className="font-mono font-medium">{route.code}</span>
@@ -52,14 +64,14 @@ export function RouteBars({ routes, className }: { routes: RouteTotal[]; classNa
                 <span className="text-foreground font-medium">{route.serviceKm}</span> km
                 <span className="opacity-60">
                   {' · '}
-                  {route.services} serv.
+                  {UI.common.servicesShort(route.services)}
                 </span>
               </span>
             </div>
 
             <div className="bg-muted h-2 overflow-hidden rounded-full">
               <div
-                className="h-full rounded-full transition-[width] duration-500"
+                className="animate-sweep stagger h-full origin-left rounded-full transition-transform duration-300 group-hover:scale-y-125"
                 style={{
                   width: `${Math.max(2, share)}%`,
                   background: steps[Math.min(index, steps.length - 1)],

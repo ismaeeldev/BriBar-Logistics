@@ -1,7 +1,9 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { useId, useState } from 'react';
 
+import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
 export interface ActivityPoint {
@@ -27,6 +29,11 @@ export interface ActivityPoint {
  *
  * Hand-drawn SVG rather than a charting library: three shapes, full control of
  * the theme tokens, and nothing shipped to the browser that is not used.
+ *
+ * The columns grow up from the baseline on first paint, left to right, which is
+ * the fortnight being read in the order it happened. Each is a `scaleY` about
+ * its own foot rather than an animated height, so the shapes composite and the
+ * baseline never moves.
  */
 export function ActivityChart({
   points,
@@ -61,8 +68,16 @@ export function ActivityChart({
           preserveAspectRatio="none"
           className="h-32 w-full overflow-visible"
           role="img"
-          aria-label={`Actividad diaria: ${points.length} días`}
+          aria-label={UI.admin.activityChartLabel(points.length)}
         >
+          <defs>
+            {/* Lighter at the top, so a tall column reads as rising rather than
+                as a solid block of brand colour. */}
+            <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-4)" />
+              <stop offset="100%" stopColor="var(--chart-5)" />
+            </linearGradient>
+          </defs>
           {/* Recessive baseline; no full grid for a range this short. */}
           <line
             x1="0"
@@ -100,9 +115,18 @@ export function ActivityChart({
                   width={barWidth}
                   height={barHeight}
                   rx="0.6"
-                  fill={value === 0 ? 'var(--chart-grid)' : 'var(--chart-5)'}
-                  opacity={hovered === null || isHovered ? 1 : 0.45}
-                  className="transition-opacity"
+                  fill={value === 0 ? 'var(--chart-grid)' : `url(#${id}-fill)`}
+                  opacity={hovered === null || isHovered ? 1 : 0.4}
+                  // `fill-box` makes the origin the bar's own box, so `bottom`
+                  // is the baseline whatever the viewBox is stretched to.
+                  style={
+                    {
+                      '--i': index,
+                      transformBox: 'fill-box',
+                      transformOrigin: 'bottom',
+                    } as CSSProperties
+                  }
+                  className="animate-grow stagger transition-opacity"
                   pointerEvents="none"
                 />
               </g>
@@ -144,13 +168,13 @@ function Tooltip({
     <div
       id={id}
       role="tooltip"
-      className="bg-foreground text-background pointer-events-none absolute -top-1 z-10 -translate-y-full rounded-md px-2 py-1.5 text-xs whitespace-nowrap shadow-lg"
+      className="bg-foreground text-background animate-fade pointer-events-none absolute -top-1 z-10 -translate-y-full rounded-md px-2 py-1.5 text-xs whitespace-nowrap shadow-lg"
       style={fromLeft ? { left: offset } : { right: `calc(100% - ${offset})` }}
     >
       <span className="font-medium">{point.label}</span>
       <span className="opacity-70">
         {' · '}
-        {point.services} serv.
+        {UI.common.servicesShort(point.services)}
       </span>
       <span className="opacity-70">
         {' · '}

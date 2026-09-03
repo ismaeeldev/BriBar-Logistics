@@ -52,7 +52,12 @@ export function Tbody({ className, ...props }: ComponentProps<'tbody'>) {
 }
 
 export function Tr({ className, ...props }: ComponentProps<'tr'>) {
-  return <tr className={cn('hover:bg-muted/40 transition-colors', className)} {...props} />;
+  return (
+    <tr
+      className={cn('hover:bg-muted/50 transition-colors duration-150', className)}
+      {...props}
+    />
+  );
 }
 
 export function Td({ className, ...props }: ComponentProps<'td'>) {

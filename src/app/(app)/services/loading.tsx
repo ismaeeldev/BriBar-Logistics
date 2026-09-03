@@ -1,10 +1,11 @@
 import { Card, Skeleton } from '@/components/ui/primitives';
 
 /**
- * Streaming placeholder while a service list loads (SRS 23.3 - loading states).
+ * Streaming placeholder while the driver's history loads (SRS 23.3).
  *
- * Mirrors the real layout rather than showing a spinner, so the page does not
- * reflow when the data arrives.
+ * Its own shape rather than the shared `ListSkeleton`: this screen has a filter
+ * strip above the list, and a skeleton that omits it would let the page jump
+ * once the real one appears.
  */
 export default function Loading() {
   return (

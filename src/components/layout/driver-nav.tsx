@@ -81,8 +81,10 @@ export function DriverNavMobile() {
                 href={href}
                 className="text-primary flex min-w-0 flex-1 flex-col items-center gap-1 px-2 py-1"
               >
-                {/* Raised and filled: the one action the interface is for. */}
-                <span className="bg-primary text-primary-foreground -mt-5 flex size-12 items-center justify-center rounded-full shadow-lg">
+                {/* Raised and filled: the one action the interface is for.
+                    The ring is the card colour, so the button reads as sitting
+                    in front of the bar rather than punched through it. */}
+                <span className="bg-primary text-primary-foreground ring-card -mt-5 flex size-12 items-center justify-center rounded-full shadow-lg ring-4 transition-transform duration-200 active:scale-90">
                   <Icon className="size-6" />
                 </span>
                 <span className="truncate text-[0.65rem] font-medium">{label}</span>
@@ -100,7 +102,12 @@ export function DriverNavMobile() {
                 active ? 'text-primary' : 'text-muted-foreground',
               )}
             >
-              <Icon className="size-5" />
+              <Icon
+                className={cn(
+                  'size-5 transition-transform duration-200',
+                  active && 'scale-110',
+                )}
+              />
               <span className="truncate text-[0.65rem] font-medium">{label}</span>
             </Link>
           );

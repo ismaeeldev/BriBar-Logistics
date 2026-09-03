@@ -90,7 +90,49 @@
      lit rather than smudged with grey. */
   --shadow-color: 225deg 30% 45%;
 
+  /* A surface one step above the card, for something lifted under the pointer. */
+  --elevated: oklch(1 0 0);
+
+  /*
+   * Ink for a control sitting on the brand band, and deliberately not
+   * theme-dependent.
+   *
+   * The band is a dark gradient in *both* themes, so a white button on it
+   * needs dark text in both. `--primary` cannot do that job: in dark mode it
+   * lightens to stay readable on a dark page, which is exactly the wrong
+   * direction for text on white.
+   */
+  --brand-ink: oklch(0.33 0.1 258);
+
+  /* The brand as a gradient, for the two places a flat fill would look inert:
+     the band behind a dashboard heading, and the sign-in panel. Three stops
+     rather than two so the sweep bends through the hue instead of crossfading
+     between the ends. */
+  --brand-gradient: linear-gradient(
+    135deg,
+    oklch(0.32 0.11 262) 0%,
+    oklch(0.38 0.13 254) 45%,
+    oklch(0.44 0.12 232) 100%
+  );
+  /* The same idea at surface strength, over a page ground. */
+  --brand-wash: linear-gradient(
+    135deg,
+    oklch(0.955 0.022 254) 0%,
+    oklch(0.972 0.016 240) 55%,
+    oklch(0.985 0.004 250) 100%
+  );
+
   --radius: 0.625rem;
+
+  /* Motion. One duration scale and two curves, so nothing on the page moves at
+     a speed nothing else uses. `out-expo` decelerates hard — right for
+     something arriving; `spring` overshoots a little — right for something the
+     user just pressed. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 140ms;
+  --duration: 260ms;
+  --duration-slow: 620ms;
 }
 
 :root[data-theme='dark'] {
@@ -142,6 +184,21 @@
   --destructive-border: oklch(0.4 0.1 25);
 
   --shadow-color: 225deg 60% 4%;
+
+  --elevated: oklch(0.245 0.018 258);
+
+  --brand-gradient: linear-gradient(
+    135deg,
+    oklch(0.26 0.075 262) 0%,
+    oklch(0.3 0.085 252) 45%,
+    oklch(0.34 0.07 228) 100%
+  );
+  --brand-wash: linear-gradient(
+    135deg,
+    oklch(0.225 0.028 256) 0%,
+    oklch(0.205 0.02 246) 55%,
+    oklch(0.185 0.014 254) 100%
+  );
 }
 
 @theme inline {
@@ -160,6 +217,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-subtle: var(--primary-subtle);
   --color-primary-subtle-foreground: var(--primary-subtle-foreground);
+  --color-elevated: var(--elevated);
+  --color-brand-ink: var(--brand-ink);
 
   --color-pending: var(--pending);
   --color-pending-surface: var(--pending-surface);
@@ -188,6 +247,83 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /*
+   * The motion vocabulary, as Tailwind utilities.
+   *
+   * Five names, and nothing on the page moves in a way that is not one of
+   * them: `rise` for anything arriving, `fade` for anything appearing in
+   * place, `pop` for anything the user summoned, `grow` for a bar measured
+   * from a baseline, `sweep` for one measured from an axis. `both` fill mode
+   * matters — without it a staggered item is painted at full opacity for the
+   * length of its delay and then jumps back to the start.
+   */
+  --animate-rise: rise var(--duration-slow) var(--ease-out-expo) both;
+  --animate-fade: fade var(--duration) ease-out both;
+  --animate-pop: pop var(--duration) var(--ease-spring) both;
+  --animate-grow: grow var(--duration-slow) var(--ease-out-expo) both;
+  --animate-sweep: sweep var(--duration-slow) var(--ease-out-expo) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes grow {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  @keyframes sweep {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  /* A highlight travelling across a placeholder. Unlike a pulse it has a
+     direction, so a column of skeletons reads as one surface loading rather
+     than as eight blocks blinking out of step. */
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
 
   /* Tinted rather than neutral: a grey shadow over a cool ground reads as
      dirt, and the same three steps then work in both themes. */
@@ -273,5 +409,105 @@
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /*
+   * Staggered entrance.
+   *
+   * `--i` is the item's index, set inline by whatever is mapping the list, and
+   * the delay is derived from it. Capping the stagger at ten steps matters: a
+   * page of twenty-five services would otherwise spend a second and a half
+   * dealing itself out, and a list the reader is waiting for should never make
+   * them wait.
+   */
+  .stagger {
+    animation-delay: calc(min(var(--i, 0), 10) * 45ms);
+  }
+
+  /*
+   * A surface that lifts under the pointer.
+   *
+   * Half a pixel of travel and a slightly warmer shadow — enough to say "this
+   * responds", far short of the card jumping. `will-change` is deliberately
+   * absent: promoting forty rows to their own layer costs more than the
+   * animation saves.
+   */
+  .lift {
+    transition:
+      transform var(--duration) var(--ease-out-expo),
+      box-shadow var(--duration) var(--ease-out-expo),
+      background-color var(--duration-fast) ease-out,
+      border-color var(--duration-fast) ease-out;
+  }
+
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* The brand as a filled panel, and as a wash over the page ground. */
+  .bg-brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+
+  .bg-brand-wash {
+    background-image: var(--brand-wash);
+  }
+
+  /*
+   * A soft radial highlight, for the corner of a hero band.
+   *
+   * Purely decorative and `pointer-events: none`, so it can sit over content
+   * without ever intercepting a click.
+   */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--card), transparent);
+    opacity: 0.55;
+    animation: shimmer 1.6s var(--ease-out-expo) infinite;
+  }
+
+  .glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 120% at 85% -10%, oklch(0.75 0.14 220 / 0.28), transparent 60%),
+      radial-gradient(50% 100% at 5% 110%, oklch(0.6 0.16 285 / 0.22), transparent 60%);
+  }
+}
+
+/*
+ * Nothing above is load-bearing.
+ *
+ * Every animation here is decoration on content that is already correct and
+ * already in the DOM, so switching them off costs a reader nothing — which is
+ * exactly the test a `prefers-reduced-motion` rule has to pass. Transitions are
+ * collapsed to 1ms rather than removed so `transitionend` handlers still fire.
+ *
+ * Not inside `@layer utilities`: this has to outrank every utility it cancels,
+ * and an unlayered rule beats a layered one whatever its specificity.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .lift:hover {
+    transform: none;
   }
 }

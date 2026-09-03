@@ -13,12 +13,17 @@ import { cn } from '@/lib/utils/cn';
  */
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ' +
-    'transition-colors disabled:pointer-events-none disabled:opacity-50 ' +
+    // A press is confirmed by the button giving way under the finger. Two
+    // percent is barely visible and entirely felt, which is the right ratio
+    // for a control a driver taps with gloves on.
+    'transition-[color,background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.98] ' +
+    'disabled:pointer-events-none disabled:opacity-50 ' +
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-primary-foreground hover:bg-primary-hover shadow-xs',
+        primary:
+          'bg-primary text-primary-foreground hover:bg-primary-hover shadow-xs hover:shadow-sm',
         secondary: 'border border-input bg-card hover:bg-muted',
         ghost: 'hover:bg-muted',
         destructive: 'bg-destructive text-white hover:opacity-90 shadow-xs',

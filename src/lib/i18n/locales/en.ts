@@ -203,6 +203,7 @@ export const en: Dictionary = {
           ? '1 driver has it as their default'
           : `${count} drivers have it as their default`,
       dangerZone: 'Delete record',
+      servicesShort: (count) => `${count} serv.`,
       appName: 'BRIBAR Logistics',
       back: 'Back',
       edit: 'Edit',
@@ -242,6 +243,9 @@ export const en: Dictionary = {
       internalAccess: 'Internal access',
       signIn: 'Sign in',
       checking: 'Checking…',
+      panelHeadline: 'Route sheets, without the paper.',
+      panelSubhead:
+        'Record every service from the cab and let the office approve it the same day.',
       forgotPassword: 'If you have forgotten your password, contact an administrator.',
     },
 
@@ -319,6 +323,7 @@ export const en: Dictionary = {
       allTime: 'All time',
       lastDays: (days: number) => `Last ${days} days`,
       activityTitle: 'Daily activity',
+      activityChartLabel: (days) => `Daily activity: ${days} days`,
       topRoutesTitle: 'Busiest routes',
       noRouteActivity: 'No activity in this period',
       servicesTitle: 'Services',

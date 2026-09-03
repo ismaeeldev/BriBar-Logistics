@@ -6,7 +6,7 @@
  * Add Service action is the first thing on screen and the largest thing on it,
  * with the two lists below rather than competing for the top.
  */
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Gauge, Plus, Route as RouteIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { ActivityChart } from '@/components/charts/activity-chart';
@@ -18,10 +18,10 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
-  PageHeader,
+  PageHero,
 } from '@/components/ui/primitives';
 import { requireDriver } from '@/lib/auth/session';
-import { FIELD_LABELS, NUMBER_LOCALE, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { serviceRepository } from '@/modules/services/repository/service.repository';
 import { ACTIVITY_DAYS, getDashboardData } from '@/modules/services/service/dashboard';
@@ -43,48 +43,57 @@ export default async function DriverDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={UI.driver.greeting(actor.name.split(' ')[0] ?? actor.name)}
-        description={UI.driver.panelSubtitle}
-      />
-
       {/*
         SRS 15.1 and 9.1: the primary action, "visually prominent and
-        touch-friendly on mobile". Full width and 52px tall on a phone, so it
-        is unmissable and hard to mis-tap.
+        touch-friendly on mobile". It sits inside the band rather than under
+        it — white on the brand gradient is the highest-contrast thing on the
+        screen, which is what "unmissable" means here. Full width and 56px tall
+        on a phone, so it is also hard to mis-tap.
       */}
-      <Link
-        href="/services/new"
-        className="bg-primary text-primary-foreground hover:bg-primary-hover flex h-14 w-full items-center justify-center gap-2.5 rounded-xl text-base font-semibold shadow-xs transition-colors sm:h-13 sm:w-auto sm:px-8"
-      >
-        <Plus aria-hidden className="size-5" />
-        {UI.driver.addService}
-      </Link>
+      <PageHero
+        title={UI.driver.greeting(actor.name.split(' ')[0] ?? actor.name)}
+        description={UI.driver.panelSubtitle}
+        action={
+          <Link
+            href="/services/new"
+            className="text-brand-ink flex h-14 w-full items-center justify-center gap-2.5 rounded-xl bg-white text-base font-semibold shadow-lg transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] sm:h-13 sm:w-auto sm:px-8"
+          >
+            <Plus aria-hidden className="size-5" />
+            {UI.driver.addService}
+          </Link>
+        }
+      />
 
       {/* The driver's own fortnight, so the panel says something about their
           work rather than only listing it. */}
       <div className="grid grid-cols-3 gap-3">
         <StatTile
+          index={0}
+          icon={ClipboardList}
           label={UI.admin.servicesTitle}
           value={data.window.services}
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
         <StatTile
+          index={1}
+          icon={RouteIcon}
           label={FIELD_LABELS.serviceKm}
-          value={data.window.serviceKm.toLocaleString(NUMBER_LOCALE)}
+          value={data.window.serviceKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
         <StatTile
+          index={2}
+          icon={Gauge}
           label={FIELD_LABELS.actualKm}
-          value={data.window.actualKm.toLocaleString(NUMBER_LOCALE)}
+          value={data.window.actualKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
       </div>
 
       {data.window.services > 0 ? (
-        <Card>
+        <Card className="lift">
           <CardHeader>
             <CardTitle>{UI.admin.activityTitle}</CardTitle>
             <p className="text-muted-foreground text-xs">{UI.admin.lastDays(ACTIVITY_DAYS)}</p>

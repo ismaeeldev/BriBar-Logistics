@@ -206,6 +206,7 @@ export const es: Dictionary = {
           ? '1 conductor lo tiene por defecto'
           : `${count} conductores lo tienen por defecto`,
       dangerZone: 'Eliminar registro',
+      servicesShort: (count) => `${count} serv.`,
       appName: 'BRIBAR Logistics',
       back: 'Volver',
       edit: 'Editar',
@@ -245,6 +246,9 @@ export const es: Dictionary = {
       internalAccess: 'Acceso interno',
       signIn: 'Iniciar sesión',
       checking: 'Comprobando…',
+      panelHeadline: 'Las hojas de ruta, sin papel.',
+      panelSubhead:
+        'Registre cada servicio desde el móvil y deje que la oficina lo apruebe el mismo día.',
       forgotPassword: 'Si ha olvidado su contraseña, contacte con un administrador.',
     },
 
@@ -323,6 +327,7 @@ export const es: Dictionary = {
       allTime: 'Histórico',
       lastDays: (days: number) => `Últimos ${days} días`,
       activityTitle: 'Actividad diaria',
+      activityChartLabel: (days) => `Actividad diaria: ${days} días`,
       topRoutesTitle: 'Rutas más activas',
       noRouteActivity: 'Sin actividad en este periodo',
       servicesTitle: 'Servicios',

@@ -11,7 +11,12 @@ import type { ServiceStatus } from '@/modules/services/domain/service-status';
 /* -------------------------------------------------------------------------- */
 
 export function Card({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('bg-card rounded-xl border shadow-xs', className)} {...props} />;
+  return (
+    <div
+      className={cn('bg-card animate-rise rounded-xl border shadow-xs', className)}
+      {...props}
+    />
+  );
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -108,17 +113,20 @@ export function ServiceStatusBadge({
 /* Feedback                                                                   */
 /* -------------------------------------------------------------------------- */
 
-const alertVariants = cva('flex items-start gap-2.5 rounded-lg border p-3 text-sm', {
-  variants: {
-    tone: {
-      info: 'bg-muted border-border text-foreground',
-      warning: 'bg-pending-surface border-pending-border text-pending',
-      success: 'bg-approved-surface border-approved-border text-approved',
-      error: 'bg-destructive-surface border-destructive-border text-destructive',
+const alertVariants = cva(
+  'flex items-start gap-2.5 rounded-lg border p-3 text-sm animate-rise',
+  {
+    variants: {
+      tone: {
+        info: 'bg-muted border-border text-foreground',
+        warning: 'bg-pending-surface border-pending-border text-pending',
+        success: 'bg-approved-surface border-approved-border text-approved',
+        error: 'bg-destructive-surface border-destructive-border text-destructive',
+      },
     },
+    defaultVariants: { tone: 'info' },
   },
-  defaultVariants: { tone: 'info' },
-});
+);
 
 const ALERT_ICONS = {
   info: Info,
@@ -173,7 +181,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
       {Icon ? (
-        <div className="bg-muted text-muted-foreground flex size-11 items-center justify-center rounded-full">
+        <div className="bg-muted text-muted-foreground animate-pop flex size-11 items-center justify-center rounded-full">
           <Icon className="size-5" />
         </div>
       ) : null}
@@ -189,7 +197,7 @@ export function EmptyState({
 }
 
 export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('bg-muted animate-pulse rounded-md', className)} {...props} />;
+  return <div className={cn('bg-muted shimmer rounded-md', className)} {...props} />;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -213,6 +221,61 @@ export function PageHeader({
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
+  );
+}
+
+/**
+ * The band a dashboard opens with.
+ *
+ * Both dashboards previously began with a heading in body ink on the page
+ * ground — accurate, and completely forgettable. This gives each one a first
+ * screen: the brand gradient, the greeting or panel name at display size, and
+ * the primary action sitting in it rather than beneath it.
+ *
+ * It is reserved for the two dashboards. Every other screen keeps `PageHeader`,
+ * because a band on all fifteen of them would stop meaning "you have arrived
+ * somewhere" and start being wallpaper.
+ *
+ * The decorative highlights are `pointer-events: none` (see `.glow`), so a
+ * button inside the band is never blocked by them.
+ */
+export function PageHero({
+  eyebrow,
+  title,
+  description,
+  action,
+  className,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'glow bg-brand-gradient animate-rise relative overflow-hidden rounded-2xl px-5 py-6 text-white shadow-sm sm:px-7 sm:py-8',
+        className,
+      )}
+    >
+      <div className="relative z-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 space-y-1.5">
+          {eyebrow ? (
+            <p className="text-xs font-medium tracking-wider text-white/70 uppercase">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+            {title}
+          </h1>
+          {description ? (
+            <p className="max-w-prose text-sm text-white/80">{description}</p>
+          ) : null}
+        </div>
+        {action ? <div className="w-full shrink-0 sm:w-auto">{action}</div> : null}
+      </div>
+    </section>
   );
 }
 
