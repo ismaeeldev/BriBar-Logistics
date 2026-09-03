@@ -82,6 +82,26 @@ export function formatBusinessDateValue(businessDate: Date): string {
   return formatBusinessDate(toIsoDate(businessDate));
 }
 
+/**
+ * How a business date relates to today: `'today'`, `'yesterday'`, or nothing.
+ *
+ * String arithmetic against a `todayIso` the caller supplies, rather than
+ * reading the clock here. A list groups dozens of rows against one "today", and
+ * a function that fetched the current time per row could straddle midnight and
+ * label two adjacent rows inconsistently — quite apart from being untestable.
+ */
+export function relativeBusinessDate(
+  isoDate: string,
+  todayIso: string,
+): 'today' | 'yesterday' | null {
+  if (isoDate === todayIso) return 'today';
+
+  const yesterday = new Date(`${todayIso}T00:00:00.000Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  return isoDate === toIsoDate(yesterday) ? 'yesterday' : null;
+}
+
 /** Renders an audit instant in the configured business timezone. */
 export function formatBusinessDateTime(instant: Date, timeZone: string): string {
   return formatInTimeZone(instant, timeZone, 'dd/MM/yyyy HH:mm');

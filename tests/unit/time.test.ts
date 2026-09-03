@@ -15,6 +15,7 @@ import {
   formatBusinessDateTime,
   formatBusinessDateValue,
   parseIsoDate,
+  relativeBusinessDate,
   toIsoDate,
 } from '@/lib/time/business-date';
 import {
@@ -159,5 +160,30 @@ describe('service code (SRS 19.1, client decision #2)', () => {
     for (const value of ['007', '', '-1', '1.5', 'SRV-42', '42a', ' 42']) {
       expect(isServiceCode(value)).toBe(false);
     }
+  });
+});
+
+/**
+ * The list groups services under "Today" and "Yesterday", and both are one
+ * off-by-one away from filing a service under the wrong heading. Month and
+ * year boundaries are where that goes wrong, so they are the cases here.
+ */
+describe('relativeBusinessDate', () => {
+  it('names today and yesterday, and nothing else', () => {
+    expect(relativeBusinessDate('2026-09-03', '2026-09-03')).toBe('today');
+    expect(relativeBusinessDate('2026-09-02', '2026-09-03')).toBe('yesterday');
+    expect(relativeBusinessDate('2026-09-01', '2026-09-03')).toBeNull();
+    // A future date is not "yesterday" by accident of subtraction.
+    expect(relativeBusinessDate('2026-09-04', '2026-09-03')).toBeNull();
+  });
+
+  it('steps back across a month boundary', () => {
+    expect(relativeBusinessDate('2026-08-31', '2026-09-01')).toBe('yesterday');
+    expect(relativeBusinessDate('2026-02-28', '2026-03-01')).toBe('yesterday');
+  });
+
+  it('steps back across a leap day and a new year', () => {
+    expect(relativeBusinessDate('2028-02-29', '2028-03-01')).toBe('yesterday');
+    expect(relativeBusinessDate('2025-12-31', '2026-01-01')).toBe('yesterday');
   });
 });

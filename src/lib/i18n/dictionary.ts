@@ -158,6 +158,9 @@ export interface Dictionary {
       dangerZone: string;
       /** The abbreviated count used inside charts, where room is scarce. */
       servicesShort: (count: number) => string;
+      today: string;
+      yesterday: string;
+      statusKey: string;
       back: string;
       edit: string;
       save: string;
@@ -274,6 +277,7 @@ export interface Dictionary {
       lastDays: (days: number) => string;
       activityTitle: string;
       activityChartLabel: (days: number) => string;
+      peakDay: (label: string, services: number) => string;
       topRoutesTitle: string;
       noRouteActivity: string;
       servicesTitle: string;

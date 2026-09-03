@@ -152,10 +152,12 @@ export function ServiceForm({
   const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
 
   return (
-    // Capped rather than fluid. The driver shell is already this narrow, but an
-    // administrator edits the same form inside a full-width panel, and a text
-    // field stretched across a monitor is harder to fill in, not easier.
-    <form action={formAction} className="max-w-3xl space-y-4 pb-28 sm:pb-2">
+    // Capped well short of the column it sits in. A form is read one field at
+    // a time, so its useful width is set by the longest single field rather
+    // than by the space available — a text input stretched across a monitor is
+    // harder to fill in, not easier. The driver shell is already narrow; this
+    // is what keeps the same form from spanning the admin panel.
+    <form action={formAction} className="max-w-2xl space-y-4 pb-28 sm:pb-2">
       {/* A form-level failure that belongs to no single field: a conflict, a
           route that stopped being assignable, an unexpected error. */}
       {state.status === 'error' && state.message ? (

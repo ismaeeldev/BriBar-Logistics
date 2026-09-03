@@ -39,7 +39,10 @@ export function EntityForm({
   const values = state.status === 'error' ? state.values : undefined;
 
   return (
-    <form action={formAction} className="space-y-4">
+    // Same cap as the service form, and for the same reason: three fields and
+    // a toggle stretched across a 1000px column look like a settings page for
+    // something much larger than a vehicle.
+    <form action={formAction} className="max-w-2xl space-y-4">
       {state.status === 'error' && state.message ? (
         <Alert tone="error" title={state.message}>
           {fieldErrors?.['root']?.join(' ')}
@@ -53,7 +56,7 @@ export function EntityForm({
       {footer}
 
       <div className="flex justify-end">
-        <Button type="submit" size="lg" block className="sm:w-auto" disabled={isPending}>
+        <Button type="submit" block className="sm:w-auto sm:min-w-40" disabled={isPending}>
           {isPending ? (
             <>
               <Loader2 aria-hidden className="size-5 animate-spin" />

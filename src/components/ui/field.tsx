@@ -106,7 +106,7 @@ export function Field({
 }
 
 export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input className={cn(controlBase, 'h-11', className)} {...props} />;
+  return <input className={cn(controlBase, 'h-11 sm:h-10', className)} {...props} />;
 }
 
 /**
@@ -125,14 +125,16 @@ export function KmInput({ className, ...props }: ComponentProps<'input'>) {
       type="text"
       inputMode="numeric"
       autoComplete="off"
-      className={cn(controlBase, 'h-11 font-mono', className)}
+      className={cn(controlBase, 'h-11 font-mono sm:h-10', className)}
       {...props}
     />
   );
 }
 
 export function TimeInput({ className, ...props }: ComponentProps<'input'>) {
-  return <input type="time" className={cn(controlBase, 'h-11', className)} {...props} />;
+  return (
+    <input type="time" className={cn(controlBase, 'h-11 sm:h-10', className)} {...props} />
+  );
 }
 
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {
@@ -141,7 +143,7 @@ export function Select({ className, children, ...props }: ComponentProps<'select
       <select
         className={cn(
           controlBase,
-          'h-11 appearance-none pr-10',
+          'h-11 appearance-none pr-10 sm:h-10',
           // Safari renders a select with no explicit background as transparent
           // in dark mode, which makes the options unreadable.
           'bg-card',

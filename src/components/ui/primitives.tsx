@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils/cn';
-import { SERVICE_STATUS_LABELS } from '@/lib/i18n/messages';
+import { SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import type { ServiceStatus } from '@/modules/services/domain/service-status';
 
 /* -------------------------------------------------------------------------- */
@@ -88,24 +88,89 @@ export function Badge({
  * distinguishable for a red/green-deficient viewer and in a photocopy — colour
  * is never the only signal (SRS 23.10).
  */
-export function ServiceStatusBadge({
-  status,
-  subtle,
-}: {
-  status: ServiceStatus;
-  /** Set on rows in a list; leave unset where the badge stands alone. */
-  subtle?: boolean;
-}) {
+export function ServiceStatusBadge({ status }: { status: ServiceStatus }) {
   const isPending = status === 'PENDING_APPROVAL';
 
   return (
-    <Badge tone={isPending ? 'pending' : 'approved'} {...(subtle ? { subtle: true } : {})}>
+    <Badge tone={isPending ? 'pending' : 'approved'}>
       <span
         aria-hidden
         className={cn('size-1.5 rounded-full', isPending ? 'bg-pending' : 'bg-approved')}
       />
       {SERVICE_STATUS_LABELS[status]}
     </Badge>
+  );
+}
+
+/**
+ * The service status as a lit indicator rather than a word.
+ *
+ * Down a list of forty rows the word "Pending Approval" is the widest thing in
+ * the table and it repeats on nearly every line, which is a lot of ink spent
+ * saying the same thing. A dot says it in ten pixels, and the two states then
+ * differ by *position* in a scan as well as by colour — the eye picks out the
+ * amber run instantly.
+ *
+ * Colour is never the only signal, which SRS 23.10 requires and a dot makes
+ * easy to get wrong:
+ *
+ *   - every dot carries the status word as screen-reader text and as a `title`,
+ *     so a pointer hover and an assistive technology both get it;
+ *   - `StatusLegend` states the mapping in words above any list that uses
+ *     dots, so a reader meeting one for the first time is not guessing;
+ *   - the detail pages keep the full badge, because there the status is the
+ *     headline rather than one cell of forty.
+ *
+ * The ring is the same hue at low opacity — an indicator lamp with its glow,
+ * which reads as lit rather than as a printed circle.
+ */
+export function StatusDot({
+  status,
+  decorative,
+  className,
+}: {
+  status: ServiceStatus;
+  /** Set where a visible label already sits beside it, as in the legend. */
+  decorative?: boolean;
+  className?: string;
+}) {
+  const isPending = status === 'PENDING_APPROVAL';
+  const label = SERVICE_STATUS_LABELS[status];
+
+  return (
+    <span
+      className={cn('inline-flex shrink-0 items-center', className)}
+      {...(decorative ? {} : { title: label })}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'size-2.5 rounded-full ring-4',
+          isPending ? 'bg-pending ring-pending/15' : 'bg-approved ring-approved/15',
+        )}
+      />
+      {decorative ? null : <span className="sr-only">{label}</span>}
+    </span>
+  );
+}
+
+/** The dot-to-status mapping, stated in words wherever dots are used. */
+export function StatusLegend({ className }: { className?: string }) {
+  return (
+    <p
+      className={cn(
+        'text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs',
+        className,
+      )}
+    >
+      <span className="sr-only">{UI.common.statusKey}:</span>
+      {(['PENDING_APPROVAL', 'APPROVED'] as const).map((status) => (
+        <span key={status} className="inline-flex items-center gap-2">
+          <StatusDot status={status} decorative />
+          {SERVICE_STATUS_LABELS[status]}
+        </span>
+      ))}
+    </p>
   );
 }
 
