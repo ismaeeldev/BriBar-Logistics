@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 
+import { Journey } from '@/components/ui/journey';
 import { NUMBER_LOCALE, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
@@ -7,6 +8,8 @@ export interface RouteTotal {
   routeId: string;
   code: string;
   name: string;
+  origin: string;
+  destination: string;
   services: number;
   serviceKm: number;
 }
@@ -14,33 +17,27 @@ export interface RouteTotal {
 /**
  * Contracted kilometres by route, busiest first.
  *
- * ## The bar is the row
+ * ## The route is the subject, the distance is the measurement
  *
- * This used to be a label line with a separate track underneath it — two rows
- * of vertical space per route, and the label floating free of the quantity it
- * described. Here the fill *is* the row: each route is a single band whose
- * shaded portion is its share of the leader, with the code, the name and the
- * total sitting on top of it.
+ * Two earlier versions got this backwards. The first gave the label and the
+ * bar equal weight on separate lines; the second painted the share as a wide
+ * tinted block behind the whole row, which made a five-row list look like a
+ * stack of buttons and put more ink on the page than the data justified.
  *
- * It halves the height, and it puts the comparison and the numbers in the same
- * place, so reading the ranking and reading the values is one movement of the
- * eye rather than two.
+ * Here the route is a ranked heading — position, code, then the journey it
+ * runs — and the quantity is a thin rule under it with the figure at the end.
+ * That is the order the question is asked in: *which* route is busiest, then
+ * by how much.
  *
- * Horizontal, because the labels are route codes and names: a vertical column
- * chart would either rotate them or truncate them, and both are worse than
- * turning the chart on its side. Sequential and one hue, because the job is
- * comparing magnitude — a categorical palette would add colour without adding
- * meaning. The value is direct-labelled, so there is no axis and no legend.
- *
- * The fill is a tint, never a saturated block: the text on top has to stay
- * readable across the boundary where the fill ends, which rules out painting
- * the bar in the chart ramp and putting ink over it.
+ * Sequential and one hue: the job is comparing magnitude, not telling routes
+ * apart, so a categorical palette would add colour without adding meaning. The
+ * value is direct-labelled, so there is no axis and no legend.
  */
 export function RouteBars({ routes, className }: { routes: RouteTotal[]; className?: string }) {
   const peak = Math.max(1, ...routes.map((route) => route.serviceKm));
 
   return (
-    <ol className={cn('space-y-1.5', className)}>
+    <ol className={cn('space-y-3.5', className)}>
       {routes.map((route, index) => {
         const share = (route.serviceKm / peak) * 100;
 
@@ -48,34 +45,50 @@ export function RouteBars({ routes, className }: { routes: RouteTotal[]; classNa
           <li
             key={route.routeId}
             style={{ '--i': index } as CSSProperties}
-            className="bg-muted/60 animate-rise stagger relative flex h-11 items-center gap-3 overflow-hidden rounded-lg px-3"
+            className="animate-rise stagger flex gap-3"
           >
-            {/* The quantity. Scaled from the left rather than sized by width,
-                so it composites instead of laying the row out again. */}
-            <span
-              aria-hidden
-              className="bg-primary-subtle animate-sweep stagger absolute inset-y-0 left-0 origin-left"
-              style={{ width: `${Math.max(4, share)}%` }}
-            />
-
-            <span className="text-muted-foreground relative w-4 shrink-0 font-mono text-xs tabular-nums">
+            {/* Two digits wide and tabular, so the rules below line up
+                whether the ranking runs to 3 or to 12. */}
+            <span className="text-muted-foreground w-4 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums">
               {index + 1}
             </span>
 
-            <span className="relative min-w-0 flex-1 truncate text-sm">
-              <span className="font-mono font-medium">{route.code}</span>
-              <span className="text-muted-foreground"> · {route.name}</span>
-            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate font-mono text-sm font-semibold">
+                  {route.code}
+                </span>
+                <span className="shrink-0 text-sm whitespace-nowrap">
+                  <span className="font-mono font-medium tabular-nums">
+                    {route.serviceKm.toLocaleString(NUMBER_LOCALE)}
+                  </span>
+                  <span className="text-muted-foreground text-xs"> km</span>
+                </span>
+              </div>
 
-            <span className="relative shrink-0 text-right text-sm">
-              <span className="font-mono font-medium tabular-nums">
-                {route.serviceKm.toLocaleString(NUMBER_LOCALE)}
-              </span>
-              <span className="text-muted-foreground text-xs"> km</span>
-              <span className="text-muted-foreground ml-2 hidden text-xs sm:inline">
-                {UI.common.servicesShort(route.services)}
-              </span>
-            </span>
+              <div className="mt-0.5 flex items-baseline justify-between gap-3">
+                <Journey
+                  origin={route.origin}
+                  destination={route.destination}
+                  className="text-muted-foreground min-w-0 text-xs"
+                />
+                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                  {UI.common.servicesShort(route.services)}
+                </span>
+              </div>
+
+              <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
+                <div
+                  className="animate-sweep stagger h-full origin-left rounded-full"
+                  style={{
+                    width: `${Math.max(3, share)}%`,
+                    // Darkest for the leader, lightening down the ranking, so
+                    // the order is legible from colour as well as from length.
+                    background: `var(--chart-${Math.max(1, 5 - index)})`,
+                  }}
+                />
+              </div>
+            </div>
           </li>
         );
       })}

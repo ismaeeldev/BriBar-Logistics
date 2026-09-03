@@ -51,7 +51,10 @@ export default async function AdminServicesPage({
 
   return (
     <div className="space-y-5">
-      <PageHeader title={UI.admin.servicesTitle} description={UI.driver.serviceCount(total)} />
+      <PageHeader
+        title={UI.admin.serviceManagement}
+        description={UI.driver.serviceCount(total)}
+      />
 
       <ServiceFilters
         drivers={drivers.map((driver) => ({ id: driver.id, label: driver.name }))}

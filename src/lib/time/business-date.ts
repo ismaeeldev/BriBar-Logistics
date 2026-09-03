@@ -102,6 +102,29 @@ export function relativeBusinessDate(
   return isoDate === toIsoDate(yesterday) ? 'yesterday' : null;
 }
 
+/**
+ * A business date written out, e.g. `Wednesday, 3 September 2026`.
+ *
+ * The one place the application spells a date rather than abbreviating it: the
+ * dashboard header, where it is context for every figure below rather than a
+ * value in a column. `Intl` does the wording, so the month and weekday names
+ * follow the interface language instead of being a fourth thing to translate
+ * by hand.
+ *
+ * `timeZone: 'UTC'` is not a bug. A business date is stored as UTC midnight
+ * for the calendar day it represents (see `businessDateFor`); formatting it in
+ * any other zone would shift it to the day before.
+ */
+export function formatLongBusinessDate(businessDate: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(businessDate);
+}
+
 /** Renders an audit instant in the configured business timezone. */
 export function formatBusinessDateTime(instant: Date, timeZone: string): string {
   return formatInTimeZone(instant, timeZone, 'dd/MM/yyyy HH:mm');

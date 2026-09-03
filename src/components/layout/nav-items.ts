@@ -18,13 +18,45 @@ export interface NavItem {
  * read from these, so a new section appears in every size of the interface
  * without being added in two places.
  */
-export const ADMIN_NAV: NavItem[] = [
-  { href: '/admin', label: UI.admin.panelTitle, icon: LayoutDashboard },
-  { href: '/admin/services', label: UI.nav.services, icon: ClipboardList },
-  { href: '/admin/users', label: UI.nav.drivers, icon: Users },
-  { href: '/admin/vehicles', label: UI.nav.vehicles, icon: Truck },
-  { href: '/admin/routes', label: UI.nav.routes, icon: Route },
+export interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+/**
+ * The administrator's destinations, in two groups.
+ *
+ * A flat list of five reads as five equally likely places to go, which is not
+ * what they are: two are the daily work and three are records you change
+ * occasionally. Grouping them says that without adding a click, and it gives
+ * the sidebar a shape a reader can navigate by position rather than by reading
+ * every label.
+ *
+ * The groups are the ones the data actually falls into. There is no Reports or
+ * Settings section here, because there are no such screens — SRS 29 excludes a
+ * reporting module — and a nav item that goes nowhere is worse than a short
+ * menu.
+ */
+export const ADMIN_SECTIONS: NavSection[] = [
+  {
+    label: UI.nav.sectionOperations,
+    items: [
+      { href: '/admin', label: UI.nav.dashboard, icon: LayoutDashboard },
+      { href: '/admin/services', label: UI.nav.services, icon: ClipboardList },
+    ],
+  },
+  {
+    label: UI.nav.sectionMasterData,
+    items: [
+      { href: '/admin/users', label: UI.nav.drivers, icon: Users },
+      { href: '/admin/vehicles', label: UI.nav.vehicles, icon: Truck },
+      { href: '/admin/routes', label: UI.nav.routes, icon: Route },
+    ],
+  },
 ];
+
+/** The same destinations flat, for the mobile strip that has no room to group. */
+export const ADMIN_NAV: NavItem[] = ADMIN_SECTIONS.flatMap((section) => section.items);
 
 export const DRIVER_NAV: NavItem[] = [
   { href: '/driver', label: UI.nav.panel, icon: LayoutDashboard },

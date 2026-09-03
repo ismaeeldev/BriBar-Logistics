@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { ADMIN_NAV, isCurrent } from '@/components/layout/nav-items';
+import { ADMIN_NAV, ADMIN_SECTIONS, isCurrent } from '@/components/layout/nav-items';
 import { UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
 
@@ -73,42 +73,60 @@ export function AdminSidebar() {
       // with the mark above them; `pr-4` keeps the active pill off the rule.
       className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r py-6 pr-4 pl-3 lg:block"
     >
-      <p className="text-muted-foreground mb-2 px-3 text-[0.7rem] font-medium tracking-wider uppercase">
-        {UI.nav.adminLabel}
-      </p>
+      {/*
+        Grouped, and the groups are labelled. The selected item used to be a
+        filled brand-blue pill, which competed with the content for the eye's
+        attention every time the page loaded — on an operations screen the
+        navigation should be findable, not loud. It is now a neutral ground
+        with a brand rule down its left edge: still unambiguous, and it stops
+        the blue from being the first thing anyone sees.
+      */}
+      <div className="space-y-5">
+        {ADMIN_SECTIONS.map((section) => (
+          <div key={section.label}>
+            <p className="text-muted-foreground mb-1 px-3 text-[0.65rem] font-semibold tracking-wider uppercase">
+              {section.label}
+            </p>
 
-      <ul className="space-y-0.5">
-        {ADMIN_NAV.map(({ href, label, icon: Icon }) => {
-          const active = isCurrent(pathname, href);
+            <ul className="space-y-0.5">
+              {section.items.map(({ href, label, icon: Icon }) => {
+                const active = isCurrent(pathname, href);
 
-          return (
-            <li key={href}>
-              <Link
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200',
-                  active
-                    ? 'bg-primary-subtle text-primary-subtle-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                {/* A bar that grows down the left edge of the item the reader
-                    just arrived at. It marks the current page a second way, so
-                    the tinted fill is not carrying that alone. */}
-                {active ? (
-                  <span
-                    aria-hidden
-                    className="bg-primary animate-grow absolute top-1.5 bottom-1.5 -left-px w-0.5 origin-center rounded-full"
-                  />
-                ) : null}
-                <Icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                <span className="truncate">{label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-md py-2 pr-3 pl-3.5 text-sm transition-colors duration-200',
+                        active
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                      )}
+                    >
+                      {/* The rule, not a fill: it marks the current page a
+                          second way so the ground is not carrying it alone. */}
+                      {active ? (
+                        <span
+                          aria-hidden
+                          className="bg-primary animate-grow absolute top-1.5 bottom-1.5 left-0 w-[3px] origin-center rounded-full"
+                        />
+                      ) : null}
+                      <Icon
+                        className={cn(
+                          'size-4 shrink-0 transition-colors',
+                          active && 'text-primary',
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }

@@ -160,7 +160,11 @@ export interface Dictionary {
       servicesShort: (count: number) => string;
       today: string;
       yesterday: string;
-      statusKey: string;
+      delta: (value: number) => string;
+      noChange: string;
+      vsYesterday: string;
+      vsPreviousWeek: string;
+      viewAll: string;
       back: string;
       edit: string;
       save: string;
@@ -342,6 +346,27 @@ export interface Dictionary {
       assignedColumn: string;
       defaultColumn: string;
       routeColumn: string;
+      distanceColumn: string;
+
+      /** The exceptions panel (see `AttentionPanel`). */
+      attentionRequired: string;
+      operationsOverview: string;
+      serviceManagement: string;
+      exceptionPendingTitle: (count: number) => string;
+      exceptionPendingDetail: string;
+      exceptionStaleTitle: (days: number) => string;
+      exceptionStaleDetail: (date: string) => string;
+      exceptionDistanceTitle: (serviceCode: string) => string;
+      exceptionDistanceDetail: (
+        routeCode: string,
+        actualKm: number,
+        baselineKm: number,
+      ) => string;
+      servicesToday: string;
+      approvedToday: string;
+      distanceThisWeek: string;
+      recentServices: string;
+      ofTodaysServices: (total: number) => string;
       noActiveRoutes: string;
       noDefaultWarning: string;
       selfEditNotice: string;
@@ -358,6 +383,9 @@ export interface Dictionary {
       adminLabel: string;
       driverLabel: string;
       panel: string;
+      dashboard: string;
+      sectionOperations: string;
+      sectionMasterData: string;
       services: string;
       drivers: string;
       vehicles: string;

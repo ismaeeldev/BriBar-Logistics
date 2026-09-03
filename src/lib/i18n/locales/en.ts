@@ -206,7 +206,11 @@ export const en: Dictionary = {
       servicesShort: (count) => `${count} serv.`,
       today: 'Today',
       yesterday: 'Yesterday',
-      statusKey: 'Status key',
+      delta: (value) => `${value > 0 ? '+' : '−'}${Math.abs(value)}`,
+      noChange: 'No change',
+      vsYesterday: 'vs yesterday',
+      vsPreviousWeek: 'vs previous week',
+      viewAll: 'View all',
       appName: 'BRIBAR Logistics',
       back: 'Back',
       edit: 'Edit',
@@ -397,6 +401,29 @@ export const en: Dictionary = {
       assignmentsHint: 'The driver can only choose from the routes ticked here.',
       assignedColumn: 'Assigned',
       defaultColumn: 'Default',
+      distanceColumn: 'Actual / service',
+
+      attentionRequired: 'Attention required',
+      operationsOverview: 'Operations overview',
+      serviceManagement: 'Service management',
+      exceptionPendingTitle: (count) =>
+        count === 1
+          ? '1 service waiting for approval'
+          : `${count} services waiting for approval`,
+      exceptionPendingDetail: 'Review before the next departure.',
+      exceptionStaleTitle: (days) =>
+        days === 1
+          ? 'A service has been waiting 1 day'
+          : `A service has been waiting ${days} days`,
+      exceptionStaleDetail: (date) => `The oldest is dated ${date}.`,
+      exceptionDistanceTitle: (serviceCode) => `Service #${serviceCode} ran further than usual`,
+      exceptionDistanceDetail: (routeCode, actualKm, baselineKm) =>
+        `${routeCode} · ${actualKm} km actual against a ${baselineKm} km average.`,
+      servicesToday: 'Services today',
+      approvedToday: 'Approved today',
+      distanceThisWeek: 'Service km',
+      recentServices: 'Recent services',
+      ofTodaysServices: (total) => `of ${total} today`,
       routeColumn: 'Route',
       noActiveRoutes: 'There are no active routes. Create one before assigning it to a driver.',
       noDefaultWarning:
@@ -417,6 +444,9 @@ export const en: Dictionary = {
       adminLabel: 'Administration',
       driverLabel: 'Main',
       panel: 'Panel',
+      dashboard: 'Dashboard',
+      sectionOperations: 'Operations',
+      sectionMasterData: 'Master data',
       services: 'Services',
       drivers: 'Drivers',
       vehicles: 'Vehicles',

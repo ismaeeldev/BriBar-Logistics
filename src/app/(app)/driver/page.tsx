@@ -6,11 +6,11 @@
  * Add Service action is the first thing on screen and the largest thing on it,
  * with the two lists below rather than competing for the top.
  */
-import { ClipboardList, Gauge, Plus, Route as RouteIcon } from 'lucide-react';
+import { ClipboardList, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 import { ActivityChart } from '@/components/charts/activity-chart';
-import { StatTile } from '@/components/charts/stat-tile';
+import { MetricBlock } from '@/components/charts/metric-block';
 import { ServiceCard } from '@/components/services/service-card';
 import {
   Card,
@@ -67,24 +67,21 @@ export default async function DriverDashboard() {
       {/* The driver's own fortnight, so the panel says something about their
           work rather than only listing it. */}
       <div className="grid grid-cols-3 gap-3">
-        <StatTile
+        <MetricBlock
           index={0}
-          icon={ClipboardList}
           label={UI.admin.servicesTitle}
           value={data.window.services}
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
-        <StatTile
+        <MetricBlock
           index={1}
-          icon={RouteIcon}
           label={FIELD_LABELS.serviceKm}
           value={data.window.serviceKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
         />
-        <StatTile
+        <MetricBlock
           index={2}
-          icon={Gauge}
           label={FIELD_LABELS.actualKm}
           value={data.window.actualKm}
           unit="km"

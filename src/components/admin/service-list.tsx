@@ -1,8 +1,8 @@
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-import { StatusDot, StatusLegend } from '@/components/ui/primitives';
-import { CardField } from '@/components/ui/responsive-list';
+import { Journey } from '@/components/ui/journey';
+import { StatusPill } from '@/components/ui/primitives';
 import { Table, TableWrap, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { env } from '@/lib/env';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
@@ -18,22 +18,30 @@ import type { ServiceListItem } from '@/modules/services/service/service.present
 /**
  * The administrator's service list (SRS 16.3).
  *
+ * ## Not every cell is equally important
+ *
+ * An earlier version set every column in the same weight, which is why it read
+ * as a wall rather than as a queue. The scan an administrator actually
+ * performs is: which contract, run by whom, how far, and does it need me. So
+ * the route code is the heaviest thing in the row with the journey under it in
+ * muted type, the two mileages share one column as `actual / service`, and the
+ * plate and the driver sit back in ordinary weight.
+ *
+ * `MAD-BCN-01 · Madrid - Barcelona diario` was also one long string. It is now
+ * two lines — the code, then `Madrid → Barcelona` from the service's own
+ * origin and destination snapshot, which is the journey that was actually run
+ * rather than whatever the route master says today (SRS 14.5).
+ *
  * ## Dates are a heading, not a column
  *
  * Services arrive in date order and several land on the same day, so a Date
- * column repeated the same value down four or five consecutive rows — the
- * widest column in the table spent saying "still the second of September". The
- * date is now a heading over the run of services that share it, the way a
- * message list separates one day from the next, and the two most recent days
- * are named rather than numbered.
- *
- * That buys back a column, which is what lets the plate stay visible from `lg`
- * instead of only at `xl`.
+ * column repeated the same value down four consecutive rows. The date is now a
+ * heading over the run of services that share it, the way a message list
+ * separates one day from the next, and the two most recent days are named.
  *
  * ## Two shapes, chosen by CSS
  *
- * On a desktop this is a table: aligned columns an administrator scans down
- * while working through a queue. On a phone each service is a card, because a
+ * On a desktop this is a table. On a phone each service is a card, because a
  * table this wide can only scroll sideways — and the approval queue is exactly
  * the screen someone checks from a phone. Both are in the markup, so nothing
  * flashes on load and no JavaScript is involved in the choice.
@@ -56,8 +64,6 @@ export function AdminServiceList({
 
   return (
     <div className="space-y-3">
-      <StatusLegend className="px-1" />
-
       {/* Mobile: a heading, then that day's cards. */}
       <div className="space-y-4 md:hidden">
         {groups.map((group) => (
@@ -84,12 +90,11 @@ export function AdminServiceList({
         <Table>
           <Thead>
             <tr>
-              <Th>{FIELD_LABELS.serviceCode}</Th>
-              <Th>{FIELD_LABELS.driver}</Th>
+              <Th className="w-16">{FIELD_LABELS.serviceCode}</Th>
               <Th>{UI.admin.routeColumn}</Th>
+              <Th>{FIELD_LABELS.driver}</Th>
               <Th className="hidden lg:table-cell">{FIELD_LABELS.vehicle}</Th>
-              <Th className="text-right">{FIELD_LABELS.actualKm}</Th>
-              <Th className="text-right">{FIELD_LABELS.serviceKm}</Th>
+              <Th className="text-right">{UI.admin.distanceColumn}</Th>
               <Th className="w-px" />
             </tr>
           </Thead>
@@ -102,7 +107,7 @@ export function AdminServiceList({
               <tr className="bg-muted/50">
                 <th
                   scope="colgroup"
-                  colSpan={7}
+                  colSpan={6}
                   className="text-muted-foreground border-y px-3 py-1.5 text-left text-xs font-medium"
                 >
                   <GroupHeading
@@ -115,25 +120,44 @@ export function AdminServiceList({
 
               {group.items.map((service) => (
                 <Tr key={service.id}>
-                  <Td className="text-muted-foreground font-mono whitespace-nowrap">
+                  <Td className="text-muted-foreground align-top font-mono whitespace-nowrap">
                     #{service.serviceCode}
                   </Td>
-                  <Td className="whitespace-nowrap">{service.driver.name}</Td>
-                  <Td className="max-w-56 truncate">
-                    <span className="font-medium">{service.route.code}</span>
-                    <span className="text-muted-foreground"> · {service.route.name}</span>
+
+                  <Td className="max-w-64 align-top">
+                    <span className="block truncate font-mono text-sm font-semibold">
+                      {service.route.code}
+                    </span>
+                    <Journey
+                      origin={service.origin}
+                      destination={service.destination}
+                      className="text-muted-foreground mt-0.5 text-xs"
+                    />
                   </Td>
+
+                  <Td className="align-top whitespace-nowrap">{service.driver.name}</Td>
+
                   {/* The plate is the first thing to go when the window
                       narrows: it is on the detail page, and the route is what
                       identifies the work. */}
-                  <Td className="hidden font-mono whitespace-nowrap lg:table-cell">
+                  <Td className="text-muted-foreground hidden align-top font-mono whitespace-nowrap lg:table-cell">
                     {service.vehicle.registrationPlate}
                   </Td>
-                  <Td className="text-right font-mono">{service.actualKm}</Td>
-                  <Td className="text-right font-mono">{service.serviceKm}</Td>
-                  <Td>
+
+                  <Td className="text-right align-top whitespace-nowrap">
+                    <span className="font-mono text-sm font-medium tabular-nums">
+                      {service.actualKm}
+                    </span>
+                    <span className="text-muted-foreground font-mono text-sm"> / </span>
+                    <span className="font-mono text-sm font-medium tabular-nums">
+                      {service.serviceKm}
+                    </span>
+                    <span className="text-muted-foreground text-xs"> km</span>
+                  </Td>
+
+                  <Td className="align-top">
                     <div className="flex items-center justify-end gap-2.5">
-                      <StatusDot status={service.status} />
+                      <StatusPill status={service.status} />
                       <Link
                         href={`/admin/services/${service.id}`}
                         aria-label={UI.admin.review}
@@ -196,31 +220,40 @@ function ServiceCardRow({ service }: { service: ServiceListItem }) {
   return (
     <Link
       href={`/admin/services/${service.id}`}
-      className="hover:bg-muted/50 block px-4 py-3.5 transition-colors"
+      className="hover:bg-muted/50 block px-4 py-3 transition-colors"
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-sm">
-          <span className="font-medium">{service.route.code}</span>
-          <span className="text-muted-foreground"> · {service.route.name}</span>
-        </p>
-        <div className="flex shrink-0 items-center gap-2">
-          <StatusDot status={service.status} />
-          <ChevronRight aria-hidden className="text-muted-foreground size-4" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-baseline gap-2">
+            <span className="font-mono text-sm font-semibold">{service.route.code}</span>
+            <span className="text-muted-foreground font-mono text-xs">
+              #{service.serviceCode}
+            </span>
+          </p>
+          <Journey
+            origin={service.origin}
+            destination={service.destination}
+            className="text-muted-foreground mt-0.5 text-xs"
+          />
         </div>
+        <StatusPill status={service.status} />
       </div>
 
-      <dl className="mt-2 grid grid-cols-4 gap-3">
-        <CardField label={FIELD_LABELS.serviceCode} mono>
-          #{service.serviceCode}
-        </CardField>
-        <CardField label={FIELD_LABELS.driver}>{service.driver.name}</CardField>
-        <CardField label={FIELD_LABELS.actualKm} mono>
-          {service.actualKm}
-        </CardField>
-        <CardField label={FIELD_LABELS.serviceKm} mono>
-          {service.serviceKm}
-        </CardField>
-      </dl>
+      <p className="text-muted-foreground mt-2 flex items-center gap-x-3 text-xs">
+        <span>{service.driver.name}</span>
+        <span aria-hidden className="bg-border size-0.5 rounded-full" />
+        <span className="font-mono">{service.vehicle.registrationPlate}</span>
+        <span className="ml-auto">
+          <span className="text-foreground font-mono font-medium tabular-nums">
+            {service.actualKm}
+          </span>
+          {' / '}
+          <span className="text-foreground font-mono font-medium tabular-nums">
+            {service.serviceKm}
+          </span>
+          {' km'}
+        </span>
+      </p>
     </Link>
   );
 }

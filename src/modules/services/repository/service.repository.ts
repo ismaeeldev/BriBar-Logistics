@@ -16,6 +16,9 @@
  * where someone forgets the second step.
  */
 import type { Prisma, PrismaClient, Service, ServiceStatus } from '@prisma/client';
+// The enum's *values* are needed here as well as its type: the summary
+// queries below name statuses rather than receiving them from a caller.
+import { ServiceStatus as ServiceStatusValue } from '@prisma/client';
 
 import type { PrismaClientLike } from '@/lib/db/prisma';
 import { prisma } from '@/lib/db/prisma';
@@ -260,7 +263,15 @@ export const serviceRepository = {
     from: Date,
     client: PrismaClientLike = prisma,
   ): Promise<
-    { routeId: string; code: string; name: string; services: number; serviceKm: number }[]
+    {
+      routeId: string;
+      code: string;
+      name: string;
+      origin: string;
+      destination: string;
+      services: number;
+      serviceKm: number;
+    }[]
   > {
     const grouped = await client.service.groupBy({
       by: ['routeId'],
@@ -275,7 +286,10 @@ export const serviceRepository = {
 
     const routes = await client.route.findMany({
       where: { id: { in: grouped.map((row) => row.routeId) } },
-      select: { id: true, code: true, name: true },
+      // Origin and destination so the ranking can name the journey rather than
+      // only the contract. The route's current values are right here: this is
+      // a summary of routes, not a record of what a past service ran under.
+      select: { id: true, code: true, name: true, origin: true, destination: true },
     });
     const byId = new Map(routes.map((route) => [route.id, route]));
 
@@ -287,6 +301,8 @@ export const serviceRepository = {
           routeId: row.routeId,
           code: route.code,
           name: route.name,
+          origin: route.origin,
+          destination: route.destination,
           services: row._count._all,
           serviceKm: row._sum.serviceKm ?? 0,
         },
@@ -311,6 +327,124 @@ export const serviceRepository = {
       actualKm: result._sum.actualKm ?? 0,
       serviceKm: result._sum.serviceKm ?? 0,
     };
+  },
+
+  /**
+   * Totals over a half-open business-date interval.
+   *
+   * Half-open (`gte` / `lt`) so "this week" and "last week" can be adjacent
+   * without either double-counting the boundary day or dropping it. `totals`
+   * is the open-ended case and stays as it is, because the dashboard windows
+   * that use it genuinely have no end.
+   */
+  async totalsBetween(
+    visibleTo: ServiceActor,
+    from: Date,
+    to: Date,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ services: number; actualKm: number; serviceKm: number }> {
+    const result = await client.service.aggregate({
+      where: { ...buildWhere({}, visibleTo), serviceDate: { gte: from, lt: to } },
+      _count: { _all: true },
+      _sum: { actualKm: true, serviceKm: true },
+    });
+
+    return {
+      services: result._count._all,
+      actualKm: result._sum.actualKm ?? 0,
+      serviceKm: result._sum.serviceKm ?? 0,
+    };
+  },
+
+  /**
+   * How one business day splits by status.
+   *
+   * One grouped query rather than three counts: the dashboard asks this for
+   * today on every load, and the three numbers have to agree with each other —
+   * separate queries could be answered either side of an approval.
+   */
+  async countsByStatusOnDate(
+    visibleTo: ServiceActor,
+    date: Date,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ total: number; pending: number; approved: number }> {
+    const next = new Date(date);
+    next.setUTCDate(next.getUTCDate() + 1);
+
+    const grouped = await client.service.groupBy({
+      by: ['status'],
+      where: { ...buildWhere({}, visibleTo), serviceDate: { gte: date, lt: next } },
+      _count: { _all: true },
+    });
+
+    const count = (status: ServiceStatus) =>
+      grouped.find((row) => row.status === status)?._count._all ?? 0;
+
+    const pending = count(ServiceStatusValue.PENDING_APPROVAL);
+    const approved = count(ServiceStatusValue.APPROVED);
+
+    return { total: pending + approved, pending, approved };
+  },
+
+  /**
+   * Pending services dated before `before`, oldest first.
+   *
+   * Dated, not created: a sheet filed for last Tuesday that is still waiting is
+   * the thing an administrator needs to see, whether it was typed in on Tuesday
+   * or this morning.
+   */
+  async listStalePending(
+    visibleTo: ServiceActor,
+    before: Date,
+    take: number,
+    client: PrismaClientLike = prisma,
+  ): Promise<ServiceWithRelations[]> {
+    return client.service.findMany({
+      where: {
+        ...buildWhere({ status: [ServiceStatusValue.PENDING_APPROVAL] }, visibleTo),
+        serviceDate: { lt: before },
+      },
+      include: SERVICE_INCLUDE,
+      orderBy: [{ serviceDate: 'asc' }, { createdAt: 'asc' }],
+      take,
+    });
+  },
+
+  /**
+   * What each of these routes normally costs to run, from its own history.
+   *
+   * There is no planned or contracted distance anywhere in the schema — a route
+   * has an origin and a destination and nothing else — so "normal" can only
+   * mean "what this route has actually taken before". Approved services only,
+   * because an unreviewed reading is exactly the thing being checked against.
+   *
+   * The sample size comes back with the average so the caller can decline to
+   * have an opinion: one previous service is not a baseline, and flagging a
+   * route the second time it ever runs would be noise.
+   */
+  async routeBaselines(
+    visibleTo: ServiceActor,
+    routeIds: string[],
+    client: PrismaClientLike = prisma,
+  ): Promise<Map<string, { averageActualKm: number; sample: number }>> {
+    if (routeIds.length === 0) return new Map();
+
+    const grouped = await client.service.groupBy({
+      by: ['routeId'],
+      where: {
+        ...buildWhere({ status: [ServiceStatusValue.APPROVED] }, visibleTo),
+        routeId: { in: routeIds },
+      },
+      _avg: { actualKm: true },
+      _count: { _all: true },
+    });
+
+    return new Map(
+      grouped.map((row) => [
+        row.routeId,
+        { averageActualKm: Math.round(row._avg.actualKm ?? 0), sample: row._count._all },
+      ]),
+    );
   },
 
   /** Appends a transition to the history (SRS 19.8, 21.2). */

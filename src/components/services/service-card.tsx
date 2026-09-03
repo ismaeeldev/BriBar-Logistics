@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-import { StatusDot } from '@/components/ui/primitives';
+import { StatusPill } from '@/components/ui/primitives';
 import { CardField } from '@/components/ui/responsive-list';
 import { FIELD_LABELS } from '@/lib/i18n/messages';
 import { formatBusinessDate } from '@/lib/time/business-date';
@@ -24,9 +24,8 @@ import type { ServiceListItem } from '@/modules/services/service/service.present
  * "MAD-BCN-01 …" and push the mileage onto three lines. It sits on the header
  * row instead, so every line below it gets the full width.
  *
- * And it is a dot rather than a word, which is the same trade taken further:
- * `StatusDot` carries the status as screen-reader text and as a `title`, and
- * the list it appears in states the mapping in words. See `StatusDot`.
+ * The status is a compact pill rather than a full badge — the word still has
+ * to be readable, but it does not need to be the loudest thing on the card.
  */
 export function ServiceCard({ service }: { service: ServiceListItem }) {
   return (
@@ -45,7 +44,7 @@ export function ServiceCard({ service }: { service: ServiceListItem }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <StatusDot status={service.status} />
+          <StatusPill status={service.status} />
           <ChevronRight
             aria-hidden
             className="text-muted-foreground group-hover:text-foreground size-4 transition-colors"

@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 import { ServiceCard } from '@/components/services/service-card';
 import { Pagination } from '@/components/ui/pagination';
-import { Card, EmptyState, PageHeader, StatusLegend } from '@/components/ui/primitives';
+import { Card, EmptyState, PageHeader } from '@/components/ui/primitives';
 import { requireUser } from '@/lib/auth/session';
 import { SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
@@ -72,8 +72,6 @@ export default async function ServiceHistoryPage({
           );
         })}
       </div>
-
-      <StatusLegend className="px-1" />
 
       <Card className="overflow-hidden">
         {items.length === 0 ? (

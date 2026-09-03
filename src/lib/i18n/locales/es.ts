@@ -209,7 +209,11 @@ export const es: Dictionary = {
       servicesShort: (count) => `${count} serv.`,
       today: 'Hoy',
       yesterday: 'Ayer',
-      statusKey: 'Leyenda de estado',
+      delta: (value) => `${value > 0 ? '+' : '−'}${Math.abs(value)}`,
+      noChange: 'Sin cambios',
+      vsYesterday: 'frente a ayer',
+      vsPreviousWeek: 'frente a la semana anterior',
+      viewAll: 'Ver todo',
       appName: 'BRIBAR Logistics',
       back: 'Volver',
       edit: 'Editar',
@@ -404,6 +408,30 @@ export const es: Dictionary = {
       assignmentsHint: 'El conductor solo podrá elegir entre las rutas marcadas aquí.',
       assignedColumn: 'Asignada',
       defaultColumn: 'Predet.',
+      distanceColumn: 'Real / servicio',
+
+      attentionRequired: 'Requiere atención',
+      operationsOverview: 'Resumen de operaciones',
+      serviceManagement: 'Gestión de servicios',
+      exceptionPendingTitle: (count) =>
+        count === 1
+          ? '1 servicio pendiente de aprobación'
+          : `${count} servicios pendientes de aprobación`,
+      exceptionPendingDetail: 'Revíselos antes de la próxima salida.',
+      exceptionStaleTitle: (days) =>
+        days === 1
+          ? 'Un servicio lleva 1 día esperando'
+          : `Un servicio lleva ${days} días esperando`,
+      exceptionStaleDetail: (date) => `El más antiguo es del ${date}.`,
+      exceptionDistanceTitle: (serviceCode) =>
+        `El servicio #${serviceCode} recorrió más de lo habitual`,
+      exceptionDistanceDetail: (routeCode, actualKm, baselineKm) =>
+        `${routeCode} · ${actualKm} km reales frente a una media de ${baselineKm} km.`,
+      servicesToday: 'Servicios hoy',
+      approvedToday: 'Aprobados hoy',
+      distanceThisWeek: 'KM de servicio',
+      recentServices: 'Servicios recientes',
+      ofTodaysServices: (total) => `de ${total} hoy`,
       routeColumn: 'Ruta',
       noActiveRoutes: 'No hay rutas activas. Cree una ruta antes de asignarla a un conductor.',
       noDefaultWarning:
@@ -424,6 +452,9 @@ export const es: Dictionary = {
       adminLabel: 'Administración',
       driverLabel: 'Principal',
       panel: 'Panel',
+      dashboard: 'Resumen',
+      sectionOperations: 'Operaciones',
+      sectionMasterData: 'Datos maestros',
       services: 'Servicios',
       drivers: 'Conductores',
       vehicles: 'Vehículos',
