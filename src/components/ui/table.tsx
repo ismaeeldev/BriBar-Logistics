@@ -96,6 +96,7 @@ export function SortableTh({
       <button
         type="button"
         onClick={toggleSort}
+        aria-label={`Sort by ${sortKey}`}
         className="flex items-center gap-1.5 hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm -ml-1.5 px-1.5 py-0.5"
       >
         {children}

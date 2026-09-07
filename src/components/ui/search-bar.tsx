@@ -140,6 +140,8 @@ export function ListFilters({ showRoleFilter }: { showRoleFilter?: boolean }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
         className={cn(
           'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
           hasActiveFilters

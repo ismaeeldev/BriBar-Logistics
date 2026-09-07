@@ -52,3 +52,30 @@ export function DashboardSkeleton({ tiles = 4 }: { tiles?: number }) {
     </div>
   );
 }
+
+/** A form screen: a heading, and input fields. */
+export function FormSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+
+      <Card className="max-w-2xl space-y-4">
+        <div className="p-6 space-y-5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          ))}
+          <div className="flex items-center gap-3 pt-2">
+            <Skeleton className="h-5 w-5 rounded" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
