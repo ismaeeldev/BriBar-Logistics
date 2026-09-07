@@ -47,10 +47,10 @@ export const vehicleService = {
    */
   async listPage(
     actor: Actor,
-    filters: { isActive?: boolean | undefined },
+    filters: { isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
   ): Promise<{ items: VehicleRecord[]; total: number }> {
-    const scoped = actor.role === Role.ADMIN ? filters : { isActive: true };
+    const scoped = actor.role === Role.ADMIN ? filters : { ...filters, isActive: true };
     return vehicleRepository.listPage(scoped, pagination);
   },
 

@@ -46,7 +46,11 @@ export default async function EditVehiclePage({ params }: { params: Promise<{ id
         {UI.admin.vehiclesTitle}
       </Link>
 
-      <PageHeader title={UI.admin.editVehicle} description={vehicle.registrationPlate} />
+      <PageHeader
+        title={UI.admin.editVehicle}
+        section={UI.nav.sectionMasterData}
+        description={vehicle.registrationPlate}
+      />
 
       <VehicleForm
         action={updateVehicleAction.bind(null, id)}

@@ -243,7 +243,10 @@ export const en: Dictionary = {
       deactivated: '(deactivated)',
       inactiveMarker: '(inactive)',
       you: '(you)',
-      total: (count) => `${count} in total`,
+      total: (count: number) => `${count} in total`,
+      searchPlaceholder: 'Search…',
+      clearSearch: 'Clear search',
+      code: 'Code',
     },
 
     auth: {
@@ -333,9 +336,22 @@ export const en: Dictionary = {
       activityChartLabel: (days) => `Daily activity: ${days} days`,
       peakDay: (label, services) => `Peak ${label} · ${services} serv.`,
       topRoutesTitle: 'Busiest routes',
+      todayBreakdownTitle: "Today's status",
       noRouteActivity: 'No activity in this period',
       servicesTitle: 'Services',
       noServicesMatch: 'No service matches the filters applied.',
+
+      searchServices: 'Search by service ID, driver or route…',
+      searchUsers: 'Search by name or username…',
+      searchVehicles: 'Search by plate or name…',
+      searchRoutes: 'Search by code, name or location…',
+
+      assignedDriversColumn: 'Assigned drivers',
+      totalServicesColumn: 'Total services',
+      noReference: 'No reference',
+      driverUnit: (count) => (count === 1 ? 'driver' : 'drivers'),
+      servicesUnit: 'services',
+
       filters: 'Filters',
       clearFilters: 'Clear',
       applyFilters: 'Apply filters',
@@ -451,6 +467,19 @@ export const en: Dictionary = {
       drivers: 'Drivers',
       vehicles: 'Vehicles',
       routes: 'Routes',
+    },
+
+    notifications: {
+      title: 'Notifications',
+      empty: 'No notifications',
+      emptyHint: 'New activity will show up here.',
+      markAllRead: 'Mark all as read',
+      unreadAriaLabel: (count) => `${count} unread notifications`,
+      servicePendingTitle: (serviceCode) => `Service #${serviceCode} pending approval`,
+      servicePendingBody: (driverName, routeCode) => `${driverName} · ${routeCode}`,
+      serviceApprovedTitle: (serviceCode) => `Service #${serviceCode} approved`,
+      serviceApprovedBody: (routeCode) => routeCode,
+      justNow: 'Just now',
     },
 
     errors: {

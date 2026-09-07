@@ -6,7 +6,7 @@
  * Add Service action is the first thing on screen and the largest thing on it,
  * with the two lists below rather than competing for the top.
  */
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, Map, Route as RouteIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { ActivityChart } from '@/components/charts/activity-chart';
@@ -72,6 +72,8 @@ export default async function DriverDashboard() {
           label={UI.admin.servicesTitle}
           value={data.window.services}
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+          icon={<ClipboardList className="size-6" />}
+          tone="neutral"
         />
         <MetricBlock
           index={1}
@@ -79,6 +81,8 @@ export default async function DriverDashboard() {
           value={data.window.serviceKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+          icon={<Map className="size-6" />}
+          tone="purple"
         />
         <MetricBlock
           index={2}
@@ -86,6 +90,8 @@ export default async function DriverDashboard() {
           value={data.window.actualKm}
           unit="km"
           hint={UI.admin.lastDays(ACTIVITY_DAYS)}
+          icon={<RouteIcon className="size-6" />}
+          tone="approved"
         />
       </div>
 

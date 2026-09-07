@@ -90,7 +90,7 @@ export const userService = {
    */
   async listPage(
     actor: Actor,
-    filters: { role?: Role | undefined; isActive?: boolean | undefined },
+    filters: { role?: Role | undefined; isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
   ): Promise<{ items: UserWithRelations[]; total: number }> {
     assertAdmin(actor);
@@ -98,6 +98,7 @@ export const userService = {
       {
         ...(filters.role ? { role: filters.role as PrismaRole } : {}),
         ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+        ...(filters.q !== undefined ? { q: filters.q } : {}),
       },
       pagination,
     );

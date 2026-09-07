@@ -1,30 +1,10 @@
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
+import { MapPin, ArrowDown, Flag, CheckCircle2, ChevronDown } from 'lucide-react';
 
 /**
- * One service's four odometer readings, drawn as the journey they describe.
- *
- * The readings are not four independent numbers — they are three consecutive
- * legs of a day:
- *
- *     Start Dashboard ──→ Start Base ══→ End Base ──→ End Dashboard
- *          approach          the service         return
- *
- * The middle leg is the contracted work; the outer two are the driving it took
- * to get to it and back. A table of four numbers hides that entirely, and the
- * ratio between them is the operationally interesting fact: a service that
- * covered 60 contracted kilometres inside a 260-kilometre day is a very
- * different record from one inside a 70-kilometre day.
- *
- * ## Why emphasis rather than three colours
- *
- * This is part-to-whole, but the parts are not peers. One segment is the point
- * and two are context, so the service leg takes the brand hue and the dead legs
- * take a single de-emphasis grey. Three categorical colours would give equal
- * visual weight to the two segments nobody is paid for.
- *
- * Derived entirely from values already on the record — nothing new is stored,
- * and this is a reading of the data, not the reporting module SRS 29 excludes.
+ * A vertical timeline that clearly explains the sequence of odometer readings
+ * and the distance traveled between each point.
  */
 export function JourneyBar({
   startDashboardKm,
@@ -44,92 +24,89 @@ export function JourneyBar({
   const returnLeg = Math.max(0, endDashboardKm - endBaseKm);
   const total = Math.max(1, approach + service + returnLeg);
 
-  const share = (km: number) => (km / total) * 100;
-
-  /**
-   * A zero-length leg is dropped rather than drawn at a minimum width.
-   *
-   * Starting the day already parked at the loading base is a real and common
-   * case — the mileage rules permit it deliberately — and showing a sliver
-   * there would claim distance that was not driven.
-   */
-  const legs = [
-    { key: 'approach', km: approach, label: UI.service.legApproach, emphasis: false },
-    { key: 'service', km: service, label: FIELD_LABELS.serviceKm, emphasis: true },
-    { key: 'return', km: returnLeg, label: UI.service.legReturn, emphasis: false },
-  ].filter((leg) => leg.km > 0);
-
   const productiveShare = Math.round((service / total) * 100);
 
   return (
-    <div className={cn('space-y-3', className)}>
-      {/* The bar. A 2px gap between fills so adjacent segments read as separate
-          quantities rather than one shape changing colour. */}
-      <div className="flex h-9 gap-0.5 overflow-hidden rounded-lg">
-        {legs.map((leg) => (
-          <div
-            key={leg.key}
-            title={`${leg.label}: ${leg.km} km`}
-            className={cn(
-              'flex items-center justify-center transition-opacity',
-              leg.emphasis ? 'bg-chart-5' : 'bg-chart-muted',
-            )}
-            style={{ width: `${share(leg.km)}%` }}
-          >
-            {/* Direct-labelled only where the segment is wide enough to hold
-                the number without clipping it. */}
-            {share(leg.km) > 14 ? (
-              <span
-                className={cn(
-                  'font-mono text-xs font-medium tabular-nums',
-                  leg.emphasis ? 'text-primary-foreground' : 'text-muted-foreground',
-                )}
-              >
-                {leg.km}
-              </span>
-            ) : null}
+    <div className={cn('relative mt-2 pl-4', className)}>
+      <div className="absolute left-[27px] top-[1.5rem] bottom-[2rem] w-0.5 bg-border rounded-full" />
+      
+      {/* 1. Start Dashboard */}
+      <div className="relative z-10 flex gap-4 pb-6 group">
+        <div className="flex flex-col items-center gap-2 pt-0.5">
+          <div className="flex size-7 items-center justify-center rounded-full bg-muted border border-border/50 text-muted-foreground ring-4 ring-card">
+            <MapPin className="size-3.5" />
           </div>
-        ))}
+        </div>
+        <div className="flex-1 space-y-1 pt-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">{FIELD_LABELS.startDashboardKm}</span>
+            <span className="text-[15px] font-bold tracking-tight">{startDashboardKm}</span>
+          </div>
+          {approach > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground py-1">
+              <ChevronDown className="size-3.5" />
+              <span>{approach} km {UI.service.legApproach}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* The four readings, positioned at the boundaries they mark. */}
-      <div className="text-muted-foreground flex items-start justify-between gap-2 font-mono text-[0.65rem]">
-        <Reading value={startDashboardKm} align="start" />
-        <Reading value={endDashboardKm} align="end" />
+      {/* 2. Start Base */}
+      <div className="relative z-10 flex gap-4 pb-6 group">
+        <div className="flex flex-col items-center gap-2 pt-0.5">
+          <div className="flex size-7 items-center justify-center rounded-full bg-blue-50 border border-blue-200 text-blue-600 ring-4 ring-card">
+            <CheckCircle2 className="size-3.5" />
+          </div>
+        </div>
+        <div className="flex-1 space-y-1 pt-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-400">{FIELD_LABELS.startBaseKm}</span>
+            <span className="text-[15px] font-bold tracking-tight text-blue-900 dark:text-blue-400">{startBaseKm}</span>
+          </div>
+          {service > 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 py-1">
+              <ArrowDown className="size-3.5" />
+              <span>{service} km {FIELD_LABELS.serviceKm} ({productiveShare}%)</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-        <Key colour="bg-chart-5" label={FIELD_LABELS.serviceKm} value={`${service} km`} />
-        <Key
-          colour="bg-chart-muted"
-          label={UI.service.legEmpty}
-          value={`${approach + returnLeg} km`}
-        />
-        <span className="text-muted-foreground ml-auto">
-          {UI.service.productiveShare(productiveShare)}
-        </span>
+      {/* 3. End Base */}
+      <div className="relative z-10 flex gap-4 pb-6 group">
+        <div className="flex flex-col items-center gap-2 pt-0.5">
+          <div className="flex size-7 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 ring-4 ring-card">
+            <CheckCircle2 className="size-3.5" />
+          </div>
+        </div>
+        <div className="flex-1 space-y-1 pt-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-emerald-900 dark:text-emerald-400">{FIELD_LABELS.endBaseKm}</span>
+            <span className="text-[15px] font-bold tracking-tight text-emerald-900 dark:text-emerald-400">{endBaseKm}</span>
+          </div>
+          {returnLeg > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground py-1">
+              <ChevronDown className="size-3.5" />
+              <span>{returnLeg} km {UI.service.legReturn}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. End Dashboard */}
+      <div className="relative z-10 flex gap-4 group">
+        <div className="flex flex-col items-center gap-2 pt-0.5">
+          <div className="flex size-7 items-center justify-center rounded-full bg-muted border border-border/50 text-muted-foreground ring-4 ring-card">
+            <Flag className="size-3.5" />
+          </div>
+        </div>
+        <div className="flex-1 pt-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">{FIELD_LABELS.endDashboardKm}</span>
+            <span className="text-[15px] font-bold tracking-tight">{endDashboardKm}</span>
+          </div>
+        </div>
       </div>
     </div>
-  );
-}
-
-function Reading({ value, align }: { value: number; align: 'start' | 'end' }) {
-  return (
-    <span className={align === 'end' ? 'text-right' : ''}>
-      <span className="text-foreground block font-medium">{value}</span>
-      <span className="opacity-70">
-        {align === 'start' ? UI.service.legStart : UI.service.legEnd}
-      </span>
-    </span>
-  );
-}
-
-function Key({ colour, label, value }: { colour: string; label: string; value: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span aria-hidden className={cn('size-2.5 rounded-sm', colour)} />
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono font-medium tabular-nums">{value}</span>
-    </span>
   );
 }

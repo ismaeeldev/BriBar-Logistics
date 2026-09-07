@@ -23,7 +23,7 @@ export default async function NewRoutePage() {
         {UI.admin.routesTitle}
       </Link>
 
-      <PageHeader title={UI.admin.newRoute} />
+      <PageHeader title={UI.admin.newRoute} section={UI.nav.sectionMasterData} />
 
       <RouteForm action={createRouteAction} submitLabel={UI.admin.createRoute} />
     </div>

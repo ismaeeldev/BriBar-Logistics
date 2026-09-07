@@ -133,6 +133,23 @@
   --duration-fast: 140ms;
   --duration: 260ms;
   --duration-slow: 620ms;
+
+  /* Desktop UI Overhaul specific tokens */
+  --sidebar-background: #111827; /* Dark blue/gray */
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #3b82f6;
+
+  /* The sidebar as a gradient rather than a flat fill, plus the glow that
+     sits behind its logo mark. Held constant across themes: the sidebar is a
+     permanently dark surface regardless of the page beside it, the way a
+     premium dashboard's rail usually is. */
+  --sidebar-gradient: linear-gradient(180deg, #131c2e 0%, #0d1420 60%, #0a0f1a 100%);
+  --sidebar-glow: radial-gradient(120% 60% at 15% 0%, oklch(0.45 0.14 255 / 0.35), transparent 60%);
 }
 
 :root[data-theme='dark'] {
@@ -199,6 +216,16 @@
     oklch(0.205 0.02 246) 55%,
     oklch(0.185 0.014 254) 100%
   );
+
+  /* Desktop UI Overhaul specific tokens */
+  --sidebar-background: #111827; 
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #3b82f6;
 }
 
 @theme inline {
@@ -240,12 +267,21 @@
   --color-destructive-surface: var(--destructive-surface);
   --color-destructive-border: var(--destructive-border);
 
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 
   /*
@@ -263,6 +299,9 @@
   --animate-pop: pop var(--duration) var(--ease-spring) both;
   --animate-grow: grow var(--duration-slow) var(--ease-out-expo) both;
   --animate-sweep: sweep var(--duration-slow) var(--ease-out-expo) both;
+  /* A soft, slow pulse for an unread indicator — present enough to notice in
+     peripheral vision, far too gentle to nag. */
+  --animate-ping-soft: ping-soft 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 
   @keyframes rise {
     from {
@@ -313,6 +352,18 @@
     }
   }
 
+  @keyframes ping-soft {
+    0% {
+      transform: scale(1);
+      opacity: 0.65;
+    }
+    70%,
+    100% {
+      transform: scale(2.2);
+      opacity: 0;
+    }
+  }
+
   /* A highlight travelling across a placeholder. Unlike a pulse it has a
      direction, so a column of skeletons reads as one surface loading rather
      than as eight blocks blinking out of step. */
@@ -338,6 +389,26 @@
 @layer base {
   * {
     border-color: var(--border);
+    scrollbar-color: var(--primary) transparent;
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-hover);
   }
 
   /* Switching theme repaints every token at once. Without this, each element
@@ -352,7 +423,7 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-inter), system-ui, sans-serif;
     /* Tabular figures everywhere: odometer readings, kilometre totals and
        Service IDs sit in columns, and proportional digits make them jitter. */
     font-variant-numeric: tabular-nums;
@@ -452,6 +523,26 @@
 
   .bg-brand-wash {
     background-image: var(--brand-wash);
+  }
+
+  /* The admin sidebar's own surface — a fixed dark gradient with a soft
+     glow behind the logo, independent of the page theme (see `--sidebar-gradient`). */
+  .bg-sidebar-gradient {
+    background-image: var(--sidebar-gradient);
+  }
+
+  .glow-sidebar {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .glow-sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--sidebar-glow);
   }
 
   /*

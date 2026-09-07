@@ -47,7 +47,7 @@ export const routeService = {
    */
   async listPage(
     actor: Actor,
-    filters: { isActive?: boolean | undefined },
+    filters: { isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
   ): Promise<{ items: RouteRecord[]; total: number }> {
     assertAdmin(actor);

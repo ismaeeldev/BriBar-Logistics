@@ -247,6 +247,9 @@ export const es: Dictionary = {
       inactiveMarker: '(inactiva)',
       you: '(usted)',
       total: (count) => `${count} en total`,
+      searchPlaceholder: 'Buscar…',
+      clearSearch: 'Borrar búsqueda',
+      code: 'Código',
     },
 
     auth: {
@@ -337,9 +340,22 @@ export const es: Dictionary = {
       activityChartLabel: (days) => `Actividad diaria: ${days} días`,
       peakDay: (label, services) => `Máximo ${label} · ${services} serv.`,
       topRoutesTitle: 'Rutas más activas',
+      todayBreakdownTitle: 'Estado del día',
       noRouteActivity: 'Sin actividad en este periodo',
       servicesTitle: 'Servicios',
       noServicesMatch: 'Ningún servicio coincide con los filtros aplicados.',
+
+      searchServices: 'Buscar por ID de servicio, conductor o ruta…',
+      searchUsers: 'Buscar por nombre o usuario…',
+      searchVehicles: 'Buscar por matrícula o nombre…',
+      searchRoutes: 'Buscar por código, nombre o ubicación…',
+
+      assignedDriversColumn: 'Conductores asignados',
+      totalServicesColumn: 'Servicios totales',
+      noReference: 'Sin referencia',
+      driverUnit: (count) => (count === 1 ? 'conductor' : 'conductores'),
+      servicesUnit: 'servicios',
+
       filters: 'Filtros',
       clearFilters: 'Limpiar',
       applyFilters: 'Aplicar filtros',
@@ -459,6 +475,19 @@ export const es: Dictionary = {
       drivers: 'Conductores',
       vehicles: 'Vehículos',
       routes: 'Rutas',
+    },
+
+    notifications: {
+      title: 'Notificaciones',
+      empty: 'Sin notificaciones',
+      emptyHint: 'Aquí aparecerán los avisos de nueva actividad.',
+      markAllRead: 'Marcar todo como leído',
+      unreadAriaLabel: (count) => `${count} notificaciones sin leer`,
+      servicePendingTitle: (serviceCode) => `Servicio #${serviceCode} pendiente de aprobación`,
+      servicePendingBody: (driverName, routeCode) => `${driverName} · ${routeCode}`,
+      serviceApprovedTitle: (serviceCode) => `Servicio #${serviceCode} aprobado`,
+      serviceApprovedBody: (routeCode) => routeCode,
+      justNow: 'Justo ahora',
     },
 
     errors: {

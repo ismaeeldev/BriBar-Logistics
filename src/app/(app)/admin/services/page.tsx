@@ -13,9 +13,12 @@ import { ClipboardList } from 'lucide-react';
 import { AdminServiceList } from '@/components/admin/service-list';
 import { ServiceFilters } from '@/components/admin/service-filters';
 import { Pagination } from '@/components/ui/pagination';
-import { EmptyState, PageHeader } from '@/components/ui/primitives';
+import { EmptyState, PageHeader, StatePill } from '@/components/ui/primitives';
+import { SearchBar } from '@/components/ui/search-bar';
 import { requireAdmin } from '@/lib/auth/session';
+import { env } from '@/lib/env';
 import { UI } from '@/lib/i18n/messages';
+import { currentBusinessDate, toIsoDate } from '@/lib/time/business-date';
 import { routeRepository } from '@/modules/routes/repository/route.repository';
 import { Role } from '@/modules/services/domain/service-status';
 import { serviceFilterSchema } from '@/modules/services/schemas/service.schema';
@@ -34,6 +37,7 @@ export default async function AdminServicesPage({
   const actor = await requireAdmin();
   const params = await searchParams;
 
+  const todayIso = toIsoDate(currentBusinessDate(env.APP_TIMEZONE));
   const parsed = serviceFilterSchema.safeParse(params);
   const filters = parsed.success ? parsed.data : { page: 1, pageSize: 25 };
 
@@ -53,23 +57,29 @@ export default async function AdminServicesPage({
     <div className="space-y-5">
       <PageHeader
         title={UI.admin.serviceManagement}
+        section={UI.nav.sectionOperations}
         description={UI.driver.serviceCount(total)}
+        statusPill={<StatePill isActive={true} label={UI.common.active} />}
+        search={<SearchBar placeholder={UI.admin.searchServices} className="w-full" />}
+        filters={
+          <ServiceFilters
+            drivers={drivers.map((driver) => ({ id: driver.id, label: driver.name }))}
+            vehicles={vehicles.map((vehicle) => ({
+              id: vehicle.id,
+              label: vehicle.registrationPlate,
+            }))}
+            routes={routes.map((route) => ({
+              id: route.id,
+              label: `${route.code} — ${route.name}`,
+            }))}
+          />
+        }
       />
 
-      <ServiceFilters
-        drivers={drivers.map((driver) => ({ id: driver.id, label: driver.name }))}
-        vehicles={vehicles.map((vehicle) => ({
-          id: vehicle.id,
-          label: vehicle.registrationPlate,
-        }))}
-        routes={routes.map((route) => ({
-          id: route.id,
-          label: `${route.code} — ${route.name}`,
-        }))}
-      />
-
-      <AdminServiceList
-        services={items.map(toServiceListItem)}
+      <div className="pt-2">
+        <AdminServiceList
+          services={items.map(toServiceListItem)}
+        todayIso={todayIso}
         empty={
           <EmptyState
             icon={ClipboardList}
@@ -78,6 +88,7 @@ export default async function AdminServicesPage({
           />
         }
       />
+      </div>
 
       <Pagination
         page={pagination.page}

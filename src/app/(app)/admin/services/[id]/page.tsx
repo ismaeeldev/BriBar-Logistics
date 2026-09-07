@@ -10,7 +10,7 @@
  * approving administrator. All of it is here, plus the status history, which is
  * what makes SRS 21.3's audited post-approval edits legible.
  */
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil, Gauge, MapPin, Clock, FileText, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -104,17 +104,20 @@ export default async function AdminServiceDetailPage({
         <div className="space-y-5">
           <Card>
             <CardHeader>
-              <CardTitle>{UI.service.mileageSection}</CardTitle>
+              <CardTitle>
+                <Gauge className="size-5 text-blue-500" />
+                {UI.service.mileageSection}
+              </CardTitle>
             </CardHeader>
-            <CardBody className="space-y-4">
-              <div className="bg-muted grid grid-cols-2 gap-3 rounded-lg p-3">
+            <CardBody className="space-y-6">
+              <div className="bg-muted/30 border border-border/40 grid grid-cols-2 gap-3 rounded-xl p-5">
                 <div>
-                  <p className="text-muted-foreground text-xs">{FIELD_LABELS.actualKm}</p>
-                  <p className="font-mono text-2xl font-semibold">{service.actualKm}</p>
+                  <p className="text-muted-foreground text-[14px] mb-1">{FIELD_LABELS.actualKm}</p>
+                  <p className="text-[26px] text-foreground tracking-tight">{service.actualKm}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">{FIELD_LABELS.serviceKm}</p>
-                  <p className="font-mono text-2xl font-semibold">{service.serviceKm}</p>
+                  <p className="text-muted-foreground text-[14px] mb-1">{FIELD_LABELS.serviceKm}</p>
+                  <p className="text-[26px] text-foreground tracking-tight">{service.serviceKm}</p>
                 </div>
               </div>
 
@@ -129,18 +132,16 @@ export default async function AdminServiceDetailPage({
                 endDashboardKm={service.endDashboardKm}
               />
 
-              <dl className="divide-y">
+              <dl className="space-y-1">
                 <DetailRow
                   label={FIELD_LABELS.startDashboardKm}
                   value={service.startDashboardKm}
-                  mono
                 />
-                <DetailRow label={FIELD_LABELS.startBaseKm} value={service.startBaseKm} mono />
-                <DetailRow label={FIELD_LABELS.endBaseKm} value={service.endBaseKm} mono />
+                <DetailRow label={FIELD_LABELS.startBaseKm} value={service.startBaseKm} />
+                <DetailRow label={FIELD_LABELS.endBaseKm} value={service.endBaseKm} />
                 <DetailRow
                   label={FIELD_LABELS.endDashboardKm}
                   value={service.endDashboardKm}
-                  mono
                 />
               </dl>
             </CardBody>
@@ -149,10 +150,13 @@ export default async function AdminServiceDetailPage({
           <div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>{UI.service.routeSection}</CardTitle>
+                <CardTitle>
+                  <MapPin className="size-5 text-purple-500" />
+                  {UI.service.routeSection}
+                </CardTitle>
               </CardHeader>
               <CardBody>
-                <dl className="divide-y">
+                <dl className="space-y-1">
                   <DetailRow
                     label={FIELD_LABELS.route}
                     value={
@@ -178,7 +182,7 @@ export default async function AdminServiceDetailPage({
                     label={FIELD_LABELS.vehicle}
                     value={
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="font-mono">{service.vehicle.registrationPlate}</span>
+                        <span>{service.vehicle.registrationPlate}</span>
                         {!service.vehicleIsActive ? (
                           <span className="text-muted-foreground text-xs">
                             {UI.common.deactivated}
@@ -193,20 +197,22 @@ export default async function AdminServiceDetailPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>{UI.service.timesSection}</CardTitle>
+                <CardTitle>
+                  <Clock className="size-5 text-amber-500" />
+                  {UI.service.timesSection}
+                </CardTitle>
               </CardHeader>
               <CardBody>
-                <dl className="divide-y">
+                <dl className="space-y-1">
                   <DetailRow
                     label={FIELD_LABELS.departureTime}
                     value={service.departureTime}
-                    mono
                   />
                   <DetailRow
                     label={FIELD_LABELS.arrivalTime}
                     value={
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="font-mono">{service.arrivalTime}</span>
+                        <span>{service.arrivalTime}</span>
                         {service.endsNextDay ? (
                           <span className="text-muted-foreground text-xs">
                             {UI.service.nextDay}
@@ -223,9 +229,12 @@ export default async function AdminServiceDetailPage({
           {service.sites || service.observations ? (
             <Card>
               <CardHeader>
-                <CardTitle>{UI.service.driverNotesSection}</CardTitle>
+                <CardTitle>
+                  <FileText className="size-5 text-emerald-500" />
+                  {UI.service.driverNotesSection}
+                </CardTitle>
               </CardHeader>
-              <CardBody className="space-y-4">
+              <CardBody className="space-y-5">
                 {service.sites ? (
                   <div className="space-y-1">
                     <p className="text-muted-foreground text-sm">{FIELD_LABELS.sites}</p>
@@ -247,10 +256,13 @@ export default async function AdminServiceDetailPage({
           {/* SRS 16.4 and 21.1: the audit metadata an administrator reviews. */}
           <Card>
             <CardHeader>
-              <CardTitle>{UI.admin.auditSection}</CardTitle>
+              <CardTitle>
+                <ShieldCheck className="text-muted-foreground size-5" />
+                {UI.admin.auditSection}
+              </CardTitle>
             </CardHeader>
             <CardBody>
-              <dl className="divide-y">
+              <dl className="space-y-1">
                 <DetailRow
                   label={UI.service.created}
                   value={formatBusinessDateTime(new Date(service.createdAt), env.APP_TIMEZONE)}
@@ -272,23 +284,23 @@ export default async function AdminServiceDetailPage({
               {/* SRS 21.2. Two entries today; the table exists so a future state
               needs no redesign, and this list renders whatever it holds. */}
               {history.length > 0 ? (
-                <div className="mt-4 space-y-2 border-t pt-4">
-                  <p className="text-muted-foreground text-xs font-medium">
+                <div className="mt-6 space-y-4 border-t border-border/40 pt-5">
+                  <p className="text-[13px] font-semibold tracking-wider text-muted-foreground uppercase">
                     {UI.admin.statusHistory}
                   </p>
-                  <ol className="space-y-1.5">
+                  <ol className="relative pl-3 space-y-5">
+                    <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border/60" />
                     {history.map((entry) => (
-                      <li key={entry.id} className="flex items-baseline gap-2 text-sm">
-                        <span className="text-muted-foreground font-mono text-xs whitespace-nowrap">
-                          {formatBusinessDateTime(new Date(entry.changedAt), env.APP_TIMEZONE)}
-                        </span>
-                        <span>
-                          {SERVICE_STATUS_LABELS[entry.toStatus]}
-                          <span className="text-muted-foreground">
-                            {' '}
-                            · {entry.changedBy.name}
-                          </span>
-                        </span>
+                      <li key={entry.id} className="relative z-10 flex gap-4">
+                        <div className="mt-1.5 size-2 rounded-full bg-slate-300 ring-4 ring-card shrink-0" />
+                        <div className="space-y-0.5">
+                          <p className="text-[14px] font-medium text-foreground">
+                            {SERVICE_STATUS_LABELS[entry.toStatus]}
+                          </p>
+                          <p className="text-[13px] text-muted-foreground">
+                            {formatBusinessDateTime(new Date(entry.changedAt), env.APP_TIMEZONE)} · {entry.changedBy.name}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ol>

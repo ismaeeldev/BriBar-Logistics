@@ -52,6 +52,7 @@ export interface ServiceFilters {
   status?: ServiceStatus[] | undefined;
   dateFrom?: Date | null;
   dateTo?: Date | null;
+  q?: string | undefined;
 }
 
 /**
@@ -80,6 +81,15 @@ function buildWhere(
     // Overwrites whatever the caller asked for. This is the line that makes
     // "Driver ID substitution fails" (SRS 26.8) structural.
     where.driverId = visibleTo.userId;
+  }
+
+  if (filters.q) {
+    where.OR = [
+      { serviceCode: { contains: filters.q, mode: 'insensitive' } },
+      { driver: { name: { contains: filters.q, mode: 'insensitive' } } },
+      { route: { code: { contains: filters.q, mode: 'insensitive' } } },
+      { route: { name: { contains: filters.q, mode: 'insensitive' } } },
+    ];
   }
 
   return where;

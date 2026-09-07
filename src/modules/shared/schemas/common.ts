@@ -132,6 +132,16 @@ export const DEFAULT_PAGE_SIZE = 25;
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+  q: z.string().optional(),
+  status: z.string().optional(),
+  sort: z.string().optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
+  role: z.string().optional(),
+  isActive: z.preprocess((value) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+  }, z.boolean().optional()),
 });
 
 export type Pagination = z.output<typeof paginationSchema>;

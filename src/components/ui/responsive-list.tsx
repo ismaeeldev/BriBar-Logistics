@@ -49,7 +49,11 @@ export function ResponsiveList<T>({
   className?: string;
 }) {
   if (items.length === 0 && empty) {
-    return <div className={cn('bg-card rounded-xl border shadow-xs', className)}>{empty}</div>;
+    return (
+      <div className={cn('bg-card rounded-2xl border border-border/50 shadow-sm', className)}>
+        {empty}
+      </div>
+    );
   }
 
   return (
@@ -57,7 +61,7 @@ export function ResponsiveList<T>({
       {/* Mobile: cards. */}
       <ul
         className={cn(
-          'bg-card divide-y overflow-hidden rounded-xl border shadow-xs md:hidden',
+          'space-y-3 md:hidden',
           className,
         )}
       >
@@ -65,7 +69,7 @@ export function ResponsiveList<T>({
           <li
             key={getKey(item)}
             style={{ '--i': index } as CSSProperties}
-            className="animate-rise stagger"
+            className="bg-card overflow-hidden rounded-2xl border border-border/50 shadow-sm transition-shadow duration-300 hover:shadow-md animate-rise stagger"
           >
             {card(item)}
           </li>

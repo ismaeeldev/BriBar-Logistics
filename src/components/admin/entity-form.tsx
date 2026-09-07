@@ -50,7 +50,7 @@ export function EntityForm({
       ) : null}
 
       <Card>
-        <CardBody className="space-y-4">{children({ fieldErrors, values })}</CardBody>
+        <CardBody className="space-y-4 pt-5">{children({ fieldErrors, values })}</CardBody>
       </Card>
 
       {footer}

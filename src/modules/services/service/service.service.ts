@@ -41,6 +41,7 @@ import {
 import { ERRORS } from '@/lib/i18n/messages';
 import { currentBusinessDate } from '@/lib/time/business-date';
 import { timeOfDayToDate, type TimeOfDay } from '@/lib/time/time-of-day';
+import { notificationService } from '@/modules/notifications/service/notification.service';
 import { userRepository } from '@/modules/users/repository/user.repository';
 import { vehicleRepository } from '@/modules/vehicles/repository/vehicle.repository';
 import { toPrismaPagination, type Pagination } from '@/modules/shared/schemas/common';
@@ -307,6 +308,15 @@ export const serviceService = {
           },
         });
 
+        // Not an SRS requirement — see the schema comment on `Notification` —
+        // but committed in the same transaction as everything above, so an
+        // administrator is never left unnotified of a service that did in
+        // fact get created.
+        await notificationService.notifyAdminsOfPendingService(tx, {
+          serviceId: created.id,
+          actorUserId: actor.userId,
+        });
+
         return created;
       }),
     );
@@ -432,6 +442,14 @@ export const serviceService = {
           },
         });
 
+        // Same reasoning as the notification on create: committed with the
+        // approval itself, so the driver learns exactly when the record says
+        // they were approved, not some later moment a background job got to it.
+        await notificationService.notifyDriverOfApproval(tx, {
+          serviceId: id,
+          driverId: existing.driverId,
+        });
+
         return approved;
       }),
     );
@@ -459,6 +477,7 @@ export const serviceService = {
 
     const { items, total } = await serviceRepository.list(
       {
+        q: filters.q,
         driverId: filters.driverId,
         vehicleId: filters.vehicleId,
         routeId: filters.routeId,

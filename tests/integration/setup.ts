@@ -47,6 +47,7 @@ export const testPrisma = new PrismaClient({
  */
 const TABLES = [
   'audit_logs',
+  'notifications',
   'service_status_history',
   'services',
   'driver_routes',

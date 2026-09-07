@@ -197,6 +197,9 @@ export interface Dictionary {
       inactiveMarker: string;
       you: string;
       total: (count: number) => string;
+      searchPlaceholder: string;
+      clearSearch: string;
+      code: string;
     };
 
     auth: {
@@ -283,9 +286,24 @@ export interface Dictionary {
       activityChartLabel: (days: number) => string;
       peakDay: (label: string, services: number) => string;
       topRoutesTitle: string;
+      todayBreakdownTitle: string;
       noRouteActivity: string;
       servicesTitle: string;
       noServicesMatch: string;
+
+      /** Admin list search-box placeholders (SRS 16.3, 23.3). */
+      searchServices: string;
+      searchUsers: string;
+      searchVehicles: string;
+      searchRoutes: string;
+
+      /** Extra columns on the vehicle list. */
+      assignedDriversColumn: string;
+      totalServicesColumn: string;
+      noReference: string;
+      driverUnit: (count: number) => string;
+      servicesUnit: string;
+
       filters: string;
       clearFilters: string;
       applyFilters: string;
@@ -390,6 +408,20 @@ export interface Dictionary {
       drivers: string;
       vehicles: string;
       routes: string;
+    };
+
+    /** The bell dropdown, both roles (SRS-free — see `prisma/schema.prisma`). */
+    notifications: {
+      title: string;
+      empty: string;
+      emptyHint: string;
+      markAllRead: string;
+      unreadAriaLabel: (count: number) => string;
+      servicePendingTitle: (serviceCode: string) => string;
+      servicePendingBody: (driverName: string, routeCode: string) => string;
+      serviceApprovedTitle: (serviceCode: string) => string;
+      serviceApprovedBody: (routeCode: string) => string;
+      justNow: string;
     };
 
     errors: {

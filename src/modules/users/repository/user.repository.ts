@@ -83,20 +83,39 @@ export const userRepository = {
    * is genuinely the continuation of page 1.
    */
   async listPage(
-    filters: { role?: Role | undefined; isActive?: boolean | undefined },
+    filters: { role?: Role | undefined; isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
     client: PrismaClientLike = prisma,
   ): Promise<{ items: UserWithRelations[]; total: number }> {
-    const where = {
+    const where: Prisma.UserWhereInput = {
       ...(filters.role ? { role: filters.role } : {}),
       ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+      ...(filters.q ? {
+        OR: [
+          { name: { contains: filters.q, mode: 'insensitive' } },
+          { loginIdentifier: { contains: filters.q, mode: 'insensitive' } },
+        ]
+      } : {})
     };
+
+    let orderBy: Prisma.UserOrderByWithRelationInput[] = [{ isActive: 'desc' }, { name: 'asc' }];
+    if (pagination.sort) {
+      const dir = pagination.dir || 'asc';
+      if (pagination.sort === 'defaultVehicle') {
+        // Sort by the plate of the assigned default vehicle
+        orderBy = [{ defaultVehicle: { registrationPlate: dir } }, { name: 'asc' }];
+      } else if (pagination.sort === 'name' || pagination.sort === 'loginIdentifier' || pagination.sort === 'role' || pagination.sort === 'isActive') {
+        // Direct scalar fields on User model
+        orderBy = [{ [pagination.sort]: dir } as Prisma.UserOrderByWithRelationInput];
+      }
+      // defaultRoute is derived from routeAssignments (not a direct scalar), skip it
+    }
 
     const [items, total] = await Promise.all([
       client.user.findMany({
         where,
         select: USER_SELECT,
-        orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+        orderBy,
         ...toPrismaPagination(pagination),
       }),
       client.user.count({ where }),

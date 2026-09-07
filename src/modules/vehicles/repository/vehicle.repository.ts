@@ -15,9 +15,19 @@ const VEHICLE_SELECT = {
   isActive: true,
   createdAt: true,
   updatedAt: true,
+  _count: {
+    select: {
+      services: true,
+      defaultForUsers: true,
+    },
+  },
 } satisfies Prisma.VehicleSelect;
 
 export type VehicleRecord = Prisma.VehicleGetPayload<{ select: typeof VEHICLE_SELECT }>;
+
+/** Columns the admin list may be sorted by. Anything else is ignored so a
+ * hand-crafted `?sort=` cannot reach Prisma as an invalid orderBy key. */
+const SORTABLE_COLUMNS = new Set(['registrationPlate', 'referenceName', 'isActive']);
 
 export const vehicleRepository = {
   async findById(id: string, client: PrismaClientLike = prisma): Promise<VehicleRecord | null> {
@@ -50,17 +60,34 @@ export const vehicleRepository = {
    * is genuinely the continuation of page 1.
    */
   async listPage(
-    filters: { isActive?: boolean | undefined },
+    filters: { isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
     client: PrismaClientLike = prisma,
   ): Promise<{ items: VehicleRecord[]; total: number }> {
-    const where = filters.isActive === undefined ? {} : { isActive: filters.isActive };
+    const where: Prisma.VehicleWhereInput = {
+      ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+      ...(filters.q ? {
+        OR: [
+          { registrationPlate: { contains: filters.q, mode: 'insensitive' } },
+          { referenceName: { contains: filters.q, mode: 'insensitive' } },
+        ]
+      } : {})
+    };
+
+    let orderBy: Prisma.VehicleOrderByWithRelationInput[] = [
+      { isActive: 'desc' },
+      { registrationPlate: 'asc' },
+    ];
+    if (pagination.sort && SORTABLE_COLUMNS.has(pagination.sort)) {
+      const dir = pagination.dir ?? 'asc';
+      orderBy = [{ [pagination.sort]: dir } as Prisma.VehicleOrderByWithRelationInput, ...orderBy];
+    }
 
     const [items, total] = await Promise.all([
       client.vehicle.findMany({
         where,
         select: VEHICLE_SELECT,
-        orderBy: [{ isActive: 'desc' }, { registrationPlate: 'asc' }],
+        orderBy,
         ...toPrismaPagination(pagination),
       }),
       client.vehicle.count({ where }),

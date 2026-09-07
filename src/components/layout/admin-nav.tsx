@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { ADMIN_NAV, ADMIN_SECTIONS, isCurrent } from '@/components/layout/nav-items';
-import { UI } from '@/lib/i18n/messages';
+import { LogoMark } from '@/components/layout/logo';
+import { UI, ROLE_LABELS } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils/cn';
+import type { Actor } from '@/lib/auth/session';
 
 /**
  * Administrator navigation, in two genuinely different forms.
@@ -63,32 +65,29 @@ export function AdminNavMobile() {
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ actor }: { actor?: Actor }) {
   const pathname = usePathname();
 
   return (
     <nav
       aria-label={UI.nav.adminLabel}
-      // `pl-3` matches the header's logo indent, so the icons below line up
-      // with the mark above them; `pr-4` keeps the active pill off the rule.
-      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r py-6 pr-4 pl-3 lg:block"
+      className="glow-sidebar bg-sidebar-gradient text-sidebar-foreground sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-white/[0.06] py-6 lg:flex"
     >
-      {/*
-        Grouped, and the groups are labelled. The selected item used to be a
-        filled brand-blue pill, which competed with the content for the eye's
-        attention every time the page loaded — on an operations screen the
-        navigation should be findable, not loud. It is now a neutral ground
-        with a brand rule down its left edge: still unambiguous, and it stops
-        the blue from being the first thing anyone sees.
-      */}
-      <div className="space-y-5">
+      <div className="relative z-10 mb-8 flex items-center gap-3 px-6">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">
+          <LogoMark className="text-primary h-full w-full" />
+        </span>
+        <span className="text-xl font-bold tracking-tight text-white">{UI.common.appName}</span>
+      </div>
+
+      <div className="relative z-10 flex-1 space-y-5 overflow-y-auto px-4 no-scrollbar">
         {ADMIN_SECTIONS.map((section) => (
           <div key={section.label}>
-            <p className="text-muted-foreground mb-1 px-3 text-[0.65rem] font-semibold tracking-wider uppercase">
+            <p className="text-sidebar-foreground/60 mb-2 px-3 text-[0.7rem] font-bold uppercase tracking-wider">
               {section.label}
             </p>
 
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = isCurrent(pathname, href);
 
@@ -98,24 +97,22 @@ export function AdminSidebar() {
                       href={href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md py-2 pr-3 pl-3.5 text-sm transition-colors duration-200',
+                        'group relative flex items-center gap-3 rounded-[14px] py-3 px-4 text-[15px] font-semibold transition-all duration-200',
                         active
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_6px_16px_-4px_rgba(59,130,246,0.55)]'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                       )}
                     >
-                      {/* The rule, not a fill: it marks the current page a
-                          second way so the ground is not carrying it alone. */}
                       {active ? (
                         <span
                           aria-hidden
-                          className="bg-primary animate-grow absolute top-1.5 bottom-1.5 left-0 w-[3px] origin-center rounded-full"
+                          className="absolute inset-y-2 left-0 w-1 rounded-full bg-white/90"
                         />
                       ) : null}
                       <Icon
                         className={cn(
-                          'size-4 shrink-0 transition-colors',
-                          active && 'text-primary',
+                          'size-[22px] shrink-0 transition-colors',
+                          active ? 'text-white' : 'text-sidebar-foreground/60 group-hover:text-sidebar-foreground'
                         )}
                       />
                       <span className="truncate">{label}</span>
@@ -127,6 +124,22 @@ export function AdminSidebar() {
           </div>
         ))}
       </div>
+
+      {actor && (
+        <div className="relative z-10 mt-auto px-4">
+          <div className="border-sidebar-border/60 flex items-center gap-3 rounded-xl border bg-white/[0.04] p-3">
+            <div className="bg-brand-gradient flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm">
+              {actor.name.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">{actor.name}</p>
+              <p className="text-sidebar-foreground/60 truncate text-xs">
+                {ROLE_LABELS[actor.role] || actor.role}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

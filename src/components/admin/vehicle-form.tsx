@@ -23,7 +23,6 @@ export function VehicleForm({
             label={FIELD_LABELS.registrationPlate}
             required
             errors={fieldErrors?.['registrationPlate']}
-            hint={UI.admin.plateHint}
           >
             {(props) => (
               <Input

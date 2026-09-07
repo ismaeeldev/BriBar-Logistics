@@ -120,6 +120,7 @@ model User {
   routeAssignments DriverRoute[]
   statusChanges    ServiceStatusHistory[]
   auditEntries     AuditLog[]
+  notifications    Notification[]
 
   /// Backs the admin user list and every "active drivers" picker.
   @@index([role, isActive], map: "users_role_is_active_idx")
@@ -271,6 +272,7 @@ model Service {
   route      Route   @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   statusHistory ServiceStatusHistory[]
+  notifications Notification[]
 
   // SRS 19.10. Single-column indexes back the admin filters (16.3); the
   // composites back the two hot list queries - the admin approval queue and a
@@ -332,4 +334,58 @@ model AuditLog {
   @@index([entityType, entityId, createdAt(sort: Desc)], map: "audit_logs_entity_created_at_idx")
   @@index([actorUserId, createdAt(sort: Desc)], map: "audit_logs_actor_created_at_idx")
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+//
+// Not required by the SRS (it excludes a reporting/comms module in 29), and
+// added deliberately narrow rather than as a general-purpose inbox: a
+// notification is always about one service, for one recipient, and it exists
+// to shorten the time between "something happened" and an administrator or
+// driver noticing on the two events that already drive the workflow —
+// a service entering PENDING_APPROVAL, and a service being APPROVED.
+// ---------------------------------------------------------------------------
+
+/// The two events worth surfacing today. A plain enum rather than a
+/// polymorphic event bus: adding a third kind later is one value here plus
+/// one branch in `notification.service.ts`, not a schema migration.
+enum NotificationType {
+  SERVICE_PENDING_APPROVAL
+  SERVICE_APPROVED
+
+  @@map("notification_type")
+}
+
+/// One notification, always about a service, for one recipient.
+///
+/// `onDelete: Cascade` on both foreign keys, matching `ServiceStatusHistory`'s
+/// reasoning above: a notification has no meaning without the service it
+/// describes or the person it is for, and unlike `AuditLog` it is not the
+/// historical record itself — that is what `AuditLog` and
+/// `ServiceStatusHistory` are for. Losing a notification when its service or
+/// recipient is gone loses nothing SRS 21 requires to be kept.
+model Notification {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  recipientUserId String            @map("recipient_user_id") @db.Uuid
+  type            NotificationType
+
+  /// Null only if the referenced service is ever removed - the notification
+  /// then has nothing left to link to, but is still valid history of "this
+  /// happened at this time" until the recipient clears it.
+  serviceId String? @map("service_id") @db.Uuid
+
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+
+  recipient User     @relation(fields: [recipientUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  service   Service?  @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  // Backs the bell's own query: this recipient's unread notifications,
+  // newest first.
+  @@index([recipientUserId, isRead, createdAt(sort: Desc)], map: "notifications_recipient_unread_idx")
+  @@index([serviceId], map: "notifications_service_id_idx")
+  @@map("notifications")
 }

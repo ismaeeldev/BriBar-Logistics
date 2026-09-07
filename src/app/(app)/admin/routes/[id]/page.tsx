@@ -50,7 +50,11 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
         {UI.admin.routesTitle}
       </Link>
 
-      <PageHeader title={UI.admin.editRoute} description={`${route.code} · ${route.name}`} />
+      <PageHeader
+        title={UI.admin.editRoute}
+        section={UI.nav.sectionMasterData}
+        description={`${route.code} · ${route.name}`}
+      />
 
       <RouteForm
         action={updateRouteAction.bind(null, id)}

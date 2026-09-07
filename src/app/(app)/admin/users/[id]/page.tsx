@@ -80,7 +80,11 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         {UI.nav.drivers}
       </Link>
 
-      <PageHeader title={UI.admin.editAccount} description={user.name} />
+      <PageHeader
+        title={UI.admin.editAccount}
+        section={UI.nav.sectionMasterData}
+        description={user.name}
+      />
 
       {inactiveAssigned.length > 0 ? (
         <Alert tone="warning" title={UI.admin.inactiveRoutesTitle}>

@@ -23,7 +23,7 @@ export default async function NewVehiclePage() {
         {UI.admin.vehiclesTitle}
       </Link>
 
-      <PageHeader title={UI.admin.newVehicle} />
+      <PageHeader title={UI.admin.newVehicle} section={UI.nav.sectionMasterData} />
 
       <VehicleForm action={createVehicleAction} submitLabel={UI.admin.createVehicle} />
     </div>

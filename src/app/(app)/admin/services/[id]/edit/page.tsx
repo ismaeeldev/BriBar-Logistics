@@ -59,6 +59,7 @@ export default async function AdminEditServicePage({
 
       <PageHeader
         title={UI.service.editTitle}
+        section={UI.nav.sectionOperations}
         description={`#${service.serviceCode} · ${service.driver.name}`}
       />
 

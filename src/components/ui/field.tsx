@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils/cn';
  */
 
 const controlBase =
-  'w-full rounded-lg border bg-card px-3 text-base transition-colors ' +
+  'w-full rounded-lg border bg-card px-3 text-base sm:text-sm transition-colors ' +
   'placeholder:text-muted-foreground ' +
   'disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground ' +
   'aria-[invalid=true]:border-destructive';
@@ -234,7 +234,7 @@ export function ReadOnlyValue({
       <span className="text-muted-foreground block text-sm font-medium">{label}</span>
       <div
         className={cn(
-          'bg-muted text-foreground flex h-11 items-center rounded-lg px-3 text-base',
+          'bg-muted text-foreground flex h-11 items-center rounded-lg px-3 text-base sm:text-sm',
           mono && 'font-mono',
         )}
       >

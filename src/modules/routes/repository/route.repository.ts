@@ -21,6 +21,10 @@ const ROUTE_SELECT = {
 
 export type RouteRecord = Prisma.RouteGetPayload<{ select: typeof ROUTE_SELECT }>;
 
+/** Columns the admin list may be sorted by. Anything else is ignored so a
+ * hand-crafted `?sort=` cannot reach Prisma as an invalid orderBy key. */
+const SORTABLE_COLUMNS = new Set(['code', 'name', 'isActive']);
+
 export const routeRepository = {
   async findById(id: string, client: PrismaClientLike = prisma): Promise<RouteRecord | null> {
     return client.route.findUnique({ where: { id }, select: ROUTE_SELECT });
@@ -47,17 +51,33 @@ export const routeRepository = {
    * is genuinely the continuation of page 1.
    */
   async listPage(
-    filters: { isActive?: boolean | undefined },
+    filters: { isActive?: boolean | undefined; q?: string },
     pagination: Pagination,
     client: PrismaClientLike = prisma,
   ): Promise<{ items: RouteRecord[]; total: number }> {
-    const where = filters.isActive === undefined ? {} : { isActive: filters.isActive };
+    const where: Prisma.RouteWhereInput = {
+      ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
+      ...(filters.q ? {
+        OR: [
+          { code: { contains: filters.q, mode: 'insensitive' } },
+          { name: { contains: filters.q, mode: 'insensitive' } },
+          { origin: { contains: filters.q, mode: 'insensitive' } },
+          { destination: { contains: filters.q, mode: 'insensitive' } },
+        ]
+      } : {})
+    };
+
+    let orderBy: Prisma.RouteOrderByWithRelationInput[] = [{ isActive: 'desc' }, { code: 'asc' }];
+    if (pagination.sort && SORTABLE_COLUMNS.has(pagination.sort)) {
+      const dir = pagination.dir ?? 'asc';
+      orderBy = [{ [pagination.sort]: dir } as Prisma.RouteOrderByWithRelationInput, ...orderBy];
+    }
 
     const [items, total] = await Promise.all([
       client.route.findMany({
         where,
         select: ROUTE_SELECT,
-        orderBy: [{ isActive: 'desc' }, { code: 'asc' }],
+        orderBy,
         ...toPrismaPagination(pagination),
       }),
       client.route.count({ where }),

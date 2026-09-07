@@ -37,7 +37,7 @@ export default async function NewUserPage() {
         {UI.nav.drivers}
       </Link>
 
-      <PageHeader title={UI.admin.newAccount} />
+      <PageHeader title={UI.admin.newAccount} section={UI.nav.sectionMasterData} />
 
       <UserForm
         action={createUserAction}

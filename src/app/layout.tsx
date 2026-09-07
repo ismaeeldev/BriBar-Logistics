@@ -10,7 +10,7 @@
  * subdomain (SRS 4.4), not a public site.
  */
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, Geist_Mono } from 'next/font/google';
 import Script from 'next/script';
 
 import { THEME_SCRIPT } from '@/components/layout/theme';
@@ -18,8 +18,8 @@ import { LOCALE } from '@/lib/i18n/messages';
 
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang={LOCALE}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       {/*
         `beforeInteractive` is the only strategy that runs before the browser
