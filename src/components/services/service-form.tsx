@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   CheckboxField,
   Field,
+  Input,
   KmInput,
   ReadOnlyValue,
   Select,
@@ -53,6 +54,8 @@ const ORDERED_KM_FIELDS = [
 export interface ServiceFormValues {
   vehicleId: string;
   routeId: string;
+  origin: string;
+  destination: string;
   startDashboardKm: string;
   startBaseKm: string;
   endBaseKm: string;
@@ -90,9 +93,32 @@ export function ServiceForm({
     status: 'idle',
   });
 
-  const [routeId, setRouteId] = useState(
-    initialValues?.routeId ?? context.defaultRouteId ?? context.routes[0]?.id ?? '',
-  );
+  const initialRouteId =
+    initialValues?.routeId ?? context.defaultRouteId ?? context.routes[0]?.id ?? '';
+  const [routeId, setRouteId] = useState(initialRouteId);
+
+  /**
+   * Origin/destination (client change request 2026-09-09): seeded from the
+   * route but editable — a run is sometimes only part of the route, or ends at
+   * a different site. On create the seed is the route's current value; on edit
+   * it is whatever was saved (which may already be an override). Selecting a
+   * different route resets both to that route's values, matching the long-
+   * standing "changing Route refreshes Origin/Destination" behaviour (SRS 14.4).
+   */
+  const initialRoute = context.routes.find((route) => route.id === initialRouteId);
+  const [locations, setLocations] = useState({
+    origin: initialValues?.origin ?? initialRoute?.origin ?? '',
+    destination: initialValues?.destination ?? initialRoute?.destination ?? '',
+  });
+
+  function selectRoute(nextRouteId: string) {
+    setRouteId(nextRouteId);
+    const nextRoute = context.routes.find((route) => route.id === nextRouteId);
+    setLocations({
+      origin: nextRoute?.origin ?? '',
+      destination: nextRoute?.destination ?? '',
+    });
+  }
 
   const [km, setKm] = useState({
     startDashboardKm: initialValues?.startDashboardKm ?? '',
@@ -124,6 +150,10 @@ export function ServiceForm({
         endDashboardKm: echoed['endDashboardKm'] ?? '',
       });
       if (echoed['routeId']) setRouteId(echoed['routeId']);
+      setLocations({
+        origin: echoed['origin'] ?? '',
+        destination: echoed['destination'] ?? '',
+      });
     }
   }
 
@@ -221,7 +251,7 @@ export function ServiceForm({
                 {...props}
                 name="routeId"
                 value={routeId}
-                onChange={(event) => setRouteId(event.target.value)}
+                onChange={(event) => selectRoute(event.target.value)}
               >
                 {context.routes.map((route) => (
                   <option key={route.id} value={route.id}>
@@ -235,15 +265,39 @@ export function ServiceForm({
             )}
           </Field>
 
-          {/* SRS 14.4: populated from the route, and the driver cannot
-              override them. Read-only rather than disabled inputs, so they are
-              obviously information rather than something broken. */}
+          {/* Seeded from the route, refreshed when the route changes (SRS 14.4),
+              but editable per client change request 2026-09-09: a service may
+              run only part of the route or finish elsewhere. Blank falls back to
+              the route's current value on the server. */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <ReadOnlyValue label={FIELD_LABELS.origin} value={selectedRoute?.origin ?? '—'} />
-            <ReadOnlyValue
-              label={FIELD_LABELS.destination}
-              value={selectedRoute?.destination ?? '—'}
-            />
+            <Field label={FIELD_LABELS.origin} errors={fieldErrors?.['origin']}>
+              {(props) => (
+                <Input
+                  {...props}
+                  name="origin"
+                  autoComplete="off"
+                  value={locations.origin}
+                  onChange={(event) =>
+                    setLocations((current) => ({ ...current, origin: event.target.value }))
+                  }
+                  placeholder={selectedRoute?.origin ?? ''}
+                />
+              )}
+            </Field>
+            <Field label={FIELD_LABELS.destination} errors={fieldErrors?.['destination']}>
+              {(props) => (
+                <Input
+                  {...props}
+                  name="destination"
+                  autoComplete="off"
+                  value={locations.destination}
+                  onChange={(event) =>
+                    setLocations((current) => ({ ...current, destination: event.target.value }))
+                  }
+                  placeholder={selectedRoute?.destination ?? ''}
+                />
+              )}
+            </Field>
           </div>
 
           <Field

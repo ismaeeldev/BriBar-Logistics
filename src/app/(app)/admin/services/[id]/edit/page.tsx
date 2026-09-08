@@ -80,6 +80,8 @@ export default async function AdminEditServicePage({
         initialValues={{
           vehicleId: service.vehicle.id,
           routeId: service.route.id,
+          origin: service.origin,
+          destination: service.destination,
           startDashboardKm: String(service.startDashboardKm),
           startBaseKm: String(service.startBaseKm),
           endBaseKm: String(service.endBaseKm),
