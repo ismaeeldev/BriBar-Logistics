@@ -462,11 +462,14 @@ export const es: Dictionary = {
       createAccount: 'Crear cuenta',
       createVehicle: 'Crear vehículo',
       createRoute: 'Crear ruta',
+      selectDriverToStart: 'Seleccione un conductor para empezar a registrar el servicio.',
+      chooseDriver: 'Elegir conductor…',
     },
 
     nav: {
       adminLabel: 'Administración',
       driverLabel: 'Principal',
+      toggleSidebar: 'Contraer o expandir el menú',
       panel: 'Panel',
       dashboard: 'Resumen',
       sectionOperations: 'Operaciones',

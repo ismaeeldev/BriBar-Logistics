@@ -394,12 +394,18 @@ export interface Dictionary {
       createAccount: string;
       createVehicle: string;
       createRoute: string;
+      /** Prompt shown on the admin Add Service page before a driver is chosen. */
+      selectDriverToStart: string;
+      /** Placeholder option in the admin Add Service driver picker. */
+      chooseDriver: string;
     };
 
     nav: {
       /** Landmark names, so a screen reader can tell the two navs apart. */
       adminLabel: string;
       driverLabel: string;
+      /** Tooltip/label for the desktop sidebar collapse control. */
+      toggleSidebar: string;
       panel: string;
       dashboard: string;
       sectionOperations: string;

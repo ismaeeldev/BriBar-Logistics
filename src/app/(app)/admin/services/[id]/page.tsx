@@ -41,7 +41,7 @@ export default async function AdminServiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ updated?: string }>;
+  searchParams: Promise<{ updated?: string; created?: string }>;
 }) {
   const actor = await requireAdmin();
   const { id } = await params;
@@ -69,6 +69,7 @@ export default async function AdminServiceDetailPage({
         {UI.admin.servicesTitle}
       </Link>
 
+      {flags.created ? <Alert tone="success" title={UI.service.submitted} /> : null}
       {flags.updated ? <Alert tone="success" title={UI.service.saved} /> : null}
 
       <div className="flex flex-wrap items-start justify-between gap-4">

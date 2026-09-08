@@ -70,6 +70,7 @@ export function ServiceForm({
   initialValues,
   submitLabel,
   serviceCode,
+  driverId,
 }: {
   context: ServiceContextDto;
   action: (state: ServiceFormState, formData: FormData) => Promise<ServiceFormState>;
@@ -77,6 +78,13 @@ export function ServiceForm({
   submitLabel: string;
   /** Present when editing; the ID is server-issued and never editable. */
   serviceCode?: string;
+  /**
+   * Set only when an administrator is filing on a driver's behalf (client
+   * decision #7). Submitted as a hidden field so `createServiceAction` parses
+   * the request with `adminCreateServiceSchema`. A driver's form never sets it,
+   * and `updateServiceSchema` has no `driverId` at all, so edits ignore it.
+   */
+  driverId?: string;
 }) {
   const [state, formAction, isPending] = useActionState<ServiceFormState, FormData>(action, {
     status: 'idle',
@@ -157,7 +165,13 @@ export function ServiceForm({
     // than by the space available — a text input stretched across a monitor is
     // harder to fill in, not easier. The driver shell is already narrow; this
     // is what keeps the same form from spanning the admin panel.
-    <form action={formAction} className="max-w-2xl space-y-4 pb-28 sm:pb-2">
+    <form action={formAction} className="mx-auto w-full max-w-2xl space-y-4 pb-28 sm:pb-2">
+      {/* SRS 22.4: server-owned everywhere else, but an administrator filing for
+          a driver must name them. Hidden rather than a visible control — the
+          owning driver is chosen on the page before the form is shown, and the
+          name is already displayed read-only below. */}
+      {driverId ? <input type="hidden" name="driverId" value={driverId} /> : null}
+
       {/* A form-level failure that belongs to no single field: a conflict, a
           route that stopped being assignable, an unexpected error. */}
       {state.status === 'error' && state.message ? (

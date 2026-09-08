@@ -454,11 +454,14 @@ export const en: Dictionary = {
       createAccount: 'Create account',
       createVehicle: 'Create vehicle',
       createRoute: 'Create route',
+      selectDriverToStart: 'Select a driver to start recording the service.',
+      chooseDriver: 'Choose a driver…',
     },
 
     nav: {
       adminLabel: 'Administration',
       driverLabel: 'Main',
+      toggleSidebar: 'Collapse or expand the menu',
       panel: 'Panel',
       dashboard: 'Dashboard',
       sectionOperations: 'Operations',
