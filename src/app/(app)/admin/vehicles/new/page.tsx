@@ -14,7 +14,7 @@ export default async function NewVehiclePage() {
   await requireAdmin();
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-2xl space-y-5">
       <Link
         href="/admin/vehicles"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"

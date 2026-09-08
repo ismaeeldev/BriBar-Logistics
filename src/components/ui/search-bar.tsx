@@ -158,7 +158,9 @@ export function ListFilters({ showRoleFilter }: { showRoleFilter?: boolean }) {
       </button>
 
       {isOpen ? (
-        <div className="bg-card border-border/60 animate-rise absolute top-full right-0 z-50 mt-2 flex w-56 flex-col gap-4 rounded-xl border p-4 shadow-lg sm:right-auto sm:left-0">
+        // Right-anchored: the filter button sits at the far right of the header,
+        // so the panel opens leftwards and never pushes the page sideways.
+        <div className="bg-card border-border/60 animate-rise absolute top-full right-0 z-50 mt-2 flex max-w-[calc(100vw-2rem)] w-56 flex-col gap-4 rounded-xl border p-4 shadow-lg">
           <FilterGroup
             name="isActive"
             label={UI.common.status}

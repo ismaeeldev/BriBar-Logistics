@@ -31,7 +31,7 @@ export default async function NewServicePage() {
     // page that explains what has to happen next.
     if (isAppError(error) && error.code === ErrorCode.CONFIGURATION_REQUIRED) {
       return (
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-2xl space-y-6">
           <BackLink />
           <PageHeader title={UI.service.addTitle} />
           <Alert tone="warning" title={UI.service.configurationRequired}>
@@ -44,7 +44,7 @@ export default async function NewServicePage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-2xl space-y-5">
       <BackLink />
       <PageHeader title={UI.service.addTitle} description={UI.service.addSubtitle} />
 

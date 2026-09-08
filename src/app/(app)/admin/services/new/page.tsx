@@ -65,7 +65,7 @@ export default async function AdminNewServicePage({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-2xl space-y-5">
       <Link
         href="/admin/services"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -80,7 +80,7 @@ export default async function AdminNewServicePage({
         description={UI.service.addSubtitle}
       />
 
-      <Card className="mx-auto w-full max-w-2xl">
+      <Card>
         <CardBody className="pt-5">
           <ServiceDriverPicker drivers={driverOptions} selectedDriverId={selectedDriverId} />
         </CardBody>

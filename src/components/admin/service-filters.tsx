@@ -106,7 +106,10 @@ export function ServiceFilters({
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 top-full mt-2 w-80 bg-card border border-border/60 shadow-xl rounded-xl z-50 p-4 animate-rise">
+          // Anchored to the right edge of the trigger: this control sits at the
+          // far right of the header, so opening leftwards keeps the panel on
+          // screen instead of forcing the whole page to scroll sideways.
+          <div className="animate-rise bg-card border-border/60 absolute top-full right-0 z-50 mt-2 max-w-[calc(100vw-2rem)] w-80 rounded-xl border p-4 shadow-xl">
             <form onSubmit={apply} className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-foreground">{UI.admin.filters}</span>

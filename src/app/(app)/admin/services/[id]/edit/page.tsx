@@ -48,7 +48,7 @@ export default async function AdminEditServicePage({
   const context = await serviceService.getContext(actor, service.driver.id);
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-2xl space-y-5">
       <Link
         href={`/admin/services/${id}`}
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
