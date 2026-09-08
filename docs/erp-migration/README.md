@@ -1,6 +1,6 @@
 # BRIBAR ERP — migration & replication roadmap (V2)
 
-**Status:** proposal, pending client answers to the [open questions](#open-questions).
+**Status:** proposal, pending client answers to the [questions in §6](#6-questions-for-the-client).
 **Source of truth for the model:** `ERP_Transporte_ANONIMIZADO.xlsm` (this folder),
 the client's live Excel ERP, anonymised.
 
@@ -162,39 +162,117 @@ per non-obvious decision.
 
 ---
 
-## 5. Open questions
+## 5. Where the current app stands against this
 
-Answers to these change the estimate and the schema. Nothing in Phase 1+ starts
-until they are settled.
+Two honest framings, because "how far along are we" has two answers.
 
-1. **Excel sync** — which of §3.6 (a) / (b) / (c)? "Sync" can mean a download
-   button or a Microsoft-Graph integration; they are weeks apart.
-2. **Historical data** — should the app import the **full** spreadsheet history,
-   or start clean from a go-live date with Excel kept as the archive?
-3. **Clients / contracts** — is a *contract* the same thing as a V1 *route*
-   (`Contrato` and route both label the work), or a separate layer above routes?
-   The rate lives on the contract.
-4. **VAT on issued invoices** — always 21%? Any reduced-rate or intra-EU cases?
-5. **Personnel** — monthly cost rows only (as the sheet has), or actual
-   shift/day tracking? Does the app need payslip-level detail or just the
-   monthly total that feeds margins?
-6. **Who enters what** — refuelling and daily km: driver on the phone, or
-   admin only? (Drivers already carry the phone and see the odometer.)
-7. **Multi-vehicle / multi-client scale** — the sheet has ~2 vehicles and 1
-   client today but the lists anticipate more. Confirm the app should assume a
-   growing fleet and multiple clients from day one (it will).
-8. **Rounding** — Excel carries full float precision and rounds on display. The
-   app will round each stored amount to the cent. Confirm that is acceptable
-   (it is standard, but totals may differ from Excel by a few cents over a year).
+### 5.1 By module
+
+| ERP area (Excel sheet) | In the app today | Coverage |
+| --- | --- | --- |
+| **Platform** — auth, roles, sessions, audit log, notifications, i18n, design system, the layered architecture | Complete, and carries into every module below unchanged | **100%** |
+| Services — *operational half* (01Servicios) — driver records a sheet, admin approves, history, filters, status audit | Complete | **100%** |
+| Services — *billing half* — client, end-client, supplement (amount + type), `Base imponible` (rate + supplement), issued-invoice link | Not built | **0%** |
+| Master data — vehicles | Full CRUD + activate/deactivate | **100%** |
+| Master data — drivers / users / route assignments | Full CRUD + roles | **100%** |
+| Master data — routes / contracts | Full CRUD; **no base rate** | **80%** |
+| Master data — clients & end-clients | — | **0%** |
+| Master data — suppliers, gas stations, expense categories, fuel types, payment methods/forms, supplement types | — | **0%** |
+| Config (99_Config) — oil interval, default consumption, fuel price, per-document ID counters | Only the Service ID sequence exists | **~10%** |
+| Daily real km (00KmDiariosReales) | — | **0%** |
+| Refuelling (02Repostajes) | — | **0%** |
+| Received invoices (03Facturas_Recibidas) | — | **0%** |
+| Personnel (04_Personal) | — | **0%** |
+| Issued invoices (05Facturas_Emitidas) | — | **0%** |
+| Taxes (06_Impuestos) | — | **0%** |
+| Investments (07_Inversiones) | — | **0%** |
+| Maintenance (08_Mantenimiento) | — | **0%** |
+| Analytics & dashboard (00Dashboard / 00Análisis) | Service-operations dashboard only: pending/approved counts, today vs. yesterday, 7-day trend, 14-day activity chart, top routes by km, an exceptions panel. **No money, fuel, margin, €/km, or per-vehicle/contract/driver figures.** | **~10%** |
+| Finance core (money / VAT / fiscal periods / document numbering) | Service ID sequence is the only piece | **~5%** |
+| Data import from Excel · Excel export / sync | — | **0%** |
+
+### 5.2 By effort
+
+- **Foundation already built:** ~25–28 developer-days (`docs/roadmap.md`, phases
+  1–4). Effectively all of it — the platform, the approval workflow, the driver
+  mobile UX, the design system, the module architecture — is reused as-is.
+- **ERP programme remaining:** ~35–50 developer-days (§4).
+
+So the app today is roughly **35–40% of the total build by effort**, but only
+**~15% of the feature scope the client described** — it delivers 1 of ~12
+functional areas, and the operational half of that one. **The ERP work roughly
+doubles the system.**
 
 ---
 
-## 6. What is already in motion
+## 6. Questions for the client
+
+Answers change the estimate and the schema. **Nothing in Phase 1 starts until
+A1–A2, B4, and E13 are settled**; the rest can be answered as each phase begins.
+
+### A · Scope & transition
+
+1. **Excel sync — which kind?**
+   (a) a "Download to Excel" button that regenerates the workbook on demand;
+   (b) a scheduled two-way reconciliation with a conflict report;
+   (c) a live Microsoft-365 / Graph integration.
+   These are weeks of work apart.
+2. **Historical data** — import the **entire** spreadsheet history into the app,
+   or start clean from a go-live date and keep the current Excel as a frozen
+   archive?
+3. **Cut-over** — a period where Excel and the app are both kept up to date in
+   parallel, or a hard switch on one date?
+
+### B · Data model
+
+4. **Contrato vs. Route** — is "Contrato" the same thing as a Route in the app
+   (both name the work a vehicle does), or a layer above it (a client has
+   contracts, a contract has routes)? The base rate lives on whichever it is.
+5. **Clients & end clients** — is "Cliente final" just a label on a service, or a
+   real record you manage (its own contacts, addresses, its own invoices)?
+6. **Vehicle odometer** — today it is recorded only on refuels. Should drivers
+   also record the odometer on every service? It makes consumption and
+   "km since last refuel" far more reliable.
+
+### C · Money & tax
+
+7. **VAT on issued invoices** — always 21%? Any reduced-rate, exempt, or
+   intra-EU (reverse-charge) cases?
+8. **Supplements** — is `Imp. suplemento` always *added* to the base rate, or can
+   a supplement *replace* it for some services?
+9. **Rounding** — Excel keeps full precision and rounds on display; the app
+   stores each amount rounded to the cent, so annual totals may differ from the
+   spreadsheet by a few cents. Acceptable? (standard accounting practice)
+
+### D · Operations & responsibilities
+
+10. **Who enters refuelling and daily km** — the driver on the phone, an
+    administrator only, or either?
+11. **Personnel detail** — just the monthly cost total that feeds the margin
+    calculations (what the sheet has), or per-day / per-shift tracking and
+    payslip-level records?
+12. **Maintenance rules** — is the due-date engine complete as *next oil change
+    at +15 000 km, next ITV at +6 months*, or are there other maintenance types
+    with their own intervals?
+
+### E · Priorities & scale
+
+13. **Module order** — the roadmap's default is: contract rates & billing →
+    refuelling → received invoices & investments → issued invoices & taxes →
+    personnel / daily km / maintenance → analytics. Agree, or reprioritise?
+14. **Fleet & clients** — the sheet has ~2 vehicles and 1 client today, but the
+    master lists anticipate more. Confirm the app should assume a growing fleet
+    and multiple clients from day one (it will).
+
+---
+
+## 7. What is already in motion
 
 - **Item 1 (editable origin/destination)** — implemented, branch
   `feat/editable-origin-destination`.
-- **Item 2 (arrival time on next-day services)** — the field is already
-  mandatory in every case; waiting on the client to describe what they saw.
-- **Item 4 (contract rate)** — folded into Phase 0 above rather than built in
+- **Item 2 (arrival time on next-day services)** — fixed, branch
+  `fix/next-day-arrival-time`. Ticking "Llega al día siguiente" now accepts the
+  arrival time as entered; `migration 20260909000000` relaxes the constraint.
+- **Item 4 (contract rate)** — folded into **Phase 0** above rather than built in
   isolation, because it *is* the start of the billing model and should share the
   money/VAT foundation.
