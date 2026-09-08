@@ -89,7 +89,8 @@ export function ServiceFilters({
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-2 px-3 py-2 border rounded-xl text-sm font-medium transition-colors',
+            // Same height/shape as the "add service" button beside it.
+            'flex h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors',
             activeCount > 0
               ? 'bg-primary/10 border-primary/20 text-primary'
               : 'bg-card border-border hover:bg-muted text-foreground',
@@ -212,7 +213,7 @@ export function ServiceFilters({
         <button
           type="button"
           onClick={clearAll}
-          className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="size-3.5" />
           {UI.admin.clearFilters}

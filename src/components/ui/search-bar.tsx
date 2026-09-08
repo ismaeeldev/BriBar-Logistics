@@ -65,7 +65,9 @@ export function SearchBar({
         placeholder={placeholder}
         aria-label={placeholder}
         className={cn(
-          'border-border/60 bg-background w-full rounded-xl border py-2 pr-9 pl-9 text-sm',
+          // Height matched to the filter and "new" buttons so the header row
+          // reads as one control strip.
+          'border-border/60 bg-background h-11 w-full rounded-xl border pr-9 pl-9 text-sm',
           'placeholder:text-muted-foreground focus:ring-primary/20 focus:ring-2 focus:outline-none',
           'transition-shadow',
           isPending && 'opacity-70',
@@ -143,7 +145,9 @@ export function ListFilters({ showRoleFilter }: { showRoleFilter?: boolean }) {
         aria-expanded={isOpen}
         aria-haspopup="true"
         className={cn(
-          'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+          // Same height/shape as the "new" button beside it (buttonVariants,
+          // size 'default').
+          'flex h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors',
           hasActiveFilters
             ? 'bg-primary/10 border-primary/20 text-primary'
             : 'bg-card border-border hover:bg-muted text-foreground',
