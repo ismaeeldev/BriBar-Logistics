@@ -348,8 +348,9 @@ export function ServiceForm({
             </Field>
           </div>
 
-          {/* The flag that makes an overnight run recordable while still
-              rejecting a transposed same-day pair (client decision #3). */}
+          {/* The flag that makes an overnight run recordable. It only relaxes
+              the same-day ordering rule; it can never itself be invalid
+              (client decision #3, change request 2026-09-09). */}
           <CheckboxField
             name="endsNextDay"
             label={FIELD_LABELS.endsNextDay}
@@ -358,10 +359,6 @@ export function ServiceForm({
               echoed ? echoed['endsNextDay'] === 'true' : (initialValues?.endsNextDay ?? false)
             }
           />
-
-          {fieldErrors?.['endsNextDay'] ? (
-            <Alert tone="error">{fieldErrors['endsNextDay'].join(' ')}</Alert>
-          ) : null}
         </CardBody>
       </Card>
 

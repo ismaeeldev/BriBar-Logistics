@@ -55,17 +55,24 @@ either a transposition typo or a real overnight run, and nothing in the pair
 tells them apart — so rejecting outright would make overnight services impossible
 to record, and accepting outright is the behaviour we were asked to stop.
 
-The service therefore carries one extra flag, `endsNextDay`, and the rule becomes
-a single comparison each way:
+The service therefore carries one extra flag, `endsNextDay`:
 
-| `endsNextDay`     | Rule                                 | Rationale                            |
-| ----------------- | ------------------------------------ | ------------------------------------ |
-| `false` (default) | arrival must be **after** departure  | the client's rule                    |
-| `true`            | arrival must be **before** departure | otherwise the service ran ≥ 24 hours |
+| `endsNextDay`     | Rule                                | Rationale         |
+| ----------------- | ----------------------------------- | ----------------- |
+| `false` (default) | arrival must be **after** departure | the client's rule |
+| `true`            | any valid arrival time is accepted  | see the update    |
 
 This is the minimum SRS 31.3's own escape clause allows — no arrival date column,
 no timestamp migration, one boolean. Enforced in the domain layer, in the Zod
 schema, and by the `services_times_consistent` CHECK constraint.
+
+> **Update, 2026-09-09.** The `true` row originally read "arrival must be
+> **before** departure — otherwise the service ran ≥ 24 hours". The client asked
+> us to drop that check: ticking "Llega al día siguiente" now accepts the arrival
+> time as entered. Rejecting a plausible clock time confused drivers and, on some
+> paths, surfaced as an error page rather than a field message. A next-day service
+> can now be recorded as running more than 24 hours —
+> `migration 20260909000000_relax_overnight_arrival_time`.
 
 ### 4. Zero-distance services → not acceptable
 

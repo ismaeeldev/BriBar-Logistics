@@ -519,16 +519,19 @@ describe('departure and arrival ordering (client decision #3)', () => {
     expect(dateToTimeOfDay(service.arrivalTime)).toBe('02:00');
   });
 
-  it('rejects an overnight flag that would make the service 24 hours or more', async () => {
-    await expect(
-      prisma.service.create({
-        data: serviceData(fixture, {
-          departureTime: timeOfDayToDate(asTimeOfDay('07:00')),
-          arrivalTime: timeOfDayToDate(asTimeOfDay('09:00')),
-          endsNextDay: true,
-        }),
+  it('accepts any arrival time on a next-day service (change request 2026-09-09)', async () => {
+    // Once the flag is set the arrival time stands, even when it is later on
+    // the clock than the departure (a service spanning more than 24 hours).
+    const service = await prisma.service.create({
+      data: serviceData(fixture, {
+        departureTime: timeOfDayToDate(asTimeOfDay('07:00')),
+        arrivalTime: timeOfDayToDate(asTimeOfDay('09:00')),
+        endsNextDay: true,
       }),
-    ).rejects.toThrow(/services_times_consistent/);
+    });
+
+    expect(service.endsNextDay).toBe(true);
+    expect(dateToTimeOfDay(service.arrivalTime)).toBe('09:00');
   });
 
   it('defaults endsNextDay to false, so the same-day rule applies by default', async () => {
