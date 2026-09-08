@@ -13,14 +13,16 @@ sheet on a phone, an administrator approves it. SRS 29 explicitly excluded
 everything else the business runs on: fuel, invoicing, personnel, taxes,
 investments, maintenance, reporting, and the Excel/M365 integration.
 
-The client now wants the app to **replace the spreadsheet as the system of
-record** — not by importing numbers, but by reproducing the spreadsheet's
-*logic*: the same relationships, the same formulas, the same results, adapted to
-a database. The existing Excel data must come across, and the app and the
-spreadsheet must stay in sync during a transition period.
+The client now wants the app to **fully replace the spreadsheet and retire the
+Excel dependency** — not by importing numbers, but by reproducing the
+spreadsheet's *logic*: the same relationships, the same formulas, the same
+results, adapted to a database. Confirmed: this is a **one-time migration, not
+an ongoing sync**. Every historical row moves into the app once; from that point
+the app is the sole system of record and Excel is not touched again (kept only
+as a frozen, read-only archive of what came before).
 
 This is a V2 programme: **10 new modules, a shared financial core, a reporting
-layer, a data-import tool, and an Excel bridge.** Estimated **35–50 developer-days**
+layer, and a one-time data-import tool.** Estimated **35–50 developer-days**
 depending on the answers below, delivered in the phases in §4.
 
 ---
@@ -129,13 +131,18 @@ use, reports what would be rejected, then writes in dependency order (master
 data → contracts/rates → services → fuel → invoices → …). Idempotent, dry-run
 by default. This is how the client's real history comes across.
 
-### 3.6 Excel sync — **needs a decision (see open questions)**
+### 3.6 Retiring Excel
 
-Options, cheapest first: (a) **export only** — the app generates an `.xlsx` in the
-same layout on demand; the client keeps Excel as a read-only mirror. (b) **export +
-re-import** — scheduled two-way reconciliation with a conflict report. (c) **live
-M365 / Graph API sync** — a genuine integration, its own project. The roadmap
-below assumes (a) until told otherwise.
+Confirmed: **no ongoing sync, no M365/Graph integration, no export feature to
+build.** §3.5's importer runs once per environment (dry-run first, then commit),
+and that is the entire bridge. After cutover the client works in the app only;
+the spreadsheet is kept as a read-only archive, not a live twin.
+
+The one thing worth building anyway: **a one-off "export a snapshot" action**
+(admin-only, produces an `.xlsx` in roughly the original layout) — not for sync,
+but as an audit safety net during the first few months, and because it is a
+small addition once the domain models exist. Cut if the client doesn't want it;
+it changes nothing else in the plan.
 
 ---
 
@@ -153,7 +160,7 @@ finance core before any money module, master data before transactions.
 | **4** | **Issued invoices** + **Taxes**. Group approved services into a client invoice; `Base = Σ service base`; quarterly IVA soportado/repercutido. | 4 | 0, 3 |
 | **5** | **Personnel** + **Daily real km** + **Maintenance**. Monthly personnel cost rows, `coste fijo diario`; daily-km capture; maintenance log with due-date engine. | 6 | 1 |
 | **6** | **Analytics & dashboard.** All aggregate queries, per-contract / per-vehicle / per-driver views, the maintenance-alert panel, the scenario simulator. Replaces `00Dashboard` / `00Análisis` / `90_Modelo`. | 6–8 | 2–5 |
-| **7** | **Data import** of the client's real spreadsheet; **Excel export**; UAT against the spreadsheet's own numbers (the app's totals must match Excel to the cent for a shared period). | 5–7 | all |
+| **7** | **One-time data import** of the client's real spreadsheet; cutover — Excel frozen, app becomes sole system of record; UAT against the spreadsheet's own numbers (the app's totals must match Excel to the cent for the migrated period); optional snapshot-export action (§3.6). | 5–7 | all |
 
 **Cross-cutting, every phase:** Spanish strings in `messages.ts`; strict request
 schemas; `domain/` stays dependency-free; migrations `--create-only` with the
@@ -189,7 +196,7 @@ Two honest framings, because "how far along are we" has two answers.
 | Maintenance (08_Mantenimiento) | — | **0%** |
 | Analytics & dashboard (00Dashboard / 00Análisis) | Service-operations dashboard only: pending/approved counts, today vs. yesterday, 7-day trend, 14-day activity chart, top routes by km, an exceptions panel. **No money, fuel, margin, €/km, or per-vehicle/contract/driver figures.** | **~10%** |
 | Finance core (money / VAT / fiscal periods / document numbering) | Service ID sequence is the only piece | **~5%** |
-| Data import from Excel · Excel export / sync | — | **0%** |
+| One-time data import from Excel (cutover, then Excel retired) | — | **0%** |
 
 ### 5.2 By effort
 
@@ -208,20 +215,23 @@ doubles the system.**
 ## 6. Questions for the client
 
 Answers change the estimate and the schema. **Nothing in Phase 1 starts until
-A1–A2, B4, and E13 are settled**; the rest can be answered as each phase begins.
+B4 and E13 are settled**; A2 and A3 matter before Phase 7 (the import) begins
+but don't block starting the build; the rest can be answered as each phase
+begins.
 
 ### A · Scope & transition
 
-1. **Excel sync — which kind?**
-   (a) a "Download to Excel" button that regenerates the workbook on demand;
-   (b) a scheduled two-way reconciliation with a conflict report;
-   (c) a live Microsoft-365 / Graph integration.
-   These are weeks of work apart.
-2. **Historical data** — import the **entire** spreadsheet history into the app,
-   or start clean from a go-live date and keep the current Excel as a frozen
-   archive?
-3. **Cut-over** — a period where Excel and the app are both kept up to date in
-   parallel, or a hard switch on one date?
+1. ~~Excel sync — which kind?~~ **Resolved.** No ongoing sync: a one-time
+   migration, then Excel is retired. §3.6 covers what that means for the build.
+2. **Import depth** — since Excel is being retired, its full history needs to
+   live in the app for continuity (Service IDs, past investments, past
+   maintenance). Confirm: import **every** historical row from every sheet, or
+   only what each module needs going forward (e.g. current odometer readings
+   and open invoices, not five years of closed ones)? Full history is safer and
+   not much more work given the row counts (§2), but worth confirming.
+3. **Cutover date** — a single date after which the client works in the app only
+   and Excel is frozen for good. When is that likely to be, relative to the
+   phases in §4? (Phase 7, where the import runs, is naturally last.)
 
 ### B · Data model
 
