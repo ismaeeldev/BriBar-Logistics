@@ -8,13 +8,16 @@
  * the pickers only ever offer values that exist — and the query itself is
  * parsed with `serviceFilterSchema`, the same schema `/api/services` uses.
  */
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Plus } from 'lucide-react';
+import Link from 'next/link';
 
 import { AdminServiceList } from '@/components/admin/service-list';
 import { ServiceFilters } from '@/components/admin/service-filters';
+import { buttonVariants } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { EmptyState, PageHeader, StatePill } from '@/components/ui/primitives';
 import { SearchBar } from '@/components/ui/search-bar';
+import { cn } from '@/lib/utils/cn';
 import { requireAdmin } from '@/lib/auth/session';
 import { env } from '@/lib/env';
 import { UI } from '@/lib/i18n/messages';
@@ -61,6 +64,15 @@ export default async function AdminServicesPage({
         description={UI.driver.serviceCount(total)}
         statusPill={<StatePill isActive={true} label={UI.common.active} />}
         search={<SearchBar placeholder={UI.admin.searchServices} className="w-full" />}
+        action={
+          <Link
+            href="/admin/services/new"
+            className={cn(buttonVariants({ size: 'default' }))}
+          >
+            <Plus aria-hidden className="size-4" />
+            {UI.driver.addService}
+          </Link>
+        }
         filters={
           <ServiceFilters
             drivers={drivers.map((driver) => ({ id: driver.id, label: driver.name }))}

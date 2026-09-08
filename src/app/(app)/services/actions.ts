@@ -74,6 +74,8 @@ function toEchoValues(formData: FormData): Record<string, string> {
     if (typeof value === 'string') values[key] = value;
   }
   values['endsNextDay'] = formData.get('endsNextDay') !== null ? 'true' : '';
+  const driverId = formData.get('driverId');
+  if (typeof driverId === 'string') values['driverId'] = driverId;
   return values;
 }
 
@@ -119,6 +121,13 @@ function toFormState(
 }
 
 export async function createServiceAction(
+  /**
+   * Where to land after a successful submission. A driver files from
+   * `/services/new` and returns to their own detail page; an administrator
+   * files from `/admin/services/new` and returns to the review page. Bound by
+   * the caller, like `updateServiceAction`'s `returnTo`.
+   */
+  returnTo: 'driver' | 'admin',
   _state: ServiceFormState,
   formData: FormData,
 ): Promise<ServiceFormState> {
@@ -158,7 +167,13 @@ export async function createServiceAction(
   // report a successful submission as an error.
   revalidatePath('/driver');
   revalidatePath('/services');
-  redirect(`/services/${createdId}?created=1`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/services');
+  redirect(
+    returnTo === 'admin'
+      ? `/admin/services/${createdId}?created=1`
+      : `/services/${createdId}?created=1`,
+  );
 }
 
 export async function updateServiceAction(

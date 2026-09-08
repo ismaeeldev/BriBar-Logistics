@@ -41,8 +41,9 @@ export function EntityForm({
   return (
     // Same cap as the service form, and for the same reason: three fields and
     // a toggle stretched across a 1000px column look like a settings page for
-    // something much larger than a vehicle.
-    <form action={formAction} className="max-w-2xl space-y-4">
+    // something much larger than a vehicle. Centred in the content column so
+    // the card is not stranded against the left edge of the admin shell.
+    <form action={formAction} className="mx-auto w-full max-w-2xl space-y-4">
       {state.status === 'error' && state.message ? (
         <Alert tone="error" title={state.message}>
           {fieldErrors?.['root']?.join(' ')}

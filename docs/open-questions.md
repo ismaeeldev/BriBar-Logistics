@@ -103,13 +103,18 @@ ever wanted.
 
 ### 7. Administrators may create services for drivers → yes
 
-`/services/new` is open to administrators, with a driver selector.
+`/admin/services/new` — reached from an "Add service" button on the admin
+services list. The owning driver is chosen first (carried in the query string so
+the server loads *that* driver's routes and vehicles), then the same
+`ServiceForm` the driver uses is shown with a hidden `driverId`. The driver's
+own `/services/new` is unchanged and files only for the authenticated user.
 
 SRS 9.5 — "the Driver field shall always reflect the authenticated user" — now
 holds for **drivers only**. The weakening is bounded: a driver's request schema
 has no `driverId` field at all, so a driver still cannot file on anyone else's
 behalf by any path, and every administrator-filed service records the acting
-administrator separately from the owning driver in the audit log.
+administrator separately from the owning driver in the audit log
+(`filedByAdministrator`).
 
 ### 8. Free-text limits → none
 

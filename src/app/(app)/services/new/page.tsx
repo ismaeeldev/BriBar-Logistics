@@ -59,7 +59,7 @@ export default async function NewServicePage() {
 
       <ServiceForm
         context={toServiceContextDto(context)}
-        action={createServiceAction}
+        action={createServiceAction.bind(null, 'driver')}
         submitLabel={UI.service.submit}
       />
     </div>

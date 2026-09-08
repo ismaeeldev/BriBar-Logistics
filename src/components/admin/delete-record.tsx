@@ -51,7 +51,7 @@ export function DeleteRecord({
 
   if (!deletability.canDelete) {
     return (
-      <section className="space-y-2">
+      <section className="mx-auto w-full max-w-2xl space-y-2">
         <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           {UI.common.dangerZone}
         </h2>
@@ -71,7 +71,7 @@ export function DeleteRecord({
   }
 
   return (
-    <section className="space-y-2">
+    <section className="mx-auto w-full max-w-2xl space-y-2">
       <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
         {UI.common.dangerZone}
       </h2>
