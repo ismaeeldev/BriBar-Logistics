@@ -8,6 +8,13 @@ import { isAppError } from '@/lib/errors/app-error';
 import { toFieldErrors } from '@/lib/http/api-response';
 import { ERRORS } from '@/lib/i18n/messages';
 import { logger } from '@/lib/logger';
+import { clientService } from '@/modules/clients/service/client.service';
+import { createClientSchema, updateClientSchema } from '@/modules/clients/schemas/client.schema';
+import { configService } from '@/modules/config/service/config.service';
+import { updateConfigSchema } from '@/modules/config/schemas/config.schema';
+import { lookupService } from '@/modules/lookup/service/lookup.service';
+import { createLookupItemSchema, updateLookupItemSchema } from '@/modules/lookup/schemas/lookup.schema';
+import type { LookupKind } from '@/modules/lookup/repository/lookup.repository';
 import { createRouteSchema, updateRouteSchema } from '@/modules/routes/schemas/route.schema';
 import { routeService } from '@/modules/routes/service/route.service';
 import { serviceService } from '@/modules/services/service/service.service';
@@ -165,6 +172,178 @@ export async function updateVehicleAction(
 
   revalidatePath('/admin/vehicles');
   redirect('/admin/vehicles?updated=1');
+}
+
+// ---------------------------------------------------------------------------
+// Clients (ERP roadmap Phase 1)
+// ---------------------------------------------------------------------------
+
+export async function createClientAction(
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = createClientSchema.safeParse({
+      name: text(formData, 'name'),
+      taxId: text(formData, 'taxId'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await clientService.create(actor, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'createClientAction', echo(formData));
+  }
+
+  revalidatePath('/admin/clients');
+  redirect('/admin/clients?created=1');
+}
+
+export async function updateClientAction(
+  clientId: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = updateClientSchema.safeParse({
+      name: text(formData, 'name'),
+      taxId: text(formData, 'taxId'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await clientService.update(actor, clientId, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'updateClientAction', echo(formData));
+  }
+
+  revalidatePath('/admin/clients');
+  redirect('/admin/clients?updated=1');
+}
+
+// ---------------------------------------------------------------------------
+// Simple lookup lists (ERP roadmap Phase 1) — fuel types, payment methods,
+// supplement types, end clients. One action per verb, parameterised by
+// `kind`, rather than one per kind: the four lists are identical in shape, so
+// a fifth would be a new enum value and a route segment, not new code here.
+// ---------------------------------------------------------------------------
+
+export async function createLookupItemAction(
+  kind: LookupKind,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = createLookupItemSchema.safeParse({
+      name: text(formData, 'name'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await lookupService.create(actor, kind, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'createLookupItemAction', echo(formData));
+  }
+
+  revalidatePath(`/admin/lists/${kind}`);
+  redirect(`/admin/lists/${kind}?created=1`);
+}
+
+export async function updateLookupItemAction(
+  kind: LookupKind,
+  itemId: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = updateLookupItemSchema.safeParse({
+      name: text(formData, 'name'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await lookupService.update(actor, kind, itemId, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'updateLookupItemAction', echo(formData));
+  }
+
+  revalidatePath(`/admin/lists/${kind}`);
+  redirect(`/admin/lists/${kind}?updated=1`);
+}
+
+// ---------------------------------------------------------------------------
+// Operational defaults (ERP roadmap Phase 1, `99_Config`)
+// ---------------------------------------------------------------------------
+
+export async function updateConfigAction(
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = updateConfigSchema.safeParse({
+      oilChangeIntervalKm: text(formData, 'oilChangeIntervalKm'),
+      defaultConsumption: text(formData, 'defaultConsumption'),
+      defaultFuelPrice: text(formData, 'defaultFuelPrice'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await configService.update(actor, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'updateConfigAction', echo(formData));
+  }
+
+  revalidatePath('/admin/config');
+  redirect('/admin/config?updated=1');
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +586,37 @@ export async function deleteVehicleAction(
 
   revalidatePath('/admin/vehicles');
   redirect('/admin/vehicles?deleted=1');
+}
+
+export async function deleteClientAction(
+  clientId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await clientService.remove(actor, clientId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteClientAction');
+  }
+
+  revalidatePath('/admin/clients');
+  redirect('/admin/clients?deleted=1');
+}
+
+export async function deleteLookupItemAction(
+  kind: LookupKind,
+  itemId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await lookupService.remove(actor, kind, itemId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteLookupItemAction');
+  }
+
+  revalidatePath(`/admin/lists/${kind}`);
+  redirect(`/admin/lists/${kind}?deleted=1`);
 }
 
 export async function deleteRouteAction(

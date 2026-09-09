@@ -54,7 +54,20 @@ const TABLES = [
   'users',
   'routes',
   'vehicles',
+  // ERP roadmap Phase 1. No FK relations to worry about in the ordering.
+  'clients',
+  'lookup_items',
 ] as const;
+
+/** `app_config` is a singleton (see the model's doc comment) — truncated and
+ * reseeded on its own rather than joining `TABLES`, so every test starts from
+ * the same known defaults instead of whatever an earlier test's `update()`
+ * left behind. */
+const APP_CONFIG_DEFAULTS = {
+  oilChangeIntervalKm: 15_000,
+  defaultConsumptionMlPer100Km: 11_000,
+  defaultFuelPriceCentsPerLiter: 152,
+};
 
 beforeEach(async () => {
   // One statement so it is a single transaction.
@@ -71,6 +84,12 @@ beforeEach(async () => {
   await testPrisma.$executeRawUnsafe(
     `ALTER SEQUENCE "${SERVICE_CODE_SEQUENCE}" RESTART WITH 1`,
   );
+
+  await testPrisma.appConfig.upsert({
+    where: { id: 'default' },
+    create: { id: 'default', ...APP_CONFIG_DEFAULTS },
+    update: APP_CONFIG_DEFAULTS,
+  });
 });
 
 afterAll(async () => {

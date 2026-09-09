@@ -9,6 +9,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AppError } from '@/lib/errors/app-error';
+import { clientService } from '@/modules/clients/service/client.service';
+import { configService } from '@/modules/config/service/config.service';
+import { lookupService } from '@/modules/lookup/service/lookup.service';
 import { routeService } from '@/modules/routes/service/route.service';
 import { serviceService } from '@/modules/services/service/service.service';
 import { userService } from '@/modules/users/service/user.service';
@@ -308,5 +311,193 @@ describe('users and route assignments (SRS 12, 26.5)', () => {
       }),
       'CONFLICT',
     );
+  });
+});
+
+describe('clients (ERP roadmap Phase 1)', () => {
+  it('lets an administrator create, edit and deactivate', async () => {
+    const created = await clientService.create(fixture.admin, {
+      name: 'Transportes Ejemplo SL',
+      taxId: 'B12345678',
+      isActive: true,
+    });
+    expect(created.name).toBe('Transportes Ejemplo SL');
+
+    const renamed = await clientService.update(fixture.admin, created.id, {
+      name: 'Transportes Ejemplo, S.L.',
+    });
+    expect(renamed.name).toBe('Transportes Ejemplo, S.L.');
+    // Untouched fields survive a partial update.
+    expect(renamed.taxId).toBe('B12345678');
+
+    const deactivated = await clientService.update(fixture.admin, created.id, {
+      isActive: false,
+    });
+    expect(deactivated.isActive).toBe(false);
+  });
+
+  it('allows a client with no tax id yet', async () => {
+    const created = await clientService.create(fixture.admin, {
+      name: 'Sin CIF todavía',
+      isActive: true,
+    });
+    expect(created.taxId).toBeNull();
+  });
+
+  it('deletes a client nothing references (nothing does yet)', async () => {
+    const created = await clientService.create(fixture.admin, {
+      name: 'Para borrar',
+      isActive: true,
+    });
+
+    await clientService.remove(fixture.admin, created.id);
+
+    await expectAppError(clientService.getById(fixture.admin, created.id), 'NOT_FOUND');
+  });
+
+  it('does not let a driver create one (SRS 20 convention)', async () => {
+    await expectAppError(
+      clientService.create(fixture.driver, { name: 'Intento de conductor', isActive: true }),
+      'FORBIDDEN',
+    );
+  });
+
+  it('does not let a driver list clients', async () => {
+    await expectAppError(clientService.list(fixture.driver), 'FORBIDDEN');
+  });
+});
+
+describe('simple lookup lists (ERP roadmap Phase 1)', () => {
+  it('lets an administrator create, edit and deactivate an item', async () => {
+    const created = await lookupService.create(fixture.admin, 'FUEL_TYPE', {
+      name: 'Diésel',
+      isActive: true,
+    });
+    expect(created.name).toBe('Diésel');
+    expect(created.kind).toBe('FUEL_TYPE');
+
+    const renamed = await lookupService.update(fixture.admin, 'FUEL_TYPE', created.id, {
+      name: 'Diésel B7',
+    });
+    expect(renamed.name).toBe('Diésel B7');
+
+    const deactivated = await lookupService.update(fixture.admin, 'FUEL_TYPE', created.id, {
+      isActive: false,
+    });
+    expect(deactivated.isActive).toBe(false);
+  });
+
+  it('scopes names per kind, not globally', async () => {
+    // The same name in two different lists is not a collision.
+    await lookupService.create(fixture.admin, 'FUEL_TYPE', { name: 'Efectivo', isActive: true });
+
+    await expect(
+      lookupService.create(fixture.admin, 'PAYMENT_METHOD', {
+        name: 'Efectivo',
+        isActive: true,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it('rejects a duplicate name within the same kind', async () => {
+    await lookupService.create(fixture.admin, 'PAYMENT_METHOD', {
+      name: 'Transferencia',
+      isActive: true,
+    });
+
+    await expectAppError(
+      lookupService.create(fixture.admin, 'PAYMENT_METHOD', {
+        name: 'Transferencia',
+        isActive: true,
+      }),
+      'CONFLICT',
+    );
+  });
+
+  it('404s on an id that belongs to a different kind', async () => {
+    const created = await lookupService.create(fixture.admin, 'FUEL_TYPE', {
+      name: 'Adblue',
+      isActive: true,
+    });
+
+    await expectAppError(
+      lookupService.getById(fixture.admin, 'PAYMENT_METHOD', created.id),
+      'NOT_FOUND',
+    );
+  });
+
+  it('does not let a driver create a list item', async () => {
+    await expectAppError(
+      lookupService.create(fixture.driver, 'SUPPLEMENT_TYPE', {
+        name: 'Espera',
+        isActive: true,
+      }),
+      'FORBIDDEN',
+    );
+  });
+});
+
+describe('operational defaults (ERP roadmap Phase 1, 99_Config)', () => {
+  it('is seeded with the spreadsheet defaults', async () => {
+    const config = await configService.get();
+
+    expect(config.oilChangeIntervalKm).toBe(15_000);
+    expect(config.defaultConsumptionMlPer100Km).toBe(11_000);
+    expect(config.defaultFuelPriceCentsPerLiter).toBe(152);
+  });
+
+  it('lets an administrator change all three defaults together', async () => {
+    const updated = await configService.update(fixture.admin, {
+      oilChangeIntervalKm: 12_000,
+      defaultConsumption: 10_500,
+      defaultFuelPrice: 160,
+    });
+
+    expect(updated.oilChangeIntervalKm).toBe(12_000);
+    expect(updated.defaultConsumptionMlPer100Km).toBe(10_500);
+    expect(updated.defaultFuelPriceCentsPerLiter).toBe(160);
+  });
+
+  it('is readable by a driver, not admin-only', async () => {
+    await expect(configService.get()).resolves.toBeDefined();
+  });
+
+  it('does not let a driver change it', async () => {
+    await expectAppError(
+      configService.update(fixture.driver, {
+        oilChangeIntervalKm: 1,
+        defaultConsumption: 1,
+        defaultFuelPrice: 1,
+      }),
+      'FORBIDDEN',
+    );
+  });
+
+  it('records a change in the audit log with before and after values', async () => {
+    await configService.update(fixture.admin, {
+      oilChangeIntervalKm: 12_000,
+      defaultConsumption: 10_500,
+      defaultFuelPrice: 160,
+    });
+
+    const entry = await prisma.auditLog.findFirstOrThrow({
+      where: { entityType: 'APP_CONFIG' },
+    });
+
+    expect(entry.beforeData).toMatchObject({ oilChangeIntervalKm: 15_000 });
+    expect(entry.afterData).toMatchObject({ oilChangeIntervalKm: 12_000 });
+  });
+
+  it('writes no audit row when nothing actually changes', async () => {
+    const current = await configService.get();
+
+    await configService.update(fixture.admin, {
+      oilChangeIntervalKm: current.oilChangeIntervalKm,
+      defaultConsumption: current.defaultConsumptionMlPer100Km,
+      defaultFuelPrice: current.defaultFuelPriceCentsPerLiter,
+    });
+
+    const updates = await prisma.auditLog.count({ where: { entityType: 'APP_CONFIG' } });
+    expect(updates).toBe(0);
   });
 });

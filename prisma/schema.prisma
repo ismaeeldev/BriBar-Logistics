@@ -64,8 +64,36 @@ enum AuditEntityType {
   VEHICLE
   ROUTE
   DRIVER_ROUTE
+  /// ERP roadmap Phase 1 (finance core / master-data extensions).
+  CLIENT
+  LOOKUP_ITEM
+  APP_CONFIG
 
   @@map("audit_entity_type")
+}
+
+/// ERP roadmap Phase 1. One master-data list per named kind, so a new simple
+/// lookup (the client's `99_Listas` sheet has ~17 of them) is a new enum value
+/// and a route segment, not a new table, repository and admin screen. A kind
+/// whose fields ever grow beyond a name (Supplier, Expense category — deferred
+/// to the phase that first consumes them) gets its own model instead; this
+/// enum only ever names lists that are genuinely just a name.
+enum LookupKind {
+  /// `99_Listas` fuel types (diésel, adBlue, ...).
+  FUEL_TYPE
+  /// `99_Listas` payment methods/forms (transferencia, tarjeta, ...).
+  PAYMENT_METHOD
+  /// `99_Listas` supplement types for a service surcharge (espera, festivo,
+  /// nocturno, ...) - the list a future `Service.supplementType` will pick
+  /// from once the supplement field itself ships.
+  SUPPLEMENT_TYPE
+  /// `Cliente final` (roadmap §6 B5): kept as a plain named list, not a full
+  /// entity, until the client confirms it needs its own contacts/addresses.
+  /// Promoting it later is a new model, not a rewrite of what points at it,
+  /// because nothing points at it yet.
+  END_CLIENT
+
+  @@map("lookup_kind")
 }
 
 /// SRS 19.9. Kept coarse on purpose: an action names what changed, the
@@ -193,6 +221,82 @@ model DriverRoute {
   @@index([driverId], map: "driver_routes_driver_id_idx")
   @@index([routeId], map: "driver_routes_route_id_idx")
   @@map("driver_routes")
+}
+
+// ---------------------------------------------------------------------------
+// Finance core master data (ERP roadmap Phase 1)
+//
+// The client the app bills - roadmap §2 "New entities V1 does not have".
+// Deliberately not yet referenced by `Service` or anything else: which record
+// a service bills to is the issued-invoice module's decision (Phase 4), and
+// wiring the join now would be guessing its shape. This is master data an
+// administrator can start entering today; the reference is added when
+// something needs it, not before.
+// ---------------------------------------------------------------------------
+
+model Client {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String @db.VarChar(160)
+
+  /// CIF/NIF or equivalent tax identifier. Optional: an administrator may add
+  /// a client before the paperwork with the number is in hand.
+  taxId String? @map("tax_id") @db.VarChar(32)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([isActive], map: "clients_is_active_idx")
+  @@map("clients")
+}
+
+/// A named list entry, distinguished by `kind` (see `LookupKind` above).
+/// Names are unique per kind, not globally - "Efectivo" naming a payment
+/// method and a supplement type would be an unrelated coincidence.
+model LookupItem {
+  id   String     @id @default(uuid(7)) @db.Uuid
+  kind LookupKind
+  name String     @db.VarChar(120)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([kind, name], map: "lookup_items_kind_name_key")
+  @@index([kind, isActive], map: "lookup_items_kind_is_active_idx")
+  @@map("lookup_items")
+}
+
+/// The application's operational defaults (`99_Config`), as a single row.
+///
+/// A fixed, application-known id rather than an auto-generated one: there is
+/// exactly one configuration, so "find the row" would otherwise mean either a
+/// well-known id anyway or a `findFirst` that silently tolerates a second row
+/// appearing. `id: "default"` makes "there is only one" true by construction -
+/// `upsert`ing this id can only ever create or update the same row.
+///
+/// Per-document-type ID counters, also part of `99_Config`, are not modelled
+/// here: they become real PostgreSQL sequences (ADR 0003's pattern,
+/// generalised by `formatDocumentCode`) when the phase that needs one begins,
+/// not stored values an application bug could desynchronise from `nextval`.
+model AppConfig {
+  id String @id @default("default") @db.VarChar(16)
+
+  /// Km between scheduled oil changes (`99_Config`, default 15 000).
+  oilChangeIntervalKm Int @default(15000) @map("oil_change_interval_km")
+
+  /// Default fuel consumption, in millilitres per 100 km (`99_Config`, default
+  /// 11 L/100km = 11 000 mL). Whole millilitres rather than a float litre
+  /// value - the project's standing convention against storing money or
+  /// measurements as floats (see `src/lib/money/money.ts`) applies here too.
+  defaultConsumptionMlPer100Km Int @default(11000) @map("default_consumption_ml_per_100km")
+
+  /// Default fuel price, in EUR cents per litre (`99_Config`, default 1.52 €).
+  defaultFuelPriceCentsPerLiter Int @default(152) @map("default_fuel_price_cents_per_liter")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("app_config")
 }
 
 // ---------------------------------------------------------------------------

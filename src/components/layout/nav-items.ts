@@ -1,4 +1,14 @@
-import { ClipboardList, LayoutDashboard, Plus, Route, Truck, Users } from 'lucide-react';
+import {
+  Building2,
+  ClipboardList,
+  LayoutDashboard,
+  ListTree,
+  Plus,
+  Route,
+  Settings,
+  Truck,
+  Users,
+} from 'lucide-react';
 import type { ComponentType } from 'react';
 
 import { UI } from '@/lib/i18n/messages';
@@ -51,6 +61,15 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: '/admin/users', label: UI.nav.drivers, icon: Users },
       { href: '/admin/vehicles', label: UI.nav.vehicles, icon: Truck },
       { href: '/admin/routes', label: UI.nav.routes, icon: Route },
+    ],
+  },
+  {
+    // ERP roadmap Phase 1: the finance-core master data and its config.
+    label: UI.nav.sectionFinance,
+    items: [
+      { href: '/admin/clients', label: UI.nav.clients, icon: Building2 },
+      { href: '/admin/lists', label: UI.nav.lists, icon: ListTree },
+      { href: '/admin/config', label: UI.nav.config, icon: Settings },
     ],
   },
 ];
