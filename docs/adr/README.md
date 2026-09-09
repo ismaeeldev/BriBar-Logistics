@@ -20,3 +20,4 @@ recorded; they are requirements.
 | [0009](0009-centralised-spanish-messages.md)     | One message catalogue rather than inline Spanish strings     | Accepted |
 | [0010](0010-administrators-may-file-services.md) | Administrators may file services on a driver's behalf        | Accepted |
 | [0011](0011-route-and-service-rate.md)           | Route default rate and per-service rate, admin-only          | Accepted |
+| [0012](0012-finance-core-master-data.md)         | Finance-core primitives and master-data extensions (Phase 1) | Accepted |

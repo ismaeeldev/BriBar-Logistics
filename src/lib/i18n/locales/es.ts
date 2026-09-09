@@ -51,6 +51,10 @@ const FIELD_LABELS = {
   assignments: 'Rutas asignadas',
   defaultRate: 'Tarifa predeterminada',
   rate: 'Tarifa',
+  taxId: 'CIF/NIF',
+  oilChangeIntervalKm: 'Intervalo de cambio de aceite (km)',
+  defaultConsumptionMlPer100Km: 'Consumo medio (L/100km)',
+  defaultFuelPriceCentsPerLiter: 'Precio de combustible (€/L)',
 };
 
 /** Referenced by both VALIDATION and the time-violation table. */
@@ -67,6 +71,13 @@ export const es: Dictionary = {
   },
 
   ROLE_LABELS: { ADMIN: 'Administrador', DRIVER: 'Conductor' },
+
+  LOOKUP_KIND_LABELS: {
+    FUEL_TYPE: 'Tipos de combustible',
+    PAYMENT_METHOD: 'Formas de pago',
+    SUPPLEMENT_TYPE: 'Tipos de suplemento',
+    END_CLIENT: 'Clientes finales',
+  },
 
   MILEAGE_VIOLATION_MESSAGES: {
     NOT_A_WHOLE_NUMBER: (label) => `${label} debe ser un número entero de kilómetros.`,
@@ -119,6 +130,8 @@ export const es: Dictionary = {
     dateRangeInverted: 'La fecha final no puede ser anterior a la fecha inicial.',
     driverRequired: 'Seleccione el conductor al que pertenece el servicio.',
     driverNotAllowed: 'No puede crear un servicio a nombre de otro conductor.',
+    invalidLiters: 'Introduzca un consumo en litros, por ejemplo 11 o 11,5.',
+    invalidWholeKm: 'Introduzca un número entero de kilómetros, sin decimales.',
   },
 
   ERRORS: {
@@ -173,6 +186,8 @@ export const es: Dictionary = {
       'Ese registro sigue en uso por datos existentes. Desactívelo en lugar de eliminarlo.',
     brokenRelation: 'Ese cambio rompería una relación necesaria entre registros.',
     rateNonNegative: 'La tarifa no puede ser negativa.',
+    lookupNameTaken: 'Ya existe un elemento con ese nombre en esta lista.',
+    configInvalidValue: 'Ese valor de configuración no es válido.',
   },
 
   AUTH: {
@@ -479,6 +494,47 @@ export const es: Dictionary = {
       savingRate: 'Guardando…',
       rateUpdated: 'Tarifa actualizada',
       rateUpdateFailed: 'No se ha podido guardar la tarifa.',
+
+      clientsTitle: 'Clientes',
+      newClient: 'Nuevo cliente',
+      editClient: 'Editar cliente',
+      clientCreated: 'Cliente creado',
+      clientUpdated: 'Cliente actualizado',
+      clientDeleted: 'Cliente eliminado',
+      noClients: 'Sin clientes',
+      noClientsHint: 'Los clientes que dé de alta aparecerán aquí.',
+      searchClients: 'Buscar clientes…',
+      clientTaxIdHint: 'CIF o NIF del cliente. Puede añadirse más adelante.',
+      clientActiveHint:
+        'Un cliente inactivo no aparece al facturar nuevos servicios. El historial se conserva.',
+
+      lookup: {
+        sectionTitle: 'Listas',
+        sectionHint:
+          'Listas simples que se usan en otras partes de la aplicación: tipos de combustible, formas de pago, tipos de suplemento y clientes finales.',
+        newItem: 'Nuevo elemento',
+        editItem: (kindLabel) => `Editar: ${kindLabel}`,
+        created: 'Elemento creado',
+        updated: 'Elemento actualizado',
+        deleted: 'Elemento eliminado',
+        empty: 'Sin elementos en esta lista todavía',
+        emptyHint: 'Los elementos que añada aparecerán aquí.',
+        nameHint: 'El nombre tal como debe aparecer al elegirlo en un formulario.',
+        activeHint: 'Un elemento inactivo deja de ofrecerse, pero el historial se conserva.',
+        search: 'Buscar…',
+        backToLists: 'Listas',
+      },
+
+      config: {
+        title: 'Configuración',
+        hint: 'Valores por defecto que usan otros módulos de la aplicación.',
+        saved: 'Configuración guardada',
+        oilChangeHint:
+          'Kilómetros entre cambios de aceite recomendados. Se usa para calcular el próximo aviso de mantenimiento.',
+        consumptionHint:
+          'Consumo medio estimado cuando un vehículo no tiene datos de consumo propios.',
+        fuelPriceHint: 'Precio de referencia cuando un repostaje no indica su propio precio.',
+      },
     },
 
     nav: {
@@ -489,10 +545,14 @@ export const es: Dictionary = {
       dashboard: 'Resumen',
       sectionOperations: 'Operaciones',
       sectionMasterData: 'Datos maestros',
+      sectionFinance: 'Finanzas',
       services: 'Servicios',
       drivers: 'Conductores',
       vehicles: 'Vehículos',
       routes: 'Rutas',
+      clients: 'Clientes',
+      lists: 'Listas',
+      config: 'Configuración',
     },
 
     notifications: {

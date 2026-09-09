@@ -53,6 +53,10 @@ const FIELD_LABELS = {
   assignments: 'Assigned routes',
   defaultRate: 'Default rate',
   rate: 'Rate',
+  taxId: 'Tax ID',
+  oilChangeIntervalKm: 'Oil-change interval (km)',
+  defaultConsumptionMlPer100Km: 'Average consumption (L/100km)',
+  defaultFuelPriceCentsPerLiter: 'Fuel price (€/L)',
 };
 
 const ARRIVAL_BEFORE_DEPARTURE =
@@ -68,6 +72,13 @@ export const en: Dictionary = {
   },
 
   ROLE_LABELS: { ADMIN: 'Administrator', DRIVER: 'Driver' },
+
+  LOOKUP_KIND_LABELS: {
+    FUEL_TYPE: 'Fuel types',
+    PAYMENT_METHOD: 'Payment methods',
+    SUPPLEMENT_TYPE: 'Supplement types',
+    END_CLIENT: 'End clients',
+  },
 
   MILEAGE_VIOLATION_MESSAGES: {
     NOT_A_WHOLE_NUMBER: (label) => `${label} must be a whole number of kilometres.`,
@@ -119,6 +130,8 @@ export const en: Dictionary = {
     dateRangeInverted: 'The end date cannot be before the start date.',
     driverRequired: 'Select the driver this service belongs to.',
     driverNotAllowed: 'You cannot create a service on behalf of another driver.',
+    invalidLiters: 'Enter a consumption in litres, e.g. 11 or 11.5.',
+    invalidWholeKm: 'Enter a whole number of kilometres, no decimals.',
   },
 
   ERRORS: {
@@ -172,6 +185,8 @@ export const en: Dictionary = {
       'That record is still referenced by existing data. Deactivate it instead of deleting it.',
     brokenRelation: 'That change would break a required relationship between records.',
     rateNonNegative: 'The rate cannot be negative.',
+    lookupNameTaken: 'An item with that name already exists in this list.',
+    configInvalidValue: 'That configuration value is not valid.',
   },
 
   AUTH: {
@@ -471,6 +486,47 @@ export const en: Dictionary = {
       savingRate: 'Saving…',
       rateUpdated: 'Rate updated',
       rateUpdateFailed: 'Could not save the rate.',
+
+      clientsTitle: 'Clients',
+      newClient: 'New client',
+      editClient: 'Edit client',
+      clientCreated: 'Client created',
+      clientUpdated: 'Client updated',
+      clientDeleted: 'Client deleted',
+      noClients: 'No clients',
+      noClientsHint: 'Clients you add will appear here.',
+      searchClients: 'Search clients…',
+      clientTaxIdHint: "The client's tax ID. Can be added later.",
+      clientActiveHint:
+        'An inactive client does not appear when billing new services. Its history is kept.',
+
+      lookup: {
+        sectionTitle: 'Lists',
+        sectionHint:
+          'Simple lists used elsewhere in the app: fuel types, payment methods, supplement types and end clients.',
+        newItem: 'New item',
+        editItem: (kindLabel) => `Edit: ${kindLabel}`,
+        created: 'Item created',
+        updated: 'Item updated',
+        deleted: 'Item deleted',
+        empty: 'No items in this list yet',
+        emptyHint: 'Items you add will appear here.',
+        nameHint: 'The name as it should appear when chosen on a form.',
+        activeHint: 'An inactive item stops being offered; its history is kept.',
+        search: 'Search…',
+        backToLists: 'Lists',
+      },
+
+      config: {
+        title: 'Configuration',
+        hint: 'Default values other modules of the app use.',
+        saved: 'Configuration saved',
+        oilChangeHint:
+          'Kilometres between recommended oil changes. Used to calculate the next maintenance alert.',
+        consumptionHint:
+          'Estimated average consumption when a vehicle has no consumption data of its own.',
+        fuelPriceHint: 'Reference price when a refuel does not record its own price.',
+      },
     },
 
     nav: {
@@ -481,10 +537,14 @@ export const en: Dictionary = {
       dashboard: 'Dashboard',
       sectionOperations: 'Operations',
       sectionMasterData: 'Master data',
+      sectionFinance: 'Finance',
       services: 'Services',
       drivers: 'Drivers',
       vehicles: 'Vehicles',
       routes: 'Routes',
+      clients: 'Clients',
+      lists: 'Lists',
+      config: 'Configuration',
     },
 
     notifications: {

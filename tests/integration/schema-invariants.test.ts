@@ -613,3 +613,62 @@ describe('rate constraints (client change request 2026-09-09, ERP roadmap Phase 
     expect(cleared.rateCents).toBeNull();
   });
 });
+
+describe('finance-core master data constraints (ERP roadmap Phase 1)', () => {
+  it('rejects a duplicate name within the same lookup kind', async () => {
+    await prisma.lookupItem.create({ data: { kind: 'FUEL_TYPE', name: 'Diésel' } });
+
+    await expect(
+      prisma.lookupItem.create({ data: { kind: 'FUEL_TYPE', name: 'Diésel' } }),
+    ).rejects.toThrow(/lookup_items_kind_name_key/);
+  });
+
+  it('allows the same name in two different lookup kinds', async () => {
+    await prisma.lookupItem.create({ data: { kind: 'FUEL_TYPE', name: 'Efectivo' } });
+
+    await expect(
+      prisma.lookupItem.create({ data: { kind: 'PAYMENT_METHOD', name: 'Efectivo' } }),
+    ).resolves.toBeDefined();
+  });
+
+  it('seeds exactly one app_config row, at the fixed id "default"', async () => {
+    const rows = await prisma.appConfig.findMany();
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe('default');
+  });
+
+  it('rejects a zero or negative oil-change interval', async () => {
+    await expect(
+      prisma.appConfig.update({
+        where: { id: 'default' },
+        data: { oilChangeIntervalKm: 0 },
+      }),
+    ).rejects.toThrow(/app_config_positive_defaults/);
+  });
+
+  it('rejects a zero or negative default consumption', async () => {
+    await expect(
+      prisma.appConfig.update({
+        where: { id: 'default' },
+        data: { defaultConsumptionMlPer100Km: -1 },
+      }),
+    ).rejects.toThrow(/app_config_positive_defaults/);
+  });
+
+  it('allows a zero fuel price but rejects a negative one', async () => {
+    await expect(
+      prisma.appConfig.update({
+        where: { id: 'default' },
+        data: { defaultFuelPriceCentsPerLiter: 0 },
+      }),
+    ).resolves.toBeDefined();
+
+    await expect(
+      prisma.appConfig.update({
+        where: { id: 'default' },
+        data: { defaultFuelPriceCentsPerLiter: -1 },
+      }),
+    ).rejects.toThrow(/app_config_positive_defaults/);
+  });
+});

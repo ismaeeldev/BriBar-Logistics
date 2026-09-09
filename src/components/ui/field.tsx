@@ -166,6 +166,32 @@ export function MoneyInput({ className, ...props }: ComponentProps<'input'>) {
   );
 }
 
+/**
+ * A litre amount (ERP roadmap Phase 1's config screen; Phase 2's refuelling
+ * module will reuse it for litres pumped). Same shape as {@link MoneyInput}
+ * — text, `inputMode="decimal"`, a unit suffix — because the reason is
+ * identical: a native number input mishandles a comma decimal.
+ */
+export function LitersInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={cn(controlBase, 'h-11 pr-8 font-mono sm:h-10', className)}
+        {...props}
+      />
+      <span
+        aria-hidden
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs"
+      >
+        L
+      </span>
+    </div>
+  );
+}
+
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {
   return (
     <div className="relative">

@@ -50,10 +50,23 @@ export interface Dictionary {
     defaultRate: string;
     /** A service's admin-only assigned rate; may differ from the route default. */
     rate: string;
+    /** ERP roadmap Phase 1: a client's tax identifier (CIF/NIF). */
+    taxId: string;
+    /** The three `99_Config` operational defaults. */
+    oilChangeIntervalKm: string;
+    defaultConsumptionMlPer100Km: string;
+    defaultFuelPriceCentsPerLiter: string;
   };
 
   SERVICE_STATUS_LABELS: { PENDING_APPROVAL: string; APPROVED: string };
   ROLE_LABELS: { ADMIN: string; DRIVER: string };
+  /** ERP roadmap Phase 1. The list a `LookupItem` belongs to, by name. */
+  LOOKUP_KIND_LABELS: {
+    FUEL_TYPE: string;
+    PAYMENT_METHOD: string;
+    SUPPLEMENT_TYPE: string;
+    END_CLIENT: string;
+  };
 
   MILEAGE_VIOLATION_MESSAGES: Record<string, (label: string) => string>;
   SERVICE_TIME_VIOLATION_MESSAGES: Record<string, string>;
@@ -83,6 +96,10 @@ export interface Dictionary {
     dateRangeInverted: string;
     driverRequired: string;
     driverNotAllowed: string;
+    /** ERP roadmap Phase 1: the config screen's consumption field. */
+    invalidLiters: string;
+    /** ERP roadmap Phase 1: a whole, non-negative km value (oil-change interval). */
+    invalidWholeKm: string;
   };
 
   ERRORS: {
@@ -130,6 +147,9 @@ export interface Dictionary {
     stillReferenced: string;
     brokenRelation: string;
     rateNonNegative: string;
+    /** ERP roadmap Phase 1. */
+    lookupNameTaken: string;
+    configInvalidValue: string;
   };
 
   AUTH: {
@@ -416,6 +436,51 @@ export interface Dictionary {
       savingRate: string;
       rateUpdated: string;
       rateUpdateFailed: string;
+
+      /** Clients master data (ERP roadmap Phase 1). */
+      clientsTitle: string;
+      newClient: string;
+      editClient: string;
+      clientCreated: string;
+      clientUpdated: string;
+      clientDeleted: string;
+      noClients: string;
+      noClientsHint: string;
+      searchClients: string;
+      clientTaxIdHint: string;
+      clientActiveHint: string;
+
+      /**
+       * The generic simple-lookup lists (fuel types, payment methods,
+       * supplement types, end clients — ERP roadmap Phase 1). One set of
+       * strings for every kind, parameterised by the kind's own display name,
+       * rather than a copy per kind.
+       */
+      lookup: {
+        sectionTitle: string;
+        sectionHint: string;
+        newItem: string;
+        editItem: (kindLabel: string) => string;
+        created: string;
+        updated: string;
+        deleted: string;
+        empty: string;
+        emptyHint: string;
+        nameHint: string;
+        activeHint: string;
+        search: string;
+        backToLists: string;
+      };
+
+      /** The single operational-defaults screen (`99_Config`, Phase 1). */
+      config: {
+        title: string;
+        hint: string;
+        saved: string;
+        oilChangeHint: string;
+        consumptionHint: string;
+        fuelPriceHint: string;
+      };
     };
 
     nav: {
@@ -428,10 +493,15 @@ export interface Dictionary {
       dashboard: string;
       sectionOperations: string;
       sectionMasterData: string;
+      /** ERP roadmap Phase 1: clients, lists, config. */
+      sectionFinance: string;
       services: string;
       drivers: string;
       vehicles: string;
       routes: string;
+      clients: string;
+      lists: string;
+      config: string;
     };
 
     /** The bell dropdown, both roles (SRS-free — see `prisma/schema.prisma`). */
