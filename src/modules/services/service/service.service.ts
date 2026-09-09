@@ -133,6 +133,8 @@ async function resolveBody(
   destination: string;
   actualKm: number;
   serviceKm: number;
+  /** The route's current default rate, in EUR cents (ERP roadmap Phase 0). */
+  routeDefaultRateCents: number | null;
 }> {
   const mileageViolations = validateMileage(body);
   const timeViolations = validateServiceTimes(body);
@@ -153,16 +155,33 @@ async function resolveBody(
 
   const route = await tx.route.findUniqueOrThrow({
     where: { id: body.routeId },
-    select: { origin: true, destination: true },
+    select: { origin: true, destination: true, defaultRateCents: true },
   });
 
-  return { ...route, ...calculateMileage(body) };
+  return {
+    origin: route.origin,
+    destination: route.destination,
+    routeDefaultRateCents: route.defaultRateCents,
+    ...calculateMileage(body),
+  };
 }
 
-/** Maps a validated body onto the columns a write touches. */
+/**
+ * Maps a validated body onto the columns a write touches.
+ *
+ * `rateCents` is a third, separate argument rather than part of `resolved`
+ * because create and update disagree about where it comes from: a new
+ * service always snapshots the route's *current* default (client change
+ * request 2026-09-09); an edit must never silently overwrite whatever an
+ * administrator has since set on this particular service, so `update()`
+ * omits the argument and the column is left untouched. `undefined` means
+ * "don't touch this column" — Prisma drops an `undefined` key from the write
+ * rather than setting it to SQL NULL, which is what makes that safe.
+ */
 function toColumns(
   body: ServiceBody,
   resolved: { origin: string; destination: string; actualKm: number; serviceKm: number },
+  rateCents?: number | null,
 ) {
   return {
     vehicleId: body.vehicleId,
@@ -182,6 +201,7 @@ function toColumns(
     endsNextDay: body.endsNextDay,
     sites: body.sites ?? null,
     observations: body.observations ?? null,
+    ...(rateCents === undefined ? {} : { rateCents }),
   };
 }
 
@@ -272,7 +292,11 @@ export const serviceService = {
             serviceDate: currentBusinessDate(env.APP_TIMEZONE),
             driverId,
             status: PrismaServiceStatus.PENDING_APPROVAL,
-            ...toColumns(body, resolved),
+            // Always snapshotted from the route's current default, for both a
+            // driver's own submission and an administrator filing on their
+            // behalf — there is no field either request schema could use to
+            // override it (client change request 2026-09-09).
+            ...toColumns(body, resolved, resolved.routeDefaultRateCents),
           } satisfies Prisma.ServiceUncheckedCreateInput,
           tx,
         );
@@ -373,6 +397,46 @@ export const serviceService = {
               // not merely recording.
               editedAfterApproval: existing.status === PrismaServiceStatus.APPROVED,
             },
+          });
+        }
+
+        return updated;
+      }),
+    );
+  },
+
+  /**
+   * Sets or clears a service's rate (client change request 2026-09-09, ERP
+   * roadmap Phase 0).
+   *
+   * Admin-only, and deliberately outside `canEdit`: the rate is information a
+   * driver never sees or edits, so a driver's own pending/approved rules don't
+   * apply here the way they do to `update()` — an administrator may correct
+   * the rate on a service in either status, most commonly while reviewing a
+   * pending one just before approving it.
+   */
+  async updateRate(
+    actor: Actor,
+    id: string,
+    rateCents: number | null,
+  ): Promise<ServiceWithRelations> {
+    if (actor.role !== Role.ADMIN) throw forbidden();
+
+    return withTranslatedErrors(() =>
+      prisma.$transaction(async (tx) => {
+        const existing = await serviceRepository.findByIdForActor(id, actor, tx);
+        if (!existing) throw notFound();
+
+        const updated = await serviceRepository.update(id, { rateCents }, tx);
+
+        if (existing.rateCents !== updated.rateCents) {
+          await writeAudit(tx, {
+            actorUserId: actor.userId,
+            entityType: AuditEntityType.SERVICE,
+            entityId: id,
+            action: AuditAction.UPDATE,
+            before: { rateCents: existing.rateCents },
+            after: { rateCents: updated.rateCents },
           });
         }
 

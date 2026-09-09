@@ -158,6 +158,12 @@ model Route {
   origin      String @db.VarChar(160)
   destination String @db.VarChar(160)
 
+  /// EUR cents. Admin-only (never sent to a driver); the amount normally
+  /// charged for a service on this route. Snapshotted onto each service at
+  /// creation the same way origin/destination are (client change request
+  /// 2026-09-09, ERP roadmap Phase 0). Null means no rate has been set yet.
+  defaultRateCents Int? @map("default_rate_cents")
+
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -226,6 +232,13 @@ model Service {
   /// Editing the route master later must not rewrite history.
   originSnapshot      String @map("origin_snapshot") @db.VarChar(160)
   destinationSnapshot String @map("destination_snapshot") @db.VarChar(160)
+
+  /// EUR cents. Admin-only - never present in a driver-facing DTO or the
+  /// driver's request schemas. Snapshotted from the route's default rate at
+  /// creation; an administrator may override it any time, typically while
+  /// reviewing the service before approval (client change request 2026-09-09,
+  /// ERP roadmap Phase 0). Null means no rate is assigned.
+  rateCents Int? @map("rate_cents")
 
   /// The four odometer readings (6.3). Whole kilometres, monotonic
   /// non-decreasing - enforced by CHECK services_mileage_sequence.

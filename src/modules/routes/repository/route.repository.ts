@@ -14,6 +14,11 @@ const ROUTE_SELECT = {
   name: true,
   origin: true,
   destination: true,
+  // Admin-only. Safe here because every caller of this repository is already
+  // gated by `routeService`'s `assertAdmin` — a driver's route picker comes
+  // from `userRepository.listAssignableRoutes`, a separate query that never
+  // selects this column.
+  defaultRateCents: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,

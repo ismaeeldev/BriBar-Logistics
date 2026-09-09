@@ -46,6 +46,10 @@ export interface Dictionary {
     defaultVehicle: string;
     defaultRoute: string;
     assignments: string;
+    /** The route's admin-only default charge (ERP roadmap Phase 0). */
+    defaultRate: string;
+    /** A service's admin-only assigned rate; may differ from the route default. */
+    rate: string;
   };
 
   SERVICE_STATUS_LABELS: { PENDING_APPROVAL: string; APPROVED: string };
@@ -62,6 +66,7 @@ export interface Dictionary {
     invalidNumber: string;
     invalidTime: string;
     invalidDate: string;
+    invalidMoney: string;
     arrivalBeforeDeparture: string;
     loginIdentifierFormat: string;
     passwordTooShort: (min: number) => string;
@@ -124,6 +129,7 @@ export interface Dictionary {
     valueInUse: string;
     stillReferenced: string;
     brokenRelation: string;
+    rateNonNegative: string;
   };
 
   AUTH: {
@@ -344,6 +350,8 @@ export interface Dictionary {
       noRoutes: string;
       noRoutesHint: string;
       routeCodeHint: string;
+      /** The route form's admin-only rate field (ERP roadmap Phase 0). */
+      defaultRateHint: string;
       routeSnapshotNote: string;
       routeActiveHint: string;
       routeActiveHintWithDrivers: (count: number) => string;
@@ -398,6 +406,16 @@ export interface Dictionary {
       selectDriverToStart: string;
       /** Placeholder option in the admin Add Service driver picker. */
       chooseDriver: string;
+
+      /** The service review page's rate card. */
+      rateSectionTitle: string;
+      rateHint: string;
+      noRate: string;
+      editRate: string;
+      saveRate: string;
+      savingRate: string;
+      rateUpdated: string;
+      rateUpdateFailed: string;
     };
 
     nav: {

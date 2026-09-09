@@ -26,6 +26,7 @@ import {
 } from '@/lib/i18n/messages';
 import {
   isoDateSchema,
+  moneySchema,
   odometerKmSchema,
   optionalText,
   paginationSchema,
@@ -202,3 +203,21 @@ export type ServiceFilterInput = z.output<typeof serviceFilterSchema>;
  * ignored.
  */
 export const approveServiceSchema = z.strictObject({});
+
+/**
+ * Setting or clearing a service's rate (SRS-free — client change request
+ * 2026-09-09, ERP roadmap Phase 0).
+ *
+ * Its own schema and its own service-layer method (`updateRate`), not a field
+ * on `updateServiceSchema`: rate is admin-only information a driver's edit
+ * form never carries a field for, and "an administrator corrects the rate
+ * while reviewing a service" is a different action from "the owner edits
+ * their mileage and times" — distinct audit entries, distinct authorisation
+ * (this one has none of `canEdit`'s driver/pending rules; an admin may set it
+ * on a service in either status).
+ */
+export const updateServiceRateSchema = z.strictObject({
+  rate: moneySchema,
+});
+
+export type UpdateServiceRateInput = z.output<typeof updateServiceRateSchema>;

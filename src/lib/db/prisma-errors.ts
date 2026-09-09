@@ -36,6 +36,8 @@ const MESSAGE_BY_CONSTRAINT: Record<string, string> = {
   services_service_km_within_actual: CONSTRAINT_MESSAGES.serviceKmWithinActual,
   services_approval_metadata_consistent: CONSTRAINT_MESSAGES.approvalMetadata,
   services_times_consistent: CONSTRAINT_MESSAGES.serviceTimes,
+  routes_default_rate_non_negative: CONSTRAINT_MESSAGES.rateNonNegative,
+  services_rate_non_negative: CONSTRAINT_MESSAGES.rateNonNegative,
 };
 
 /**

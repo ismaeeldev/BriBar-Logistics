@@ -51,6 +51,8 @@ const FIELD_LABELS = {
   defaultVehicle: 'Default vehicle',
   defaultRoute: 'Default route',
   assignments: 'Assigned routes',
+  defaultRate: 'Default rate',
+  rate: 'Rate',
 };
 
 const ARRIVAL_BEFORE_DEPARTURE =
@@ -97,6 +99,7 @@ export const en: Dictionary = {
     invalidNumber: 'Enter a whole number of kilometres.',
     invalidTime: 'Enter a time in 24-hour HH:MM format, for example 07:45.',
     invalidDate: 'Enter a date as YYYY-MM-DD.',
+    invalidMoney: 'Enter an amount in euros, e.g. 180 or 180.50.',
     arrivalBeforeDeparture: ARRIVAL_BEFORE_DEPARTURE,
     loginIdentifierFormat:
       'The username may contain only lowercase letters, numbers, dots, hyphens and underscores.',
@@ -168,6 +171,7 @@ export const en: Dictionary = {
     stillReferenced:
       'That record is still referenced by existing data. Deactivate it instead of deleting it.',
     brokenRelation: 'That change would break a required relationship between records.',
+    rateNonNegative: 'The rate cannot be negative.',
   },
 
   AUTH: {
@@ -395,6 +399,8 @@ export const en: Dictionary = {
       noRoutes: 'No routes',
       noRoutesHint: 'Create a route and assign it to a driver so they can record services.',
       routeCodeHint: 'Stored in upper case. Must be unique.',
+      defaultRateHint:
+        'Visible to administrators only. Assigned automatically to every new service on this route.',
       routeSnapshotNote:
         'Changing the origin or destination only affects services recorded from now on. Services that already exist keep the values they were created with.',
       routeActiveHint:
@@ -456,6 +462,15 @@ export const en: Dictionary = {
       createRoute: 'Create route',
       selectDriverToStart: 'Select a driver to start recording the service.',
       chooseDriver: 'Choose a driver…',
+
+      rateSectionTitle: 'Rate',
+      rateHint: 'Visible to administrators only. The driver never sees this.',
+      noRate: 'No rate assigned',
+      editRate: 'Edit rate',
+      saveRate: 'Save rate',
+      savingRate: 'Saving…',
+      rateUpdated: 'Rate updated',
+      rateUpdateFailed: 'Could not save the rate.',
     },
 
     nav: {

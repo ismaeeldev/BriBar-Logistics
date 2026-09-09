@@ -7,7 +7,7 @@
 import { z } from 'zod';
 
 import { FIELD_LABELS, VALIDATION } from '@/lib/i18n/messages';
-import { booleanSchema, requiredText } from '@/modules/shared/schemas/common';
+import { booleanSchema, moneySchema, requiredText } from '@/modules/shared/schemas/common';
 
 export const ROUTE_CODE_MAX_LENGTH = 32;
 export const ROUTE_NAME_MAX_LENGTH = 160;
@@ -40,6 +40,12 @@ export const createRouteSchema = z.strictObject({
   origin: requiredText(FIELD_LABELS.origin, LOCATION_MAX_LENGTH),
   destination: requiredText(FIELD_LABELS.destination, LOCATION_MAX_LENGTH),
   isActive: booleanSchema.default(true),
+  /**
+   * Admin-only (ERP roadmap Phase 0, client change request 2026-09-09). Never
+   * exposed to a driver — the route pickers a driver sees come from
+   * `userRepository.listAssignableRoutes`, which does not select this column.
+   */
+  defaultRate: moneySchema,
 });
 
 export type CreateRouteInput = z.output<typeof createRouteSchema>;

@@ -66,6 +66,7 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
           origin: route.origin,
           destination: route.destination,
           isActive: route.isActive,
+          defaultRateCents: route.defaultRateCents,
         }}
       />
 

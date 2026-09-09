@@ -49,6 +49,8 @@ const FIELD_LABELS = {
   defaultVehicle: 'Vehículo predeterminado',
   defaultRoute: 'Ruta predeterminada',
   assignments: 'Rutas asignadas',
+  defaultRate: 'Tarifa predeterminada',
+  rate: 'Tarifa',
 };
 
 /** Referenced by both VALIDATION and the time-violation table. */
@@ -98,6 +100,7 @@ export const es: Dictionary = {
     invalidNumber: 'Introduzca un número entero de kilómetros.',
     invalidTime: 'Introduzca una hora en formato de 24 horas HH:MM, por ejemplo 07:45.',
     invalidDate: 'Introduzca una fecha con el formato AAAA-MM-DD.',
+    invalidMoney: 'Introduzca un importe en euros, por ejemplo 180 o 180,50.',
     arrivalBeforeDeparture: ARRIVAL_BEFORE_DEPARTURE,
     loginIdentifierFormat:
       'El usuario solo puede contener letras minúsculas, números, puntos, guiones y guiones bajos.',
@@ -169,6 +172,7 @@ export const es: Dictionary = {
     stillReferenced:
       'Ese registro sigue en uso por datos existentes. Desactívelo en lugar de eliminarlo.',
     brokenRelation: 'Ese cambio rompería una relación necesaria entre registros.',
+    rateNonNegative: 'La tarifa no puede ser negativa.',
   },
 
   AUTH: {
@@ -401,6 +405,8 @@ export const es: Dictionary = {
       noRoutesHint:
         'Cree una ruta y asígnela a un conductor para que pueda registrar servicios.',
       routeCodeHint: 'Se guarda en mayúsculas. Debe ser único.',
+      defaultRateHint:
+        'Solo lo ve el administrador. Se asigna automáticamente a cada nuevo servicio de esta ruta.',
       routeSnapshotNote:
         'Cambiar el origen o el destino solo afecta a los servicios que se registren a partir de ahora. Los servicios ya existentes conservan los valores con los que se crearon.',
       routeActiveHint:
@@ -464,6 +470,15 @@ export const es: Dictionary = {
       createRoute: 'Crear ruta',
       selectDriverToStart: 'Seleccione un conductor para empezar a registrar el servicio.',
       chooseDriver: 'Elegir conductor…',
+
+      rateSectionTitle: 'Tarifa',
+      rateHint: 'Solo visible para administradores. El conductor no ve esta información.',
+      noRate: 'Sin tarifa asignada',
+      editRate: 'Editar tarifa',
+      saveRate: 'Guardar tarifa',
+      savingRate: 'Guardando…',
+      rateUpdated: 'Tarifa actualizada',
+      rateUpdateFailed: 'No se ha podido guardar la tarifa.',
     },
 
     nav: {
