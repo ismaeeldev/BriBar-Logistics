@@ -113,6 +113,7 @@ export const routeService = {
             origin: input.origin,
             destination: input.destination,
             isActive: input.isActive,
+            defaultRateCents: input.defaultRate ?? null,
           },
           tx,
         );
@@ -158,6 +159,9 @@ export const routeService = {
             ...(input.origin === undefined ? {} : { origin: input.origin }),
             ...(input.destination === undefined ? {} : { destination: input.destination }),
             ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
+            // `moneySchema` reserves `null` for "clear the rate", distinct from
+            // `undefined` ("field not sent, leave alone") — see its doc comment.
+            ...(input.defaultRate === undefined ? {} : { defaultRateCents: input.defaultRate }),
           },
           tx,
         );

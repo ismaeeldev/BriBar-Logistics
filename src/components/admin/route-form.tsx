@@ -2,8 +2,9 @@
 
 import type { FormState } from '@/app/(app)/admin/actions';
 import { ActiveToggle, EntityForm } from '@/components/admin/entity-form';
-import { Field, Input } from '@/components/ui/field';
+import { Field, Input, MoneyInput } from '@/components/ui/field';
 import { Alert } from '@/components/ui/primitives';
+import { centsToInputValue } from '@/lib/money/money';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 
 /** Create/edit a route/contract (SRS 14.1, 14.2). */
@@ -21,6 +22,8 @@ export function RouteForm({
     origin: string;
     destination: string;
     isActive: boolean;
+    /** EUR cents, or null if none set (ERP roadmap Phase 0). */
+    defaultRateCents: number | null;
   };
   /** Only supplied when editing; drives the deactivation warning. */
   assignedDriverCount?: number;
@@ -95,6 +98,30 @@ export function RouteForm({
           </Field>
 
           {initial ? <Alert tone="info">{UI.admin.routeSnapshotNote}</Alert> : null}
+
+          {/* Admin-only (ERP roadmap Phase 0): a driver never sees a rate
+              anywhere in the app. Snapshotted onto every new service filed on
+              this route; editing it here does not touch existing services. */}
+          <Field
+            label={FIELD_LABELS.defaultRate}
+            optional
+            errors={fieldErrors?.['defaultRate']}
+            hint={UI.admin.defaultRateHint}
+          >
+            {(props) => (
+              <MoneyInput
+                {...props}
+                name="defaultRate"
+                placeholder="0,00"
+                defaultValue={
+                  values?.['defaultRate'] ??
+                  (initial?.defaultRateCents != null
+                    ? centsToInputValue(initial.defaultRateCents)
+                    : '')
+                }
+              />
+            )}
+          </Field>
 
           <ActiveToggle
             defaultChecked={values ? values['isActive'] === 'on' : (initial?.isActive ?? true)}

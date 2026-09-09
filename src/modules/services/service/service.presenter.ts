@@ -77,6 +77,26 @@ export function toServiceListItem(service: ServiceWithRelations): ServiceListIte
   };
 }
 
+/**
+ * The detail view with the rate attached (client change request 2026-09-09,
+ * ERP roadmap Phase 0).
+ *
+ * A separate interface and mapper, not an optional field on `ServiceDetail` —
+ * the driver's own service pages (`src/app/(app)/services/[id]/page.tsx`) call
+ * `toServiceDetail`, and this presenter layer is the only thing standing
+ * between the database row (which carries `rateCents` regardless of who is
+ * asking — `SERVICE_INCLUDE` selects every scalar column) and the wire. Only
+ * `/admin/services/[id]` and its edit page use this one.
+ */
+export interface AdminServiceDetail extends ServiceDetail {
+  /** EUR cents, or null if no rate is assigned. Never sent to a driver. */
+  rateCents: number | null;
+}
+
+export function toAdminServiceDetail(service: ServiceWithRelations): AdminServiceDetail {
+  return { ...toServiceDetail(service), rateCents: service.rateCents };
+}
+
 export function toServiceDetail(service: ServiceWithRelations): ServiceDetail {
   return {
     ...toServiceListItem(service),

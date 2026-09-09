@@ -17,6 +17,7 @@ import { createLookupItemSchema, updateLookupItemSchema } from '@/modules/lookup
 import type { LookupKind } from '@/modules/lookup/repository/lookup.repository';
 import { createRouteSchema, updateRouteSchema } from '@/modules/routes/schemas/route.schema';
 import { routeService } from '@/modules/routes/service/route.service';
+import { updateServiceRateSchema } from '@/modules/services/schemas/service.schema';
 import { serviceService } from '@/modules/services/service/service.service';
 import {
   createUserSchema,
@@ -103,6 +104,31 @@ export async function approveServiceAction(serviceId: string): Promise<void> {
   await serviceService.approve(actor, serviceId);
 
   revalidatePath('/admin');
+  revalidatePath('/admin/services');
+  revalidatePath(`/admin/services/${serviceId}`);
+}
+
+/**
+ * Sets or clears a service's rate (client change request 2026-09-09, ERP
+ * roadmap Phase 0).
+ *
+ * Deliberately its own action rather than a field on the general edit form:
+ * this is admin-only information a driver's schema has no field for, and the
+ * caller here is the review screen's inline editor, not a `<form>` with
+ * `useActionState` — so, like `approveServiceAction`, it throws on failure
+ * (read as `.message` by the client component) instead of returning form
+ * state.
+ */
+export async function updateServiceRateAction(serviceId: string, rateInput: string): Promise<void> {
+  const actor = await requireAdmin();
+
+  const parsed = updateServiceRateSchema.safeParse({ rate: rateInput });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? ERRORS.validationFailed);
+  }
+
+  await serviceService.updateRate(actor, serviceId, parsed.data.rate ?? null);
+
   revalidatePath('/admin/services');
   revalidatePath(`/admin/services/${serviceId}`);
 }
@@ -363,6 +389,7 @@ export async function createRouteAction(
       origin: text(formData, 'origin'),
       destination: text(formData, 'destination'),
       isActive: checkbox(formData, 'isActive'),
+      defaultRate: text(formData, 'defaultRate'),
     });
 
     if (!parsed.success) {
@@ -397,6 +424,7 @@ export async function updateRouteAction(
       origin: text(formData, 'origin'),
       destination: text(formData, 'destination'),
       isActive: checkbox(formData, 'isActive'),
+      defaultRate: text(formData, 'defaultRate'),
     });
 
     if (!parsed.success) {

@@ -20,6 +20,7 @@
 import { z } from 'zod';
 
 import { VALIDATION } from '@/lib/i18n/messages';
+import { EUROS_PATTERN, eurosToCents } from '@/lib/money/money';
 import { TIME_OF_DAY_PATTERN, type TimeOfDay } from '@/lib/time/time-of-day';
 import { MAX_ODOMETER_KM } from '@/modules/services/domain/mileage';
 
@@ -109,6 +110,25 @@ export const timeOfDaySchema = z.preprocess(
     .regex(TIME_OF_DAY_PATTERN, VALIDATION.invalidTime)
     .transform((value) => value as TimeOfDay),
 );
+
+/**
+ * An admin-only euro amount (route default rate, service rate — ERP roadmap
+ * Phase 0). Output is whole cents.
+ *
+ * Three distinct signals, not two: an **absent** key leaves the stored value
+ * unchanged (a true partial update); a **blank** field is a deliberate "clear
+ * the rate" and parses to `null`; a valid amount parses to cents. Collapsing
+ * blank into "absent" — `optionalText`'s behaviour — would make it impossible
+ * for an administrator to remove a rate once one is set, since every form
+ * re-submits every field whether or not it changed.
+ */
+export const moneySchema = z
+  .preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }, z.string().regex(EUROS_PATTERN, VALIDATION.invalidMoney).transform(eurosToCents).nullable())
+  .optional();
 
 /** A `yyyy-MM-dd` calendar day, for admin date filters (SRS 16.3). */
 export const isoDateSchema = z.preprocess(emptyToUndefined, z.iso.date(VALIDATION.invalidDate));

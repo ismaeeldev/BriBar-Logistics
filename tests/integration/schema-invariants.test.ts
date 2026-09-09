@@ -537,3 +537,79 @@ describe('departure and arrival ordering (client decision #3)', () => {
     expect(service.endsNextDay).toBe(false);
   });
 });
+
+describe('rate constraints (client change request 2026-09-09, ERP roadmap Phase 0)', () => {
+  it('allows a route with no default rate', async () => {
+    const route = await prisma.route.findUniqueOrThrow({ where: { id: fixture.routeId } });
+
+    expect(route.defaultRateCents).toBeNull();
+  });
+
+  it('allows a route with a non-negative default rate', async () => {
+    const route = await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+
+    expect(route.defaultRateCents).toBe(18_000);
+  });
+
+  it('allows a route default rate of exactly zero', async () => {
+    const route = await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 0 },
+    });
+
+    expect(route.defaultRateCents).toBe(0);
+  });
+
+  it('rejects a negative route default rate', async () => {
+    await expect(
+      prisma.route.update({
+        where: { id: fixture.routeId },
+        data: { defaultRateCents: -1 },
+      }),
+    ).rejects.toThrow(/routes_default_rate_non_negative/);
+  });
+
+  it('allows a service with no rate', async () => {
+    const service = await prisma.service.create({ data: serviceData(fixture) });
+
+    expect(service.rateCents).toBeNull();
+  });
+
+  it('allows a service with a non-negative rate, independent of the route default', async () => {
+    // The rate is a snapshot taken at creation (SRS 14.5's pattern, reused) -
+    // it need not equal the route's current default, so this asserts the
+    // column accepts any non-negative value on its own terms.
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+
+    const service = await prisma.service.create({
+      data: serviceData(fixture, { rateCents: 21_000 }),
+    });
+
+    expect(service.rateCents).toBe(21_000);
+  });
+
+  it('rejects a negative service rate', async () => {
+    await expect(
+      prisma.service.create({ data: serviceData(fixture, { rateCents: -500 }) }),
+    ).rejects.toThrow(/services_rate_non_negative/);
+  });
+
+  it('allows clearing a service rate back to null on edit', async () => {
+    const service = await prisma.service.create({
+      data: serviceData(fixture, { rateCents: 21_000 }),
+    });
+
+    const cleared = await prisma.service.update({
+      where: { id: service.id },
+      data: { rateCents: null },
+    });
+
+    expect(cleared.rateCents).toBeNull();
+  });
+});

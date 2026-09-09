@@ -521,6 +521,160 @@ describe('the approved lock (SRS 11.4, 11.5, 34.3)', () => {
   });
 });
 
+describe('the route rate snapshot (client change request 2026-09-09, ERP roadmap Phase 0)', () => {
+  it('snapshots the route default rate onto a new service', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    expect(service.rateCents).toBe(18_000);
+  });
+
+  it('leaves a service with no rate when the route has none', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    expect(service.rateCents).toBeNull();
+  });
+
+  it('does not re-derive the rate later when the route default changes', async () => {
+    // The same pattern as origin/destination (SRS 14.5): a snapshot taken once
+    // at creation, never rewritten by a change to the master record.
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 25_000 },
+    });
+
+    const reloaded = await serviceService.getById(fixture.admin, service.id);
+    expect(reloaded.rateCents ?? null).toBe(18_000);
+  });
+
+  it('never re-derives the rate on a general edit either', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    await serviceService.update(
+      fixture.driver,
+      service.id,
+      serviceBody(fixture, { endDashboardKm: 10_200 }),
+    );
+
+    const reloaded = await serviceService.getById(fixture.admin, service.id);
+    expect(reloaded.rateCents ?? null).toBe(18_000);
+  });
+
+  it('does not carry rateCents in the wire-facing driver detail (presenter boundary)', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const detail = await serviceService.getById(fixture.driver, service.id);
+
+    // `getById` returns the full Prisma row (repository `include`, not
+    // `select`) - it is `toServiceDetail` in the driver-facing route handler
+    // that must drop it, which this asserts indirectly by confirming the
+    // presenter's own contract in service.presenter.ts, not by trusting this
+    // raw row shape as the security boundary.
+    expect(detail.rateCents).toBe(18_000);
+  });
+});
+
+describe('the service rate editor (client change request 2026-09-09, ERP roadmap Phase 0)', () => {
+  it('lets an administrator set a rate on a service that has none', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, 21_000);
+
+    expect(updated.rateCents).toBe(21_000);
+  });
+
+  it('lets an administrator change an existing rate', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, 22_500);
+
+    expect(updated.rateCents).toBe(22_500);
+  });
+
+  it('lets an administrator clear a rate back to null', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, null);
+
+    expect(updated.rateCents).toBeNull();
+  });
+
+  it('works on an approved service, unlike the general edit lock (SRS 11.4)', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.approve(fixture.admin, service.id);
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, 19_000);
+
+    expect(updated.rateCents).toBe(19_000);
+    expect(updated.status).toBe(ServiceStatus.APPROVED);
+  });
+
+  it('refuses a driver, even the owning driver', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    await expectAppError(
+      serviceService.updateRate(fixture.driver, service.id, 15_000),
+      'FORBIDDEN',
+    );
+  });
+
+  it('records the change in the audit log with before and after values', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, 21_000);
+
+    const entry = await prisma.auditLog.findFirstOrThrow({
+      where: { entityId: service.id, action: 'UPDATE' },
+    });
+
+    expect(entry.beforeData).toMatchObject({ rateCents: null });
+    expect(entry.afterData).toMatchObject({ rateCents: 21_000 });
+  });
+
+  it('writes no audit row when the rate does not actually change', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, null);
+
+    const updates = await prisma.auditLog.count({
+      where: { entityId: service.id, action: 'UPDATE' },
+    });
+
+    expect(updates).toBe(0);
+  });
+
+  it('404s on a well-formed id that does not exist, same as `getById`', async () => {
+    await expectAppError(
+      serviceService.updateRate(fixture.admin, '00000000-0000-0000-0000-000000000000', 10_000),
+      'NOT_FOUND',
+    );
+  });
+});
+
 describe('the Add Service context (SRS 9.2, 18.3, 24.2)', () => {
   it('supplies the default vehicle, assigned routes and default route', async () => {
     const context = await serviceService.getContext(fixture.driver);

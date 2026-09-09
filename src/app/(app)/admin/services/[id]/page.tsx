@@ -10,11 +10,12 @@
  * approving administrator. All of it is here, plus the status history, which is
  * what makes SRS 21.3's audited post-approval edits legible.
  */
-import { ArrowLeft, Pencil, Gauge, MapPin, Clock, FileText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Pencil, Gauge, MapPin, Clock, FileText, ShieldCheck, Euro } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ApproveButton } from '@/components/admin/approve-button';
+import { ServiceRateEditor } from '@/components/admin/service-rate-editor';
 import { JourneyBar } from '@/components/charts/journey-bar';
 import {
   Alert,
@@ -31,7 +32,7 @@ import { ErrorCode, isAppError } from '@/lib/errors/app-error';
 import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
 import { formatBusinessDate, formatBusinessDateTime } from '@/lib/time/business-date';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
-import { toServiceDetail } from '@/modules/services/service/service.presenter';
+import { toAdminServiceDetail } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
 
 export const metadata = { title: UI.admin.reviewTitle };
@@ -50,7 +51,7 @@ export default async function AdminServiceDetailPage({
   let service;
   let history;
   try {
-    service = toServiceDetail(await serviceService.getById(actor, id));
+    service = toAdminServiceDetail(await serviceService.getById(actor, id));
     history = await serviceService.getStatusHistory(actor, id);
   } catch (error) {
     if (isAppError(error) && error.code === ErrorCode.NOT_FOUND) notFound();
@@ -254,6 +255,23 @@ export default async function AdminServiceDetailPage({
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-20">
+          {/* Admin-only (client change request 2026-09-09): the driver never
+              sees this card or anything in it. Placed before approval so the
+              rate is reviewed — and correctable — in the same glance as the
+              approve action. */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <Euro className="size-5 text-green-600" />
+                {UI.admin.rateSectionTitle}
+              </CardTitle>
+              <p className="text-muted-foreground text-xs">{UI.admin.rateHint}</p>
+            </CardHeader>
+            <CardBody>
+              <ServiceRateEditor serviceId={service.id} rateCents={service.rateCents} />
+            </CardBody>
+          </Card>
+
           {/* SRS 16.4 and 21.1: the audit metadata an administrator reviews. */}
           <Card>
             <CardHeader>

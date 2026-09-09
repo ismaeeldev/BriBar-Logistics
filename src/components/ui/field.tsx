@@ -137,6 +137,35 @@ export function TimeInput({ className, ...props }: ComponentProps<'input'>) {
   );
 }
 
+/**
+ * A euro amount (ERP roadmap Phase 0 and everything financial after it).
+ *
+ * `type="text"` with `inputMode="decimal"`, for the same reason as
+ * {@link KmInput}: a Spanish keyboard types a comma, and a native number input
+ * would either reject it or silently discard it depending on the browser.
+ * Validated and converted to whole cents by `moneySchema`
+ * (`modules/shared/schemas/common.ts`), not here.
+ */
+export function MoneyInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={cn(controlBase, 'h-11 pr-8 font-mono sm:h-10', className)}
+        {...props}
+      />
+      <span
+        aria-hidden
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm"
+      >
+        €
+      </span>
+    </div>
+  );
+}
+
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {
   return (
     <div className="relative">
