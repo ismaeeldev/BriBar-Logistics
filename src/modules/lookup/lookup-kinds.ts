@@ -14,6 +14,9 @@ export const LOOKUP_KINDS: readonly LookupKind[] = [
   'PAYMENT_METHOD',
   'SUPPLEMENT_TYPE',
   'END_CLIENT',
+  'GAS_STATION',
+  'INVOICE_STATE',
+  'MAINTENANCE_TYPE',
 ];
 
 export function isLookupKind(value: string): value is LookupKind {

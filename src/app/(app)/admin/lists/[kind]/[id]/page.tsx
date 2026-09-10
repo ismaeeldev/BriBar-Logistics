@@ -55,7 +55,7 @@ export default async function EditLookupItemPage({
 
       <PageHeader
         title={UI.admin.lookup.editItem(kindLabel)}
-        section={UI.nav.sectionFinance}
+        section={UI.nav.sectionSettings}
         description={item.name}
       />
 

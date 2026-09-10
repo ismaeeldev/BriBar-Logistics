@@ -35,3 +35,14 @@ export function millilitersToLiters(milliliters: number): number {
 export function millilitersToInputValue(milliliters: number): string {
   return String(millilitersToLiters(milliliters));
 }
+
+/**
+ * `45,5 L` in the given `Intl` locale tag - pass `NUMBER_LOCALE`
+ * (`src/lib/i18n/messages.ts`), mirroring `formatEuros`.
+ */
+export function formatLiters(milliliters: number, locale: string): string {
+  const value = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+    millilitersToLiters(milliliters),
+  );
+  return `${value} L`;
+}

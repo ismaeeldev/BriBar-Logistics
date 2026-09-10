@@ -21,7 +21,7 @@ export default async function AdminListsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={UI.admin.lookup.sectionTitle} section={UI.nav.sectionFinance} />
+      <PageHeader title={UI.admin.lookup.sectionTitle} section={UI.nav.sectionSettings} />
       <p className="text-muted-foreground -mt-2 text-sm">{UI.admin.lookup.sectionHint}</p>
 
       <div className="grid gap-4 sm:grid-cols-2">

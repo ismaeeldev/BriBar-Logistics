@@ -25,6 +25,7 @@ import {
   VALIDATION,
 } from '@/lib/i18n/messages';
 import {
+  clearableUuidSchema,
   isoDateSchema,
   moneySchema,
   odometerKmSchema,
@@ -221,3 +222,19 @@ export const updateServiceRateSchema = z.strictObject({
 });
 
 export type UpdateServiceRateInput = z.output<typeof updateServiceRateSchema>;
+
+/**
+ * The supplement an administrator sees and may change alongside the rate
+ * (ERP roadmap Phase 4) — its own schema for the same reason
+ * `updateServiceRateSchema` is its own schema: a distinct admin-only action,
+ * not a field on the driver/admin edit form. `supplement` reuses
+ * `moneySchema`'s three-way clear/unchanged/value signal; `supplementTypeId`
+ * uses the equivalent for a reference (`clearableUuidSchema`) so a
+ * previously-chosen supplement type can be removed, not just left alone.
+ */
+export const updateServiceSupplementSchema = z.strictObject({
+  supplement: moneySchema,
+  supplementTypeId: clearableUuidSchema,
+});
+
+export type UpdateServiceSupplementInput = z.output<typeof updateServiceSupplementSchema>;

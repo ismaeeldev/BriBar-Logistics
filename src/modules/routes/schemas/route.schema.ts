@@ -7,7 +7,12 @@
 import { z } from 'zod';
 
 import { FIELD_LABELS, VALIDATION } from '@/lib/i18n/messages';
-import { booleanSchema, moneySchema, requiredText } from '@/modules/shared/schemas/common';
+import {
+  booleanSchema,
+  clearableUuidSchema,
+  moneySchema,
+  requiredText,
+} from '@/modules/shared/schemas/common';
 
 export const ROUTE_CODE_MAX_LENGTH = 32;
 export const ROUTE_NAME_MAX_LENGTH = 160;
@@ -46,6 +51,13 @@ export const createRouteSchema = z.strictObject({
    * `userRepository.listAssignableRoutes`, which does not select this column.
    */
   defaultRate: moneySchema,
+  /**
+   * ERP roadmap Phase 4 (roadmap §6 B4, "Contrato = Route"). Admin-only,
+   * same visibility as `defaultRate`. `clearableUuidSchema`, not
+   * `optionalUuidSchema` — a contract ending must be able to unset the
+   * client, not just leave it unmentioned.
+   */
+  clientId: clearableUuidSchema,
 });
 
 export type CreateRouteInput = z.output<typeof createRouteSchema>;

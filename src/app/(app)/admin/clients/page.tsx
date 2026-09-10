@@ -44,7 +44,7 @@ export default async function AdminClientsPage({
     <div className="space-y-5">
       <PageHeader
         title={UI.admin.clientsTitle}
-        section={UI.nav.sectionFinance}
+        section={UI.nav.sectionMasterData}
         description={UI.common.total(total)}
         statusPill={<StatePill isActive={true} label={UI.common.active} />}
         search={<SearchBar placeholder={UI.admin.searchClients} className="w-full" />}

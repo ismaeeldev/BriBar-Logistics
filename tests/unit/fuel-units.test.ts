@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatLiters,
   isLitersAmount,
   litersToMilliliters,
   millilitersToInputValue,
@@ -54,5 +55,21 @@ describe('millilitersToLiters / millilitersToInputValue', () => {
 
   it('renders an editable value with a dot, not a comma', () => {
     expect(millilitersToInputValue(11_500)).toBe('11.5');
+  });
+});
+
+describe('formatLiters', () => {
+  const normalise = (s: string) => s.replace(/\s/g, ' ');
+
+  it('formats with a comma decimal in Spanish', () => {
+    expect(normalise(formatLiters(45_500, 'es-ES'))).toBe('45,5 L');
+  });
+
+  it('formats with a dot decimal in English', () => {
+    expect(normalise(formatLiters(45_500, 'en-GB'))).toBe('45.5 L');
+  });
+
+  it('drops a trailing zero decimal', () => {
+    expect(formatLiters(45_000, 'en-GB')).toBe('45 L');
   });
 });

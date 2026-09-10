@@ -7,11 +7,13 @@ import { RouteForm } from '@/components/admin/route-form';
 import { PageHeader } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { UI } from '@/lib/i18n/messages';
+import { clientService } from '@/modules/clients/service/client.service';
 
 export const metadata = { title: UI.admin.newRoute };
 
 export default async function NewRoutePage() {
-  await requireAdmin();
+  const actor = await requireAdmin();
+  const clients = await clientService.list(actor, { isActive: true });
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -25,7 +27,11 @@ export default async function NewRoutePage() {
 
       <PageHeader title={UI.admin.newRoute} section={UI.nav.sectionMasterData} />
 
-      <RouteForm action={createRouteAction} submitLabel={UI.admin.createRoute} />
+      <RouteForm
+        action={createRouteAction}
+        submitLabel={UI.admin.createRoute}
+        clients={clients}
+      />
     </div>
   );
 }

@@ -67,7 +67,7 @@ export default async function AdminLookupListPage({
 
       <PageHeader
         title={LOOKUP_KIND_LABELS[kind]}
-        section={UI.nav.sectionFinance}
+        section={UI.nav.sectionSettings}
         description={UI.common.total(total)}
         statusPill={<StatePill isActive={true} label={UI.common.active} />}
         search={<SearchBar placeholder={UI.admin.lookup.search} className="w-full" />}

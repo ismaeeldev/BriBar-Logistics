@@ -80,16 +80,20 @@ export const clientRepository = {
   /**
    * What would stop this client being deleted.
    *
-   * Nothing references a client yet (roadmap §2 — the issued-invoice/service
-   * link is Phase 4's decision), so this always returns zero counts today.
-   * Kept as a real query rather than a hard-coded `{ canDelete: true }` so
-   * Phase 4 adds a count here, not a new code path.
+   * ERP roadmap Phase 4 resolved roadmap §2's "which join" question: a
+   * client is referenced through the routes/contracts tied to it and any
+   * issued invoices billed to it directly.
    */
   async countDependents(
-    _id: string,
-    _client: PrismaClientLike = prisma,
-  ): Promise<Record<string, never>> {
-    return {};
+    id: string,
+    client: PrismaClientLike = prisma,
+  ): Promise<{ routes: number; issuedInvoices: number }> {
+    const [routes, issuedInvoices] = await Promise.all([
+      client.route.count({ where: { clientId: id } }),
+      client.issuedInvoice.count({ where: { clientId: id } }),
+    ]);
+
+    return { routes, issuedInvoices };
   },
 
   async delete(id: string, client: PrismaClientLike = prisma): Promise<void> {

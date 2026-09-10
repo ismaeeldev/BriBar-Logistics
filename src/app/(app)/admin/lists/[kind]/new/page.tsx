@@ -35,7 +35,7 @@ export default async function NewLookupItemPage({
         {LOOKUP_KIND_LABELS[kind]}
       </Link>
 
-      <PageHeader title={UI.admin.lookup.newItem} section={UI.nav.sectionFinance} />
+      <PageHeader title={UI.admin.lookup.newItem} section={UI.nav.sectionSettings} />
 
       <LookupForm
         action={createLookupItemAction.bind(null, kind)}

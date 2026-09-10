@@ -2,7 +2,7 @@
 
 import type { FormState } from '@/app/(app)/admin/actions';
 import { ActiveToggle, EntityForm } from '@/components/admin/entity-form';
-import { Field, Input, MoneyInput } from '@/components/ui/field';
+import { Field, Input, MoneyInput, Select } from '@/components/ui/field';
 import { Alert } from '@/components/ui/primitives';
 import { centsToInputValue } from '@/lib/money/money';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
@@ -13,6 +13,7 @@ export function RouteForm({
   submitLabel,
   initial,
   assignedDriverCount,
+  clients,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   submitLabel: string;
@@ -24,9 +25,13 @@ export function RouteForm({
     isActive: boolean;
     /** EUR cents, or null if none set (ERP roadmap Phase 0). */
     defaultRateCents: number | null;
+    /** ERP roadmap Phase 4, or null if this route has no client yet. */
+    clientId: string | null;
   };
   /** Only supplied when editing; drives the deactivation warning. */
   assignedDriverCount?: number;
+  /** Active clients to choose from (ERP roadmap Phase 4). */
+  clients: { id: string; name: string }[];
 }) {
   return (
     <EntityForm action={action} submitLabel={submitLabel}>
@@ -120,6 +125,31 @@ export function RouteForm({
                     : '')
                 }
               />
+            )}
+          </Field>
+
+          {/* ERP roadmap Phase 4 (roadmap §6 B4, "Contrato = Route"). A
+              service inherits its billable client through this link, so it
+              is set once here rather than on every individual service. */}
+          <Field
+            label={FIELD_LABELS.client}
+            optional
+            errors={fieldErrors?.['clientId']}
+            hint={UI.admin.routeClientHint}
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="clientId"
+                defaultValue={values?.['clientId'] ?? initial?.clientId ?? ''}
+              >
+                <option value="">{UI.admin.noClientLinked}</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
             )}
           </Field>
 

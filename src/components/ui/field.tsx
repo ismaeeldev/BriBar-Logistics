@@ -138,6 +138,18 @@ export function TimeInput({ className, ...props }: ComponentProps<'input'>) {
 }
 
 /**
+ * A calendar date (ERP roadmap Phase 3's received-invoice date — a
+ * transcribed document date, not a server-set business date; see the doc
+ * comment on `ReceivedInvoice` in `schema.prisma`). Opens the OS date
+ * picker, the same reasoning as {@link TimeInput}.
+ */
+export function DateInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <input type="date" className={cn(controlBase, 'h-11 sm:h-10', className)} {...props} />
+  );
+}
+
+/**
  * A euro amount (ERP roadmap Phase 0 and everything financial after it).
  *
  * `type="text"` with `inputMode="decimal"`, for the same reason as

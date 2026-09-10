@@ -91,10 +91,24 @@ export function toServiceListItem(service: ServiceWithRelations): ServiceListIte
 export interface AdminServiceDetail extends ServiceDetail {
   /** EUR cents, or null if no rate is assigned. Never sent to a driver. */
   rateCents: number | null;
+  /** EUR cents, or null if no supplement is assigned (ERP roadmap Phase 4). */
+  supplementCents: number | null;
+  supplementTypeId: string | null;
+  /** `rateCents + supplementCents` - "Base imponible". Null iff `rateCents` is. */
+  baseCents: number | null;
+  /** Which issued invoice this service's base was billed on, if any. */
+  issuedInvoiceId: string | null;
 }
 
 export function toAdminServiceDetail(service: ServiceWithRelations): AdminServiceDetail {
-  return { ...toServiceDetail(service), rateCents: service.rateCents };
+  return {
+    ...toServiceDetail(service),
+    rateCents: service.rateCents,
+    supplementCents: service.supplementCents,
+    supplementTypeId: service.supplementTypeId,
+    baseCents: service.baseCents,
+    issuedInvoiceId: service.issuedInvoiceId,
+  };
 }
 
 export function toServiceDetail(service: ServiceWithRelations): ServiceDetail {

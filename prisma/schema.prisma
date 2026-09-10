@@ -68,6 +68,18 @@ enum AuditEntityType {
   CLIENT
   LOOKUP_ITEM
   APP_CONFIG
+  /// ERP roadmap Phase 2.
+  REFUELLING
+  /// ERP roadmap Phase 3.
+  SUPPLIER
+  EXPENSE_CATEGORY
+  RECEIVED_INVOICE
+  /// ERP roadmap Phase 4.
+  ISSUED_INVOICE
+  /// ERP roadmap Phase 5.
+  DAILY_KM_LOG
+  PERSONNEL_COST
+  MAINTENANCE_RECORD
 
   @@map("audit_entity_type")
 }
@@ -92,8 +104,52 @@ enum LookupKind {
   /// Promoting it later is a new model, not a rewrite of what points at it,
   /// because nothing points at it yet.
   END_CLIENT
+  /// `99_Listas` gas stations (ERP roadmap Phase 2). Added alongside the
+  /// refuelling module that is its first consumer, per this enum's own
+  /// promise: a fifth simple list is a value here, not a new module.
+  GAS_STATION
+  /// `99_Listas` invoice states (pendiente, pagada, vencida, ...) - ERP
+  /// roadmap Phase 3.
+  INVOICE_STATE
+  /// `99_Listas` maintenance types (cambio de aceite, ITV, revisión, ...) -
+  /// ERP roadmap Phase 5.
+  MAINTENANCE_TYPE
 
   @@map("lookup_kind")
+}
+
+/// The three-way split `99_Listas` gives every expense category (ERP roadmap
+/// Phase 3) - which of a client's cost lines add to the P&L for the period
+/// they were incurred in (`OPERATION`), which get capitalised against a
+/// vehicle and paid back over time (`INVESTMENT`), and which sit outside
+/// operations entirely (`NON_OPERATING`, e.g. bank fees). `ReceivedInvoice`
+/// never stores this directly - it always reads it from the invoice's
+/// `ExpenseCategory`, the same "derive, don't duplicate" reasoning that kept
+/// `AppConfig`'s per-document counters out of the schema (ADR 0012).
+enum ExpenseType {
+  OPERATION
+  INVESTMENT
+  NON_OPERATING
+
+  @@map("expense_type")
+}
+
+/// The five VAT ("IVA") rates the client's spreadsheet uses (`99_Listas`),
+/// mirrored as a Postgres enum so a stored rate is one of exactly these five
+/// rather than an arbitrary string. `src/modules/shared/domain/vat.ts`
+/// defines the same five values as a dependency-free TS union for the pure
+/// arithmetic (`applyVat`, `baseFromGross`); the two are kept as separate
+/// declarations — domain/ imports nothing, not even a generated Prisma type
+/// (CLAUDE.md) — but their string values must never drift apart, which is
+/// asserted by `tests/unit/vat.test.ts`.
+enum VatRate {
+  STANDARD
+  REDUCED
+  SUPER_REDUCED
+  ZERO
+  EXEMPT
+
+  @@map("vat_rate")
 }
 
 /// SRS 19.9. Kept coarse on purpose: an action names what changed, the
@@ -149,6 +205,11 @@ model User {
   statusChanges    ServiceStatusHistory[]
   auditEntries     AuditLog[]
   notifications    Notification[]
+  /// ERP roadmap Phase 2: the driver a refuelling record was filed for.
+  refuellings      Refuelling[]           @relation("RefuellingDriver")
+  /// ERP roadmap Phase 5.
+  dailyKmLogs      DailyKmLog[]           @relation("DailyKmLogDriver")
+  personnelCosts   PersonnelCost[]        @relation("PersonnelCostUser")
 
   /// Backs the admin user list and every "active drivers" picker.
   @@index([role, isActive], map: "users_role_is_active_idx")
@@ -168,8 +229,12 @@ model Vehicle {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  defaultForUsers User[]    @relation("UserDefaultVehicle")
-  services        Service[]
+  defaultForUsers    User[]              @relation("UserDefaultVehicle")
+  services           Service[]
+  refuellings        Refuelling[]
+  receivedInvoices   ReceivedInvoice[]
+  dailyKmLogs        DailyKmLog[]
+  maintenanceRecords MaintenanceRecord[]
 
   @@index([isActive], map: "vehicles_is_active_idx")
   @@map("vehicles")
@@ -192,14 +257,28 @@ model Route {
   /// 2026-09-09, ERP roadmap Phase 0). Null means no rate has been set yet.
   defaultRateCents Int? @map("default_rate_cents")
 
+  /// Which client this route/contract is with (ERP roadmap Phase 4, roadmap
+  /// §6 B4 "Contrato = Route" — resolved before Phase 1). A service inherits
+  /// its billable client through the route it ran on rather than naming one
+  /// itself: `Route` is the "Contrato", and a contract is with a client by
+  /// definition, so asking an administrator to pick a client on every
+  /// individual service would be asking for a fact the route already states.
+  /// Nullable - not every route need be tied to a client on day one, and an
+  /// untied route's services simply cannot be grouped into an issued invoice
+  /// (`issuedInvoiceService.create` requires it transitively, via the route).
+  clientId String? @map("client_id") @db.Uuid
+
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  client            Client?       @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   driverAssignments DriverRoute[]
   services          Service[]
+  dailyKmLogs       DailyKmLog[]
 
   @@index([isActive], map: "routes_is_active_idx")
+  @@index([clientId], map: "routes_client_id_idx")
   @@map("routes")
 }
 
@@ -252,8 +331,62 @@ model Client {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  /// ERP roadmap Phase 4: the routes/contracts this client is billed
+  /// through, and the issued invoices billed directly to them.
+  routes         Route[]
+  issuedInvoices IssuedInvoice[]
+
   @@index([isActive], map: "clients_is_active_idx")
   @@map("clients")
+}
+
+/// Who a received invoice was billed by (ERP roadmap Phase 3, roadmap §2's
+/// "New entities V1 does not have"). Deferred out of Phase 1 (ADR 0012)
+/// specifically because nothing consumed it yet; `ReceivedInvoice` below is
+/// that consumer. Same shape as `Client` deliberately - a business's own
+/// name and tax id are the same two facts whichever side of the transaction
+/// they are on.
+model Supplier {
+  id     String  @id @default(uuid(7)) @db.Uuid
+  name   String  @db.VarChar(160)
+  taxId  String? @map("tax_id") @db.VarChar(32)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  receivedInvoices ReceivedInvoice[]
+
+  @@index([isActive], map: "suppliers_is_active_idx")
+  @@map("suppliers")
+}
+
+/// How a received invoice is classified for the P&L and for investment
+/// tracking (ERP roadmap Phase 3). Deferred out of Phase 1 for the same
+/// reason as `Supplier` - the category→VAT default rule (`99_Config`'s
+/// "10% if Combustible else 21%") needed this module in front of it to have
+/// a shape worth committing to.
+model ExpenseCategory {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String @db.VarChar(160)
+
+  expenseType ExpenseType @map("expense_type")
+
+  /// Pre-fills a received invoice's VAT rate when this category is chosen;
+  /// always overridable per invoice (roadmap: "overridable, incl. 0%
+  /// (exento)") - a default, not a constraint, so it lives here as a plain
+  /// column rather than something the service layer refuses to let an
+  /// administrator override.
+  defaultVatRate VatRate @map("default_vat_rate")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  receivedInvoices ReceivedInvoice[]
+
+  @@index([isActive], map: "expense_categories_is_active_idx")
+  @@map("expense_categories")
 }
 
 /// A named list entry, distinguished by `kind` (see `LookupKind` above).
@@ -267,6 +400,25 @@ model LookupItem {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // ERP roadmap Phase 2. Three separate relations into the same table - one
+  // per kind of reference a refuelling can make - because Prisma has no way
+  // to express "a foreign key restricted to rows where kind = X"; that
+  // restriction is enforced in `lookupService`/`refuellingService` instead
+  // (see the doc comment on `LookupKind` and ADR 0012's note on the same
+  // trade-off). A row's `kind` still tells a reader which of the three a
+  // given `LookupItem` is allowed to be referenced as.
+  refuellingsAsFuelType      Refuelling[] @relation("RefuellingFuelType")
+  refuellingsAsGasStation    Refuelling[] @relation("RefuellingGasStation")
+  refuellingsAsPaymentMethod Refuelling[] @relation("RefuellingPaymentMethod")
+  // ERP roadmap Phase 3 - same polymorphic-reference trade-off as above.
+  receivedInvoicesAsState          ReceivedInvoice[] @relation("ReceivedInvoiceState")
+  receivedInvoicesAsPaymentMethod  ReceivedInvoice[] @relation("ReceivedInvoicePaymentMethod")
+  // ERP roadmap Phase 4 - same trade-off again.
+  servicesAsSupplementType   Service[]        @relation("ServiceSupplementType")
+  issuedInvoicesAsState      IssuedInvoice[]  @relation("IssuedInvoiceState")
+  // ERP roadmap Phase 5.
+  maintenanceRecordsAsType   MaintenanceRecord[] @relation("MaintenanceRecordType")
 
   @@unique([kind, name], map: "lookup_items_kind_name_key")
   @@index([kind, isActive], map: "lookup_items_kind_is_active_idx")
@@ -303,6 +455,382 @@ model AppConfig {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("app_config")
+}
+
+// ---------------------------------------------------------------------------
+// Fleet operations (ERP roadmap Phase 2)
+//
+// The first module built on top of the Phase 1 finance core: every euro
+// amount here is EUR cents, `vatRate`/`baseCents`/`vatCents` reuse
+// `src/modules/shared/domain/vat.ts`, and `refuelCode` is the first real
+// consumer of `formatDocumentCode` (Phase 1's other half of ADR 0003's
+// pattern, generalised) - `service_code_seq` was the only sequence before
+// this.
+//
+// Deliberately admin-only for this pass, unlike Service - roadmap §6 D10
+// ("who enters refuelling and daily km - driver, admin, or either") is still
+// an open client question, and `driverId` records *whose* fill-up this was
+// without yet exposing any creation path to that driver. Extending create to
+// a driver actor later (mirroring `serviceService.create`'s `canCreateFor`
+// split) is additive once D10 is answered, not a rewrite - `driverId` is
+// already the field that split would need.
+// ---------------------------------------------------------------------------
+
+/// One fuel purchase (`02Repostajes`, SRS-free - see the section comment).
+///
+/// `baseCents` and `vatCents` are stored, not derived on read, for the same
+/// reason `services.actual_km`/`service_km` are (SRS 10.1's rationale,
+/// carried into a module the SRS itself does not cover): they are the
+/// numbers a VAT return is built from, and future reporting must be able to
+/// aggregate them without recomputing. The CHECK constraint
+/// `refuellings_base_vat_sum` guarantees `base_cents + vat_cents =
+/// total_cents` always holds, so a stored pair can never drift from the
+/// total it was split from.
+///
+/// `kmSinceLastRefuel` and the consumption figure it enables are
+/// deliberately **not** stored columns - see `refuelling.service.ts`'s doc
+/// comment for why a stored value here would be wrong the first time a
+/// backdated entry is corrected, and computed instead at read time from the
+/// previous chronological row for the same vehicle.
+model Refuelling {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// Human-visible code, allocated from `refuelling_code_seq`
+  /// (`R000046`-shaped, matching the client's own register). Distinct from
+  /// the primary key for the same reason `services.service_code` is (SRS
+  /// 19.1's rationale).
+  refuelCode String @unique(map: "refuellings_refuel_code_key") @map("refuel_code") @db.VarChar(32)
+
+  vehicleId String @map("vehicle_id") @db.Uuid
+  /// Whose fill-up this was, for per-driver fuel reporting (roadmap §3.4).
+  /// Always administrator-supplied for now - see the section comment.
+  driverId  String @map("driver_id") @db.Uuid
+
+  /// Business date at creation (SRS 9.2's pattern, applied here too) -
+  /// server-set, never client-supplied.
+  refuelDate DateTime @map("refuel_date") @db.Date
+
+  /// The vehicle's dashboard reading at the pump. Whole kilometres, the same
+  /// unit and non-negative rule as a service's odometer readings.
+  odometerKm Int @map("odometer_km")
+
+  /// Whole millilitres (`src/lib/units/fuel.ts`) - never a float litre value.
+  litersMl Int @map("liters_ml")
+
+  /// EUR cents, tax-inclusive - what was actually paid at the pump.
+  totalCents Int @map("total_cents")
+
+  vatRate VatRate @map("vat_rate")
+  /// `baseFromGross(totalCents, vatRate)` - the spreadsheet's own
+  /// `Base = Total/1.21` formula, generalised to all five rates.
+  baseCents Int @map("base_cents")
+  /// Always `totalCents - baseCents`, not a second independent VAT
+  /// calculation - see `refuelling.service.ts` for why computing it that way,
+  /// rather than via `applyVat(baseCents, vatRate).vatCents`, is what makes
+  /// `refuellings_base_vat_sum` unconditionally true rather than off by a
+  /// cent on a compounding-rounding input.
+  vatCents Int @map("vat_cents")
+
+  /// The three optional categorisations (`99_Listas`). Nullable: the
+  /// financial facts above are what matters most on a first pass, and these
+  /// can be filled in later without blocking on it.
+  fuelTypeId      String? @map("fuel_type_id") @db.Uuid
+  gasStationId    String? @map("gas_station_id") @db.Uuid
+  paymentMethodId String? @map("payment_method_id") @db.Uuid
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  driver        User        @relation("RefuellingDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  fuelType      LookupItem? @relation("RefuellingFuelType", fields: [fuelTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  gasStation    LookupItem? @relation("RefuellingGasStation", fields: [gasStationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  paymentMethod LookupItem? @relation("RefuellingPaymentMethod", fields: [paymentMethodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Backs the admin list and, more importantly, `previousForVehicle` -
+  // finding the chronologically preceding refuel for a vehicle is this
+  // module's hottest query, run on every detail-page view.
+  @@index([vehicleId, refuelDate], map: "refuellings_vehicle_id_refuel_date_idx")
+  @@index([refuelDate], map: "refuellings_refuel_date_idx")
+  @@map("refuellings")
+}
+
+// ---------------------------------------------------------------------------
+// Received invoices (ERP roadmap Phase 3, `03Facturas_Recibidas`)
+//
+// Reuses the Phase 1/2 foundation the same way Refuelling did: EUR cents,
+// `VatRate`, `formatDocumentCode` (its own `FR000090`-shaped sequence). Where
+// it differs from `Refuelling` is the direction the VAT math runs: a
+// refuelling receipt shows a tax-inclusive total, so Phase 2 works backwards
+// from it (`baseFromGross`); a supplier invoice states its taxable base up
+// front, so this module works forwards from that base (`applyVat`) - the
+// first real caller of that half of `vat.ts`.
+// ---------------------------------------------------------------------------
+
+/// One supplier bill (`03Facturas_Recibidas`).
+///
+/// `invoiceDate` is admin-supplied, unlike `services.service_date` and
+/// `refuellings.refuel_date` - a deliberate difference, not an oversight.
+/// Those two record *when something happened* and are server-set so the
+/// value can never be gamed (CLAUDE.md's "never trust the client for
+/// serviceDate" rule). This one records *what a document says*, and an
+/// administrator transcribing a supplier's invoice weeks after it arrived
+/// must be able to enter the date printed on it, not today's date.
+///
+/// `vatCents`/`totalCents` are stored, calculated forwards from `baseCents`
+/// via `applyVat` - never re-derived independently, so
+/// `received_invoices_vat_sum` holds unconditionally for the same reason
+/// `refuellings_base_vat_sum` does (ADR 0013).
+model ReceivedInvoice {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// `FR000090`-shaped, from `received_invoice_code_seq`.
+  invoiceCode String @unique(map: "received_invoices_invoice_code_key") @map("invoice_code") @db.VarChar(32)
+
+  supplierId String @map("supplier_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  /// Which vehicle this cost belongs to, if any - not every bill is
+  /// vehicle-specific (office supplies, bank fees). Feeds the Phase 3
+  /// investment summary and Phase 6's per-vehicle margin (roadmap §3.4).
+  vehicleId String? @map("vehicle_id") @db.Uuid
+
+  invoiceDate DateTime @map("invoice_date") @db.Date
+
+  /// EUR cents, tax-exclusive - the "Base imponible" printed on the invoice.
+  baseCents Int @map("base_cents")
+
+  vatRate VatRate @map("vat_rate")
+  /// `applyVat(baseCents, vatRate).vatCents` - see the model doc comment.
+  vatCents Int @map("vat_cents")
+  /// Always `baseCents + vatCents`.
+  totalCents Int @map("total_cents")
+
+  stateId         String? @map("state_id") @db.Uuid
+  paymentMethodId String? @map("payment_method_id") @db.Uuid
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  supplier      Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vehicle       Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  state         LookupItem?     @relation("ReceivedInvoiceState", fields: [stateId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  paymentMethod LookupItem?     @relation("ReceivedInvoicePaymentMethod", fields: [paymentMethodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Backs the admin list (newest invoice date first) and the investment
+  // summary's per-vehicle grouping.
+  @@index([invoiceDate], map: "received_invoices_invoice_date_idx")
+  @@index([vehicleId], map: "received_invoices_vehicle_id_idx")
+  @@index([categoryId], map: "received_invoices_category_id_idx")
+  @@map("received_invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Issued invoices (ERP roadmap Phase 4, `05Facturas_Emitidas`)
+//
+// The counterpart to Received invoices: this side works forwards from a
+// base too (`applyVat`, same as `ReceivedInvoice` - ADR 0014), but the base
+// itself is not typed in by an administrator. It is
+// `SUMIFS(tblServicios.Base, ID Factura)` (roadmap's own formula) -
+// `issuedInvoiceService.create` sums the `baseCents` of the approved
+// services an administrator selects, snapshots that sum once at creation
+// (the same "what applied at the time" reasoning as `Service`'s own
+// origin/destination snapshot, SRS 14.5), and links each service to this
+// invoice via `Service.issuedInvoiceId`.
+// ---------------------------------------------------------------------------
+
+/// One invoice billed to a client, grouping a batch of approved services.
+model IssuedInvoice {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// `FE000003`-shaped, from `issued_invoice_code_seq`.
+  invoiceCode String @unique(map: "issued_invoices_invoice_code_key") @map("invoice_code") @db.VarChar(32)
+
+  clientId String @map("client_id") @db.Uuid
+
+  /// Administrator-supplied, same reasoning as `ReceivedInvoice.invoiceDate`
+  /// (see that model's doc comment) - the date printed on the invoice an
+  /// administrator issues is a business decision, not "now".
+  invoiceDate DateTime @map("invoice_date") @db.Date
+
+  /// EUR cents - `Σ` of the linked services' `baseCents` at the moment this
+  /// invoice was created. Snapshotted, not re-derived on read: a service's
+  /// rate could change after invoicing (correcting a mistake, say), and an
+  /// issued invoice must not silently reflect a total the client was never
+  /// actually billed.
+  baseCents Int @map("base_cents")
+
+  vatRate VatRate @map("vat_rate")
+  /// `applyVat(baseCents, vatRate).vatCents`.
+  vatCents Int @map("vat_cents")
+  totalCents Int @map("total_cents")
+
+  stateId String? @map("state_id") @db.Uuid
+  notes   String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  client   Client      @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  state    LookupItem? @relation("IssuedInvoiceState", fields: [stateId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  services Service[]
+
+  // Backs the admin list and the quarterly tax summary's grouping by
+  // invoice date.
+  @@index([invoiceDate], map: "issued_invoices_invoice_date_idx")
+  @@index([clientId], map: "issued_invoices_client_id_idx")
+  @@map("issued_invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Fleet and personnel logs (ERP roadmap Phase 5, `00KmDiariosReales`,
+// `04_Personal`, `08_Mantenimiento`)
+//
+// Three independent logs, not one generic "log" table: each has its own
+// shape, its own uniqueness rule and its own downstream consumer (vehicle
+// utilisation, personnel cost, maintenance due-dates - roadmap §3.4), and
+// forcing them into a shared table would mean every query filtering by kind
+// the same "which columns are even valid for this row" ambiguity the
+// polymorphic `LookupItem` design (ADR 0012) deliberately avoids for
+// anything with more than a name.
+// ---------------------------------------------------------------------------
+
+/// One vehicle's real km and hours for one day (`00KmDiariosReales`).
+///
+/// `@@unique([vehicleId, date])` - a vehicle has exactly one "how far did it
+/// go today" answer; two rows for the same vehicle and day would double an
+/// aggregate the moment Phase 6 sums this table.
+model DailyKmLog {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  vehicleId String  @map("vehicle_id") @db.Uuid
+  /// Which contract/route the driving was for, if it can be attributed to
+  /// one - not every day is spent on a single named route. Optional, unlike
+  /// `Service.routeId`, for exactly that reason.
+  routeId   String? @map("route_id") @db.Uuid
+  driverId  String? @map("driver_id") @db.Uuid
+
+  date DateTime @db.Date
+
+  /// Whole kilometres, the same unit and non-negative rule as every other
+  /// odometer-derived reading in this schema.
+  actualKm Int @map("actual_km")
+
+  /// Whole minutes worked that day, not a float hour count - `8,5 h` is
+  /// `510` here. Optional: the sheet's "Horas" column is not always filled.
+  workedMinutes Int? @map("worked_minutes")
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  route   Route?  @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  driver  User?   @relation("DailyKmLogDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([vehicleId, date], map: "daily_km_logs_vehicle_id_date_key")
+  @@index([date], map: "daily_km_logs_date_idx")
+  @@map("daily_km_logs")
+}
+
+/// One person's cost for one calendar month (`04_Personal`).
+///
+/// `dailyFixedCostCents` ("Coste fijo diario = Coste total / días del mes")
+/// is deliberately **not** a column here - unlike `services.base_cents`, it
+/// depends on which month it is (28-31 days), and hand-rolling that formula
+/// identically in a Postgres `CHECK` and in application rounding risks the
+/// two disagreeing on a leap-year or month-boundary edge case for no benefit
+/// this phase's own screens need. It is computed at read time by
+/// `domain/personnel-cost.ts`, the same "computed, not stored, because
+/// storing it risks going stale for a reason storing `actual_km` never
+/// does" reasoning ADR 0013 gives for `Refuelling`'s `kmSinceLastRefuel`.
+model PersonnelCost {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  year   Int
+  /// 1-12, calendar convention (see `fiscal-period.ts`'s own doc comment on
+  /// why this codebase prefers it over a zero-indexed month).
+  month  Int
+
+  /// EUR cents. "real" - the base amount paid this month.
+  baseCents Int @map("base_cents")
+  /// "h. extra".
+  overtimeCents Int? @map("overtime_cents")
+  /// "dietas".
+  allowancesCents Int? @map("allowances_cents")
+  /// "otros".
+  otherCents Int? @map("other_cents")
+  /// `baseCents + COALESCE(overtimeCents,0) + COALESCE(allowancesCents,0) +
+  /// COALESCE(otherCents,0)` - stored and CHECK-enforced
+  /// (`personnel_costs_total_formula`), plain addition with no rounding
+  /// ambiguity, unlike `dailyFixedCostCents` above.
+  totalCents Int @map("total_cents")
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation("PersonnelCostUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, year, month], map: "personnel_costs_user_id_year_month_key")
+  @@index([year, month], map: "personnel_costs_year_month_idx")
+  @@map("personnel_costs")
+}
+
+/// One maintenance event and the next one it implies (`08_Mantenimiento`).
+///
+/// `nextDueKm`/`nextDueDate` are administrator-entered, not auto-computed
+/// from the maintenance type - roadmap §6 D12 ("is the due-date engine
+/// complete as +15000km / +6 months, or are there other maintenance types
+/// with their own intervals?") is still an open client question. Deriving a
+/// due date from a `LookupItem`'s *name* ("Cambio de aceite" → +15000) would
+/// mean business logic keyed on a display string an administrator can
+/// rename; asking the administrator for the next-due values directly avoids
+/// guessing the answer to D12 and works identically whatever that answer
+/// turns out to be.
+///
+/// Carries no cost column deliberately - a maintenance event's cost is a
+/// `ReceivedInvoice` against an appropriate `ExpenseCategory` (Phase 3),
+/// not a fact this log duplicates. This model's own job is the schedule,
+/// not the bill.
+model MaintenanceRecord {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  /// `MT000005`-shaped, from `maintenance_code_seq`.
+  maintenanceCode String @unique(map: "maintenance_records_maintenance_code_key") @map("maintenance_code") @db.VarChar(32)
+
+  vehicleId         String @map("vehicle_id") @db.Uuid
+  maintenanceTypeId String @map("maintenance_type_id") @db.Uuid
+
+  performedDate DateTime @map("performed_date") @db.Date
+  /// The odometer reading when the work was done, if this maintenance type
+  /// is km-tracked (an oil change) rather than purely date-tracked (an ITV).
+  performedKm   Int?     @map("performed_km")
+
+  nextDueKm   Int?      @map("next_due_km")
+  nextDueDate DateTime? @map("next_due_date") @db.Date
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  vehicle         Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  maintenanceType LookupItem @relation("MaintenanceRecordType", fields: [maintenanceTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Backs the admin list (newest first) and the "what's due soon" query,
+  // which reads every vehicle's most recent record per maintenance type.
+  @@index([vehicleId, maintenanceTypeId, performedDate(sort: Desc)], map: "maintenance_records_vehicle_type_date_idx")
+  @@index([nextDueDate], map: "maintenance_records_next_due_date_idx")
+  @@map("maintenance_records")
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +872,34 @@ model Service {
   /// ERP roadmap Phase 0). Null means no rate is assigned.
   rateCents Int? @map("rate_cents")
 
+  /// EUR cents, admin-only - the extra charge the roadmap's "Imp. suplemento"
+  /// names (waiting time, an extra stop, night or holiday work). Optional and
+  /// independent of `rateCents`: a service can have a rate with no
+  /// supplement, which is the common case. ERP roadmap Phase 4 - built now
+  /// because `IssuedInvoice`'s "Base imponible = Σ service base" is this
+  /// field's first real consumer; `LookupKind.SUPPLEMENT_TYPE` (Phase 1) was
+  /// added in anticipation of exactly this.
+  supplementCents   Int?    @map("supplement_cents")
+  supplementTypeId  String? @map("supplement_type_id") @db.Uuid
+
+  /// `rateCents + COALESCE(supplementCents, 0)` - "Base imponible" (roadmap:
+  /// "rate + supplement"). Stored and CHECK-enforced
+  /// (`services_base_formula`) rather than computed on read, the same
+  /// reasoning `actualKm`/`serviceKm` are (SRS 10.1): `IssuedInvoice`
+  /// aggregates this across many services, and future reporting must not
+  /// have to recompute it. Null exactly when `rateCents` is null - a service
+  /// with no rate has no base, and therefore cannot be invoiced.
+  baseCents Int? @map("base_cents")
+
+  /// Which issued invoice this service's base was billed on, if any. Set
+  /// once, by `issuedInvoiceService.create` grouping a batch of approved
+  /// services for one client; nothing else ever changes it. `SetNull` rather
+  /// than this schema's usual `Restrict` (see the file header) - deleting an
+  /// issued invoice un-bills the services it grouped rather than being
+  /// blocked by them, because unlike every other historical reference here,
+  /// the service itself is still the complete, valid record without it.
+  issuedInvoiceId String? @map("issued_invoice_id") @db.Uuid
+
   /// The four odometer readings (6.3). Whole kilometres, monotonic
   /// non-decreasing - enforced by CHECK services_mileage_sequence.
   startDashboardKm Int @map("start_dashboard_km")
@@ -383,10 +939,12 @@ model Service {
   approvedAt       DateTime? @map("approved_at") @db.Timestamptz(3)
   approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
 
-  driver     User    @relation("ServiceDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  approvedBy User?   @relation("ServiceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  route      Route   @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  driver         User           @relation("ServiceDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  approvedBy     User?          @relation("ServiceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vehicle        Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  route          Route          @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  supplementType LookupItem?    @relation("ServiceSupplementType", fields: [supplementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  issuedInvoice  IssuedInvoice? @relation(fields: [issuedInvoiceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   statusHistory ServiceStatusHistory[]
   notifications Notification[]
@@ -402,6 +960,9 @@ model Service {
   @@index([createdAt], map: "services_created_at_idx")
   @@index([status, serviceDate(sort: Desc)], map: "services_status_service_date_idx")
   @@index([driverId, serviceDate(sort: Desc)], map: "services_driver_id_service_date_idx")
+  // ERP roadmap Phase 4: an issued invoice's own detail page lists the
+  // services it grouped.
+  @@index([issuedInvoiceId], map: "services_issued_invoice_id_idx")
   @@map("services")
 }
 

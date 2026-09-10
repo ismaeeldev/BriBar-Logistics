@@ -13,6 +13,13 @@ const BLOCKER_LABELS: Record<DeletionBlocker, (count: number) => string> = {
   approvals: (count) => UI.common.blockerApprovals(count),
   statusChanges: (count) => UI.common.blockerStatusChanges(count),
   defaultForUsers: (count) => UI.common.blockerDefaultForUsers(count),
+  refuellings: (count) => UI.common.blockerRefuellings(count),
+  receivedInvoices: (count) => UI.common.blockerReceivedInvoices(count),
+  routes: (count) => UI.common.blockerRoutes(count),
+  issuedInvoices: (count) => UI.common.blockerIssuedInvoices(count),
+  maintenanceRecords: (count) => UI.common.blockerMaintenanceRecords(count),
+  dailyKmLogs: (count) => UI.common.blockerDailyKmLogs(count),
+  personnelCosts: (count) => UI.common.blockerPersonnelCosts(count),
 };
 
 /**

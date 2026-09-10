@@ -11,8 +11,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '@/lib/errors/app-error';
 import { clientService } from '@/modules/clients/service/client.service';
 import { configService } from '@/modules/config/service/config.service';
+import { expenseCategoryService } from '@/modules/expense-categories/service/expense-category.service';
 import { lookupService } from '@/modules/lookup/service/lookup.service';
 import { routeService } from '@/modules/routes/service/route.service';
+import { supplierService } from '@/modules/suppliers/service/supplier.service';
 import { serviceService } from '@/modules/services/service/service.service';
 import { userService } from '@/modules/users/service/user.service';
 import { vehicleService } from '@/modules/vehicles/service/vehicle.service';
@@ -499,5 +501,94 @@ describe('operational defaults (ERP roadmap Phase 1, 99_Config)', () => {
 
     const updates = await prisma.auditLog.count({ where: { entityType: 'APP_CONFIG' } });
     expect(updates).toBe(0);
+  });
+});
+
+describe('suppliers (ERP roadmap Phase 3)', () => {
+  it('lets an administrator create, edit and deactivate', async () => {
+    const created = await supplierService.create(fixture.admin, {
+      name: 'Taller Ejemplo SL',
+      taxId: 'B87654321',
+      isActive: true,
+    });
+    expect(created.name).toBe('Taller Ejemplo SL');
+
+    const renamed = await supplierService.update(fixture.admin, created.id, {
+      name: 'Taller Ejemplo, S.L.',
+    });
+    expect(renamed.name).toBe('Taller Ejemplo, S.L.');
+    expect(renamed.taxId).toBe('B87654321');
+
+    const deactivated = await supplierService.update(fixture.admin, created.id, {
+      isActive: false,
+    });
+    expect(deactivated.isActive).toBe(false);
+  });
+
+  it('deletes a supplier nothing references', async () => {
+    const created = await supplierService.create(fixture.admin, {
+      name: 'Para borrar',
+      isActive: true,
+    });
+
+    await supplierService.remove(fixture.admin, created.id);
+
+    await expectAppError(supplierService.getById(fixture.admin, created.id), 'NOT_FOUND');
+  });
+
+  it('does not let a driver create one', async () => {
+    await expectAppError(
+      supplierService.create(fixture.driver, { name: 'Intento de conductor', isActive: true }),
+      'FORBIDDEN',
+    );
+  });
+});
+
+describe('expense categories (ERP roadmap Phase 3)', () => {
+  it('lets an administrator create, edit and deactivate', async () => {
+    const created = await expenseCategoryService.create(fixture.admin, {
+      name: 'Combustible',
+      expenseType: 'OPERATION',
+      defaultVatRate: 'REDUCED',
+      isActive: true,
+    });
+    expect(created.expenseType).toBe('OPERATION');
+    expect(created.defaultVatRate).toBe('REDUCED');
+
+    const changed = await expenseCategoryService.update(fixture.admin, created.id, {
+      expenseType: 'INVESTMENT',
+    });
+    expect(changed.expenseType).toBe('INVESTMENT');
+    // Untouched fields survive a partial update.
+    expect(changed.defaultVatRate).toBe('REDUCED');
+
+    const deactivated = await expenseCategoryService.update(fixture.admin, created.id, {
+      isActive: false,
+    });
+    expect(deactivated.isActive).toBe(false);
+  });
+
+  it('lists categories without requiring an actor (read-only, not admin-only)', async () => {
+    await expenseCategoryService.create(fixture.admin, {
+      name: 'Peajes',
+      expenseType: 'OPERATION',
+      defaultVatRate: 'STANDARD',
+      isActive: true,
+    });
+
+    const listed = await expenseCategoryService.list({ isActive: true });
+    expect(listed.some((category) => category.name === 'Peajes')).toBe(true);
+  });
+
+  it('does not let a driver create one', async () => {
+    await expectAppError(
+      expenseCategoryService.create(fixture.driver, {
+        name: 'Intento de conductor',
+        expenseType: 'OPERATION',
+        defaultVatRate: 'STANDARD',
+        isActive: true,
+      }),
+      'FORBIDDEN',
+    );
   });
 });

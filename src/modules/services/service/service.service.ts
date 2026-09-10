@@ -45,6 +45,7 @@ import { notificationService } from '@/modules/notifications/service/notificatio
 import { userRepository } from '@/modules/users/repository/user.repository';
 import { vehicleRepository } from '@/modules/vehicles/repository/vehicle.repository';
 import { toPrismaPagination, type Pagination } from '@/modules/shared/schemas/common';
+import { computeBaseCents } from '../domain/billing';
 import { calculateMileage, validateMileage } from '../domain/mileage';
 import { formatServiceCode } from '../domain/service-code';
 import { validateServiceTimes } from '../domain/service-times';
@@ -201,7 +202,11 @@ function toColumns(
     endsNextDay: body.endsNextDay,
     sites: body.sites ?? null,
     observations: body.observations ?? null,
-    ...(rateCents === undefined ? {} : { rateCents }),
+    // `supplementCents` is never part of `rateCents === undefined`'s "leave
+    // alone" case: a service has no supplement until an administrator sets
+    // one (ERP roadmap Phase 4), so whenever `rateCents` *is* being written -
+    // creation - `baseCents` is simply that rate, supplement absent.
+    ...(rateCents === undefined ? {} : { rateCents, baseCents: computeBaseCents(rateCents, null) }),
   };
 }
 
@@ -427,7 +432,13 @@ export const serviceService = {
         const existing = await serviceRepository.findByIdForActor(id, actor, tx);
         if (!existing) throw notFound();
 
-        const updated = await serviceRepository.update(id, { rateCents }, tx);
+        // `baseCents` depends on `rateCents` (ERP roadmap Phase 4's "Base
+        // imponible = tarifa + suplemento"), so a rate change always
+        // recomputes it from the supplement already on the row - which this
+        // call never touches.
+        const baseCents = computeBaseCents(rateCents, existing.supplementCents);
+
+        const updated = await serviceRepository.update(id, { rateCents, baseCents }, tx);
 
         if (existing.rateCents !== updated.rateCents) {
           await writeAudit(tx, {
@@ -435,8 +446,71 @@ export const serviceService = {
             entityType: AuditEntityType.SERVICE,
             entityId: id,
             action: AuditAction.UPDATE,
-            before: { rateCents: existing.rateCents },
-            after: { rateCents: updated.rateCents },
+            before: { rateCents: existing.rateCents, baseCents: existing.baseCents },
+            after: { rateCents: updated.rateCents, baseCents: updated.baseCents },
+          });
+        }
+
+        return updated;
+      }),
+    );
+  },
+
+  /**
+   * Sets or clears a service's supplement (ERP roadmap Phase 4) — the
+   * roadmap's "Imp. suplemento", an extra charge for waiting time, an extra
+   * stop, night or holiday work. Same admin-only, outside-`canEdit` shape as
+   * `updateRate`, and always recomputes `baseCents` from whatever rate is
+   * already on the row, for the same reason `updateRate` recomputes it from
+   * whatever supplement is already there.
+   */
+  async updateSupplement(
+    actor: Actor,
+    id: string,
+    input: { supplementCents: number | null; supplementTypeId: string | null | undefined },
+  ): Promise<ServiceWithRelations> {
+    if (actor.role !== Role.ADMIN) throw forbidden();
+
+    return withTranslatedErrors(() =>
+      prisma.$transaction(async (tx) => {
+        const existing = await serviceRepository.findByIdForActor(id, actor, tx);
+        if (!existing) throw notFound();
+
+        const baseCents = computeBaseCents(existing.rateCents, input.supplementCents);
+
+        const updated = await serviceRepository.update(
+          id,
+          {
+            supplementCents: input.supplementCents,
+            ...(input.supplementTypeId === undefined
+              ? {}
+              : { supplementTypeId: input.supplementTypeId }),
+            baseCents,
+          },
+          tx,
+        );
+
+        const changes = diffForAudit(
+          {
+            supplementCents: existing.supplementCents,
+            supplementTypeId: existing.supplementTypeId,
+            baseCents: existing.baseCents,
+          },
+          {
+            supplementCents: updated.supplementCents,
+            supplementTypeId: updated.supplementTypeId,
+            baseCents: updated.baseCents,
+          },
+        );
+
+        if (changes) {
+          await writeAudit(tx, {
+            actorUserId: actor.userId,
+            entityType: AuditEntityType.SERVICE,
+            entityId: id,
+            action: AuditAction.UPDATE,
+            before: changes.before,
+            after: changes.after,
           });
         }
 

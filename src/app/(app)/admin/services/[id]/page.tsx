@@ -16,6 +16,7 @@ import { notFound } from 'next/navigation';
 
 import { ApproveButton } from '@/components/admin/approve-button';
 import { ServiceRateEditor } from '@/components/admin/service-rate-editor';
+import { ServiceSupplementEditor } from '@/components/admin/service-supplement-editor';
 import { JourneyBar } from '@/components/charts/journey-bar';
 import {
   Alert,
@@ -29,8 +30,10 @@ import {
 import { requireAdmin } from '@/lib/auth/session';
 import { env } from '@/lib/env';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
-import { FIELD_LABELS, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { FIELD_LABELS, NUMBER_LOCALE, SERVICE_STATUS_LABELS, UI } from '@/lib/i18n/messages';
+import { formatEuros } from '@/lib/money/money';
 import { formatBusinessDate, formatBusinessDateTime } from '@/lib/time/business-date';
+import { lookupService } from '@/modules/lookup/service/lookup.service';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { toAdminServiceDetail } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
@@ -57,6 +60,8 @@ export default async function AdminServiceDetailPage({
     if (isAppError(error) && error.code === ErrorCode.NOT_FOUND) notFound();
     throw error;
   }
+
+  const supplementTypes = await lookupService.list(actor, 'SUPPLEMENT_TYPE', { isActive: true });
 
   const isPending = service.status === ServiceStatus.PENDING_APPROVAL;
 
@@ -267,8 +272,35 @@ export default async function AdminServiceDetailPage({
               </CardTitle>
               <p className="text-muted-foreground text-xs">{UI.admin.rateHint}</p>
             </CardHeader>
-            <CardBody>
+            <CardBody className="space-y-5">
               <ServiceRateEditor serviceId={service.id} rateCents={service.rateCents} />
+
+              {/* ERP roadmap Phase 4: the supplement and the base it feeds
+                  into "Base imponible = tarifa + suplemento", reviewed in the
+                  same card as the rate since the three numbers only make
+                  sense together. */}
+              <div className="border-t border-border/40 pt-5">
+                <p className="text-muted-foreground mb-2 text-[13px]">
+                  {UI.admin.supplementSectionTitle}
+                </p>
+                <ServiceSupplementEditor
+                  serviceId={service.id}
+                  supplementCents={service.supplementCents}
+                  supplementTypeId={service.supplementTypeId}
+                  supplementTypes={supplementTypes}
+                />
+              </div>
+
+              <div className="border-t border-border/40 pt-4">
+                <DetailRow
+                  label={UI.admin.baseSectionTitle}
+                  value={
+                    service.baseCents != null
+                      ? formatEuros(service.baseCents, NUMBER_LOCALE)
+                      : UI.admin.noBase
+                  }
+                />
+              </div>
             </CardBody>
           </Card>
 

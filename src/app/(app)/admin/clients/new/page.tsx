@@ -23,7 +23,7 @@ export default async function NewClientPage() {
         {UI.admin.clientsTitle}
       </Link>
 
-      <PageHeader title={UI.admin.newClient} section={UI.nav.sectionFinance} />
+      <PageHeader title={UI.admin.newClient} section={UI.nav.sectionMasterData} />
 
       <ClientForm action={createClientAction} submitLabel={UI.common.create} />
     </div>

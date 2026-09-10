@@ -745,3 +745,116 @@ describe('the Add Service context (SRS 9.2, 18.3, 24.2)', () => {
     expect(context.defaultRouteId).toBe(fixture.routeId);
   });
 });
+
+describe('billing: rate, supplement and base (ERP roadmap Phase 4)', () => {
+  it('snapshots the base as the rate alone when a service is created with no supplement', async () => {
+    await prisma.route.update({
+      where: { id: fixture.routeId },
+      data: { defaultRateCents: 18_000 },
+    });
+
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    expect(service.rateCents).toBe(18_000);
+    expect(service.supplementCents).toBeNull();
+    expect(service.baseCents).toBe(18_000);
+  });
+
+  it('has no base when the route has no rate', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    expect(service.baseCents).toBeNull();
+  });
+
+  it('recomputes the base when the rate changes', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, 20_000);
+
+    expect(updated.baseCents).toBe(20_000);
+  });
+
+  it('adds the supplement into the base once a rate exists', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, 18_000);
+
+    const withSupplement = await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: 2_500,
+      supplementTypeId: undefined,
+    });
+
+    expect(withSupplement.supplementCents).toBe(2_500);
+    expect(withSupplement.baseCents).toBe(20_500);
+  });
+
+  it('keeps the base null when a supplement is added with no rate', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    const withSupplement = await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: 2_500,
+      supplementTypeId: undefined,
+    });
+
+    expect(withSupplement.baseCents).toBeNull();
+  });
+
+  it('recalculates the base when the rate changes after a supplement is already set', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, 18_000);
+    await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: 2_500,
+      supplementTypeId: undefined,
+    });
+
+    const updated = await serviceService.updateRate(fixture.admin, service.id, 20_000);
+
+    expect(updated.baseCents).toBe(22_500);
+  });
+
+  it('clears the supplement back to null, and the base back to the bare rate', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, 18_000);
+    await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: 2_500,
+      supplementTypeId: undefined,
+    });
+
+    const cleared = await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: null,
+      supplementTypeId: undefined,
+    });
+
+    expect(cleared.supplementCents).toBeNull();
+    expect(cleared.baseCents).toBe(18_000);
+  });
+
+  it('records only the changed supplement fields in the audit log', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+    await serviceService.updateRate(fixture.admin, service.id, 18_000);
+
+    await serviceService.updateSupplement(fixture.admin, service.id, {
+      supplementCents: 2_500,
+      supplementTypeId: undefined,
+    });
+
+    // Two UPDATE entries exist here (the rate change, then the supplement) -
+    // newest first so this asserts against the supplement one.
+    const entry = await prisma.auditLog.findFirstOrThrow({
+      where: { entityId: service.id, action: 'UPDATE' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    expect(entry.afterData).toMatchObject({ supplementCents: 2_500, baseCents: 20_500 });
+  });
+
+  it('does not let a driver change the supplement', async () => {
+    const service = await serviceService.create(fixture.driver, serviceBody(fixture));
+
+    await expectAppError(
+      serviceService.updateSupplement(fixture.driver, service.id, {
+        supplementCents: 1_000,
+        supplementTypeId: undefined,
+      }),
+      'FORBIDDEN',
+    );
+  });
+});

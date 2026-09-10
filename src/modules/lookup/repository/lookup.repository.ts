@@ -74,16 +74,60 @@ export const lookupRepository = {
   },
 
   /**
-   * What would stop this item being deleted. Always zero today — no other
-   * table references `lookup_items` yet — kept as a real query for the same
-   * forward-compatibility reason as `clientRepository.countDependents`.
+   * What would stop this item being deleted.
+   *
+   * `refuellings` may reference a `LookupItem` through three different
+   * columns (fuel type, gas station, payment method — ERP roadmap Phase 2);
+   * `receivedInvoices` through two more (state, payment method — Phase 3);
+   * `services` (supplement type) and `issuedInvoices` (state) each through
+   * one more (Phase 4); `maintenanceRecords` (maintenance type) through one
+   * more again (Phase 5). An item is blocked if it is used through *any* of
+   * a family's columns, so each family's counts are summed into one blocker
+   * `toDeletability` expects, rather than eight separate kinds an
+   * administrator would have to mentally add up.
    */
   async countDependents(
+    // Unused: an item's id only ever appears in the FK columns matching its
+    // own kind, so no branch on `kind` is needed to count correctly — kept
+    // as a parameter for signature parity with this repository's other
+    // `kind`-scoped methods.
     _kind: LookupKind,
-    _id: string,
-    _client: PrismaClientLike = prisma,
-  ): Promise<Record<string, never>> {
-    return {};
+    id: string,
+    client: PrismaClientLike = prisma,
+  ): Promise<{
+    refuellings: number;
+    receivedInvoices: number;
+    services: number;
+    issuedInvoices: number;
+    maintenanceRecords: number;
+  }> {
+    const [
+      asFuelType,
+      asGasStation,
+      asRefuellingPaymentMethod,
+      asReceivedInvoiceState,
+      asReceivedInvoicePaymentMethod,
+      asSupplementType,
+      asIssuedInvoiceState,
+      asMaintenanceType,
+    ] = await Promise.all([
+      client.refuelling.count({ where: { fuelTypeId: id } }),
+      client.refuelling.count({ where: { gasStationId: id } }),
+      client.refuelling.count({ where: { paymentMethodId: id } }),
+      client.receivedInvoice.count({ where: { stateId: id } }),
+      client.receivedInvoice.count({ where: { paymentMethodId: id } }),
+      client.service.count({ where: { supplementTypeId: id } }),
+      client.issuedInvoice.count({ where: { stateId: id } }),
+      client.maintenanceRecord.count({ where: { maintenanceTypeId: id } }),
+    ]);
+
+    return {
+      refuellings: asFuelType + asGasStation + asRefuellingPaymentMethod,
+      receivedInvoices: asReceivedInvoiceState + asReceivedInvoicePaymentMethod,
+      services: asSupplementType,
+      issuedInvoices: asIssuedInvoiceState,
+      maintenanceRecords: asMaintenanceType,
+    };
   },
 
   async delete(kind: LookupKind, id: string, client: PrismaClientLike = prisma): Promise<void> {

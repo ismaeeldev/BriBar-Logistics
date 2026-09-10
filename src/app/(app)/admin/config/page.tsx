@@ -27,7 +27,7 @@ export default async function AdminConfigPage({
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
-      <PageHeader title={UI.admin.config.title} section={UI.nav.sectionFinance} />
+      <PageHeader title={UI.admin.config.title} section={UI.nav.sectionSettings} />
       <p className="text-muted-foreground -mt-3 text-sm">{UI.admin.config.hint}</p>
 
       {flags.updated ? <Alert tone="success" title={UI.admin.config.saved} /> : null}

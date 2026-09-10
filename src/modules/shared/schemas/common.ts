@@ -22,10 +22,40 @@ import { z } from 'zod';
 import { VALIDATION } from '@/lib/i18n/messages';
 import { EUROS_PATTERN, eurosToCents } from '@/lib/money/money';
 import { TIME_OF_DAY_PATTERN, type TimeOfDay } from '@/lib/time/time-of-day';
+import { LITERS_PATTERN, litersToMilliliters } from '@/lib/units/fuel';
 import { MAX_ODOMETER_KM } from '@/modules/services/domain/mileage';
 
 /** Record identifier. Always server-issued; never constructed by a client. */
 export const uuidSchema = z.uuid({ error: VALIDATION.invalidReference });
+
+/**
+ * An optional reference to another record — a `<select>` with a "none"
+ * option submits `""`, which `z.uuid()` would otherwise reject as a
+ * malformed id rather than treat as "nothing chosen" (ERP roadmap Phase 2's
+ * optional fuel type / gas station / payment method on a refuel).
+ */
+export const optionalUuidSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}, uuidSchema.optional());
+
+/**
+ * A reference to another record that must stay explicitly clearable on
+ * update — the same three-way signal as {@link moneySchema}: an absent key
+ * leaves the stored value unchanged, a blank field is a deliberate "remove
+ * the link" and parses to `null`, a value is validated as a reference. For a
+ * field where `optionalUuidSchema`'s "blank means unchanged" would make it
+ * impossible to ever unset once chosen (ERP roadmap Phase 4's
+ * `Route.clientId` — a contract can end without a replacement client).
+ */
+export const clearableUuidSchema = z
+  .preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }, uuidSchema.nullable())
+  .optional();
 
 /**
  * Turns a blank or whitespace-only string into `undefined` so `.optional()`
@@ -129,6 +159,39 @@ export const moneySchema = z
     return trimmed === '' ? null : trimmed;
   }, z.string().regex(EUROS_PATTERN, VALIDATION.invalidMoney).transform(eurosToCents).nullable())
   .optional();
+
+/**
+ * A required euro amount — never absent, never nullable, unlike
+ * {@link moneySchema}. For a field that always has a value once the record
+ * exists (a refuel's total price, the config screen's default fuel price),
+ * where there is no "clear it" state to represent.
+ */
+export const requiredMoneySchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}, z.string({ error: VALIDATION.invalidMoney }).regex(EUROS_PATTERN, VALIDATION.invalidMoney).transform(eurosToCents));
+
+/**
+ * A required litre amount (ERP roadmap Phase 1's config screen, Phase 2's
+ * refuelling module). Same required/non-nullable shape as
+ * {@link requiredMoneySchema}, for the same reason.
+ */
+export const litersSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}, z.string({ error: VALIDATION.invalidLiters }).regex(LITERS_PATTERN, VALIDATION.invalidLiters).transform(litersToMilliliters));
+
+/**
+ * The five VAT rates (`prisma/schema.prisma`'s `VatRate` enum / `vat.ts`'s
+ * `VatRate` union) as a schema — shared by every module that lets an
+ * administrator pick one (refuelling, expense categories, received
+ * invoices), so there is one place the five string literals are spelled out.
+ */
+export const VAT_RATES = ['STANDARD', 'REDUCED', 'SUPER_REDUCED', 'ZERO', 'EXEMPT'] as const;
+
+export const vatRateSchema = z.enum(VAT_RATES, { error: VALIDATION.invalidVatRate });
 
 /** A `yyyy-MM-dd` calendar day, for admin date filters (SRS 16.3). */
 export const isoDateSchema = z.preprocess(emptyToUndefined, z.iso.date(VALIDATION.invalidDate));

@@ -24,7 +24,25 @@ export interface Deletability {
   cascades: { kind: DeletionCascade; count: number }[];
 }
 
-export type DeletionBlocker = 'services' | 'approvals' | 'statusChanges' | 'defaultForUsers';
+export type DeletionBlocker =
+  | 'services'
+  | 'approvals'
+  | 'statusChanges'
+  | 'defaultForUsers'
+  /** ERP roadmap Phase 2: a lookup item or vehicle referenced by a refuelling. */
+  | 'refuellings'
+  /** ERP roadmap Phase 3: a lookup item, vehicle, supplier or category
+   * referenced by a received invoice. */
+  | 'receivedInvoices'
+  /** ERP roadmap Phase 4: a client referenced by a route/contract. */
+  | 'routes'
+  /** ERP roadmap Phase 4: a client or lookup item referenced by an issued invoice. */
+  | 'issuedInvoices'
+  /** ERP roadmap Phase 5: a lookup item referenced by a maintenance record,
+   * or a vehicle/user/route referenced by a daily km log or personnel cost. */
+  | 'maintenanceRecords'
+  | 'dailyKmLogs'
+  | 'personnelCosts';
 
 export type DeletionCascade = 'routeAssignments';
 

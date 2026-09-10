@@ -45,7 +45,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         {UI.admin.clientsTitle}
       </Link>
 
-      <PageHeader title={UI.admin.editClient} section={UI.nav.sectionFinance} description={client.name} />
+      <PageHeader title={UI.admin.editClient} section={UI.nav.sectionMasterData} description={client.name} />
 
       <ClientForm
         action={updateClientAction.bind(null, id)}

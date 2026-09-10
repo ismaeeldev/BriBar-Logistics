@@ -131,17 +131,35 @@ export const userRepository = {
    * configuration and go with the account. Audit rows are excluded too — that
    * foreign key is `SetNull` precisely so the trail outlives the actor.
    */
+  /**
+   * What would stop this user being deleted. `refuellings` (as the driver a
+   * fill-up was for — ERP roadmap Phase 2) and `dailyKmLogs`/`personnelCosts`
+   * (Phase 5) joined `services`/`approvals`/`statusChanges` here as each
+   * module gave a user a new way to be referenced — the same pattern
+   * `vehicleRepository.countDependents`'s own doc comment describes.
+   */
   async countDependents(
     id: string,
     client: PrismaClientLike = prisma,
-  ): Promise<{ services: number; approvals: number; statusChanges: number }> {
-    const [services, approvals, statusChanges] = await Promise.all([
-      client.service.count({ where: { driverId: id } }),
-      client.service.count({ where: { approvedByUserId: id } }),
-      client.serviceStatusHistory.count({ where: { changedByUserId: id } }),
-    ]);
+  ): Promise<{
+    services: number;
+    approvals: number;
+    statusChanges: number;
+    refuellings: number;
+    dailyKmLogs: number;
+    personnelCosts: number;
+  }> {
+    const [services, approvals, statusChanges, refuellings, dailyKmLogs, personnelCosts] =
+      await Promise.all([
+        client.service.count({ where: { driverId: id } }),
+        client.service.count({ where: { approvedByUserId: id } }),
+        client.serviceStatusHistory.count({ where: { changedByUserId: id } }),
+        client.refuelling.count({ where: { driverId: id } }),
+        client.dailyKmLog.count({ where: { driverId: id } }),
+        client.personnelCost.count({ where: { userId: id } }),
+      ]);
 
-    return { services, approvals, statusChanges };
+    return { services, approvals, statusChanges, refuellings, dailyKmLogs, personnelCosts };
   },
 
   async countRouteAssignments(id: string, client: PrismaClientLike = prisma): Promise<number> {
