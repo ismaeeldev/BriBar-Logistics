@@ -153,9 +153,6 @@ export const en: Dictionary = {
 
   SERVICE_TIME_VIOLATION_MESSAGES: {
     ARRIVAL_NOT_AFTER_DEPARTURE: ARRIVAL_BEFORE_DEPARTURE,
-    OVERNIGHT_SPAN_TOO_LONG:
-      'If the service ends the next day, the arrival time must be earlier than the ' +
-      'departure time. A service cannot run for 24 hours or more.',
   },
 
   VALIDATION: {
@@ -245,7 +242,7 @@ export const en: Dictionary = {
     serviceKmWithinActual: `${FIELD_LABELS.serviceKm} cannot exceed ${FIELD_LABELS.actualKm}.`,
     approvalMetadata: 'The approval details do not match the service status.',
     serviceTimes:
-      'The departure and arrival times are not consistent with the next-day arrival flag.',
+      'On a same-day service the arrival time must be later than the departure time.',
     valueInUse: 'That value is already in use.',
     stillReferenced:
       'That record is still referenced by existing data. Deactivate it instead of deleting it.',

@@ -75,6 +75,8 @@ const serviceBodyShape = {
   /**
    * SRS 31.3 + client decision #3. Defaults to false, which is what makes the
    * same-day ordering rule apply to a driver who simply does not tick the box.
+   * When true, the arrival time is accepted as entered (change request
+   * 2026-09-09) — see `domain/service-times.ts`.
    */
   endsNextDay: z.boolean().default(false),
 

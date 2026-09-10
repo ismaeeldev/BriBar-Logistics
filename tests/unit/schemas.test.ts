@@ -151,6 +151,17 @@ describe('createServiceSchema — rejected input', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts any arrival time on a next-day service (change request 2026-09-09)', () => {
+    const result = createServiceSchema.safeParse({
+      ...validService,
+      departureTime: '08:00',
+      arrivalTime: '20:00',
+      endsNextDay: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it('defaults endsNextDay to false, which is what makes the rule bite', () => {
     const result = createServiceSchema.safeParse(validService);
 

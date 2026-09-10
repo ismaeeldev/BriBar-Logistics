@@ -50,10 +50,8 @@ describe('same-day services', () => {
   });
 });
 
-describe('overnight services (SRS 31.3)', () => {
+describe('next-day services (SRS 31.3, change request 2026-09-09)', () => {
   it('accepts a run that crosses midnight when flagged', () => {
-    // The case a naive `arrival > departure` rule would make impossible to
-    // record, which is why the flag exists rather than a blanket rejection.
     expect(validateServiceTimes(times('22:00', '02:00', true))).toEqual([]);
   });
 
@@ -61,21 +59,13 @@ describe('overnight services (SRS 31.3)', () => {
     expect(areServiceTimesValid(times('23:59', '00:00', true))).toBe(true);
   });
 
-  it('rejects an overnight flag that would make the service 24 hours or more', () => {
-    // Flagged as overnight but arriving later on the clock than it departed
-    // means at least a full day. That is a different data-entry error, not a
-    // route sheet.
-    expect(codesFor('07:00', '09:00', true)).toEqual(['OVERNIGHT_SPAN_TOO_LONG']);
-  });
-
-  it('rejects an overnight flag on a service that arrives at its departure time', () => {
-    expect(codesFor('07:00', '07:00', true)).toEqual(['OVERNIGHT_SPAN_TOO_LONG']);
-  });
-
-  it('reports that violation against the flag, not the times', () => {
-    // The times are plausible; it is the flag that is wrong, and that is the
-    // control the driver should be looking at.
-    expect(validateServiceTimes(times('07:00', '09:00', true))[0]?.field).toBe('endsNextDay');
+  it('accepts any arrival time once the flag is set', () => {
+    // The 2026-09-09 change: ticking "llega al día siguiente" makes the
+    // arrival time the driver entered stand, even if it is later on the clock
+    // than the departure (a service spanning more than 24 hours).
+    expect(validateServiceTimes(times('07:00', '09:00', true))).toEqual([]);
+    expect(validateServiceTimes(times('07:00', '07:00', true))).toEqual([]);
+    expect(validateServiceTimes(times('08:00', '20:00', true))).toEqual([]);
   });
 });
 
@@ -88,10 +78,8 @@ describe('serviceDurationMinutes', () => {
     expect(serviceDurationMinutes(times('22:00', '02:00', true))).toBe(240);
   });
 
-  it('stays inside (0, 1440) for every accepted pair', () => {
-    // The property that makes the two ordering rules equivalent to "longer
-    // than zero, shorter than a day".
-    let accepted = 0;
+  it('is always positive; same-day is also bounded by a day', () => {
+    let sameDay = 0;
 
     for (let departure = 0; departure < 24 * 60; departure += 37) {
       for (let arrival = 0; arrival < 24 * 60; arrival += 41) {
@@ -101,14 +89,16 @@ describe('serviceDurationMinutes', () => {
           const candidate = times(hh(departure), hh(arrival), endsNextDay);
           if (!areServiceTimesValid(candidate)) continue;
 
-          accepted += 1;
           const duration = serviceDurationMinutes(candidate);
           expect(duration).toBeGreaterThan(0);
-          expect(duration).toBeLessThan(24 * 60);
+          if (!endsNextDay) {
+            sameDay += 1;
+            expect(duration).toBeLessThan(24 * 60);
+          }
         }
       }
     }
 
-    expect(accepted).toBeGreaterThan(0);
+    expect(sameDay).toBeGreaterThan(0);
   });
 });
