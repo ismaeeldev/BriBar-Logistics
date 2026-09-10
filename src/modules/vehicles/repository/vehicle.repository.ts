@@ -101,18 +101,47 @@ export const vehicleRepository = {
    *
    * Asked before the button is drawn rather than after it is pressed: the
    * screen can then say "3 services use this vehicle" instead of failing with
-   * a foreign-key error the administrator has to interpret.
+   * a foreign-key error the administrator has to interpret. `refuellings`
+   * (ERP roadmap Phase 2), `receivedInvoices` (Phase 3) and
+   * `dailyKmLogs`/`maintenanceRecords` (Phase 5) joined `services` and
+   * `defaultForUsers` here as soon as each module gave a vehicle a new way
+   * to be referenced.
    */
   async countDependents(
     id: string,
     client: PrismaClientLike = prisma,
-  ): Promise<{ services: number; defaultForUsers: number }> {
-    const [services, defaultForUsers] = await Promise.all([
+  ): Promise<{
+    services: number;
+    defaultForUsers: number;
+    refuellings: number;
+    receivedInvoices: number;
+    dailyKmLogs: number;
+    maintenanceRecords: number;
+  }> {
+    const [
+      services,
+      defaultForUsers,
+      refuellings,
+      receivedInvoices,
+      dailyKmLogs,
+      maintenanceRecords,
+    ] = await Promise.all([
       client.service.count({ where: { vehicleId: id } }),
       client.user.count({ where: { defaultVehicleId: id } }),
+      client.refuelling.count({ where: { vehicleId: id } }),
+      client.receivedInvoice.count({ where: { vehicleId: id } }),
+      client.dailyKmLog.count({ where: { vehicleId: id } }),
+      client.maintenanceRecord.count({ where: { vehicleId: id } }),
     ]);
 
-    return { services, defaultForUsers };
+    return {
+      services,
+      defaultForUsers,
+      refuellings,
+      receivedInvoices,
+      dailyKmLogs,
+      maintenanceRecords,
+    };
   },
 
   async delete(id: string, client: PrismaClientLike = prisma): Promise<void> {

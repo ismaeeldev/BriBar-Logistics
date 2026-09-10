@@ -25,7 +25,9 @@ import {
   VALIDATION,
 } from '@/lib/i18n/messages';
 import {
+  clearableUuidSchema,
   isoDateSchema,
+  moneySchema,
   odometerKmSchema,
   optionalText,
   paginationSchema,
@@ -202,3 +204,37 @@ export type ServiceFilterInput = z.output<typeof serviceFilterSchema>;
  * ignored.
  */
 export const approveServiceSchema = z.strictObject({});
+
+/**
+ * Setting or clearing a service's rate (SRS-free — client change request
+ * 2026-09-09, ERP roadmap Phase 0).
+ *
+ * Its own schema and its own service-layer method (`updateRate`), not a field
+ * on `updateServiceSchema`: rate is admin-only information a driver's edit
+ * form never carries a field for, and "an administrator corrects the rate
+ * while reviewing a service" is a different action from "the owner edits
+ * their mileage and times" — distinct audit entries, distinct authorisation
+ * (this one has none of `canEdit`'s driver/pending rules; an admin may set it
+ * on a service in either status).
+ */
+export const updateServiceRateSchema = z.strictObject({
+  rate: moneySchema,
+});
+
+export type UpdateServiceRateInput = z.output<typeof updateServiceRateSchema>;
+
+/**
+ * The supplement an administrator sees and may change alongside the rate
+ * (ERP roadmap Phase 4) — its own schema for the same reason
+ * `updateServiceRateSchema` is its own schema: a distinct admin-only action,
+ * not a field on the driver/admin edit form. `supplement` reuses
+ * `moneySchema`'s three-way clear/unchanged/value signal; `supplementTypeId`
+ * uses the equivalent for a reference (`clearableUuidSchema`) so a
+ * previously-chosen supplement type can be removed, not just left alone.
+ */
+export const updateServiceSupplementSchema = z.strictObject({
+  supplement: moneySchema,
+  supplementTypeId: clearableUuidSchema,
+});
+
+export type UpdateServiceSupplementInput = z.output<typeof updateServiceSupplementSchema>;

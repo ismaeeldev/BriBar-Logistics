@@ -15,12 +15,23 @@ import { prisma } from '@/lib/db/prisma';
 import { withTranslatedErrors } from '@/lib/db/with-translated-errors';
 import { businessRuleViolation, forbidden, notFound } from '@/lib/errors/app-error';
 import { ERRORS } from '@/lib/i18n/messages';
+import { clientRepository } from '@/modules/clients/repository/client.repository';
 import { Role } from '@/modules/services/domain/service-status';
 import { routeRepository, type RouteRecord } from '../repository/route.repository';
 import type { CreateRouteInput, UpdateRouteInput } from '../schemas/route.schema';
 
 function assertAdmin(actor: Actor): void {
   if (actor.role !== Role.ADMIN) throw forbidden();
+}
+
+/** ERP roadmap Phase 4: confirms a chosen client actually exists before a
+ * route is tied to it. Not gated on `isActive` — an inactive client keeping
+ * its existing route link is fine; only linking a *new* route to a client
+ * that has never existed is the mistake worth catching here. */
+async function assertClientExists(clientId: string | null | undefined): Promise<void> {
+  if (!clientId) return;
+  const client = await clientRepository.findById(clientId);
+  if (!client) throw notFound();
 }
 
 export const routeService = {
@@ -64,8 +75,8 @@ export const routeService = {
   /** Whether this route can be deleted, for the screen that offers it. */
   async getDeletability(actor: Actor, id: string): Promise<Deletability> {
     assertAdmin(actor);
-    const { services, assignedDrivers } = await routeRepository.countDependents(id);
-    return toDeletability({ services }, { routeAssignments: assignedDrivers });
+    const { services, assignedDrivers, dailyKmLogs } = await routeRepository.countDependents(id);
+    return toDeletability({ services, dailyKmLogs }, { routeAssignments: assignedDrivers });
   },
 
   /**
@@ -85,8 +96,8 @@ export const routeService = {
 
     await withTranslatedErrors(() =>
       prisma.$transaction(async (tx) => {
-        const { services } = await routeRepository.countDependents(id, tx);
-        if (services > 0) throw businessRuleViolation(ERRORS.deleteBlocked);
+        const { services, dailyKmLogs } = await routeRepository.countDependents(id, tx);
+        if (services > 0 || dailyKmLogs > 0) throw businessRuleViolation(ERRORS.deleteBlocked);
 
         await writeAudit(tx, {
           actorUserId: actor.userId,
@@ -103,6 +114,7 @@ export const routeService = {
 
   async create(actor: Actor, input: CreateRouteInput): Promise<RouteRecord> {
     assertAdmin(actor);
+    await assertClientExists(input.clientId);
 
     return withTranslatedErrors(() =>
       prisma.$transaction(async (tx) => {
@@ -113,6 +125,8 @@ export const routeService = {
             origin: input.origin,
             destination: input.destination,
             isActive: input.isActive,
+            defaultRateCents: input.defaultRate ?? null,
+            clientId: input.clientId ?? null,
           },
           tx,
         );
@@ -147,6 +161,7 @@ export const routeService = {
 
     const existing = await routeRepository.findById(id);
     if (!existing) throw notFound();
+    if (input.clientId !== undefined) await assertClientExists(input.clientId);
 
     return withTranslatedErrors(() =>
       prisma.$transaction(async (tx) => {
@@ -158,6 +173,11 @@ export const routeService = {
             ...(input.origin === undefined ? {} : { origin: input.origin }),
             ...(input.destination === undefined ? {} : { destination: input.destination }),
             ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
+            // `moneySchema`/`clearableUuidSchema` both reserve `null` for
+            // "clear the field", distinct from `undefined` ("field not sent,
+            // leave alone") — see their doc comments.
+            ...(input.defaultRate === undefined ? {} : { defaultRateCents: input.defaultRate }),
+            ...(input.clientId === undefined ? {} : { clientId: input.clientId }),
           },
           tx,
         );

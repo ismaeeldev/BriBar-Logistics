@@ -46,10 +46,96 @@ export interface Dictionary {
     defaultVehicle: string;
     defaultRoute: string;
     assignments: string;
+    /** The route's admin-only default charge (ERP roadmap Phase 0). */
+    defaultRate: string;
+    /** A service's admin-only assigned rate; may differ from the route default. */
+    rate: string;
+    /** ERP roadmap Phase 1: a client's tax identifier (CIF/NIF). */
+    taxId: string;
+    /** The three `99_Config` operational defaults. */
+    oilChangeIntervalKm: string;
+    defaultConsumptionMlPer100Km: string;
+    defaultFuelPriceCentsPerLiter: string;
+    /** ERP roadmap Phase 2 (`02Repostajes`). */
+    refuelCode: string;
+    refuelDate: string;
+    odometerKm: string;
+    liters: string;
+    total: string;
+    vatRate: string;
+    baseAmount: string;
+    vatAmount: string;
+    fuelType: string;
+    gasStation: string;
+    paymentMethod: string;
+    kmSinceLastRefuel: string;
+    consumption: string;
+    /** ERP roadmap Phase 3 (`03Facturas_Recibidas`). */
+    invoiceCode: string;
+    invoiceDate: string;
+    supplier: string;
+    category: string;
+    expenseType: string;
+    invoiceState: string;
+    /** ERP roadmap Phase 4. */
+    client: string;
+    supplement: string;
+    supplementType: string;
+    /** ERP roadmap Phase 5. */
+    /** A daily-km-log's own date (`DailyKmLog.date`) - generic, unlike the
+     *  document-specific `refuelDate`/`invoiceDate`/`performedDate` above. */
+    date: string;
+    year: string;
+    month: string;
+    /** A personnel cost's owner - any `User`, not only `Role.DRIVER`, so
+     *  distinct from `driver`. */
+    employee: string;
+    /** A personnel cost's base salary - distinct from `baseAmount`, which is
+     *  VAT-taxable-base terminology and reads wrong for a salary field. */
+    baseCost: string;
+    overtime: string;
+    allowances: string;
+    otherAmount: string;
+    totalCost: string;
+    dailyFixedCost: string;
+    workedHours: string;
+    maintenanceCode: string;
+    maintenanceType: string;
+    performedDate: string;
+    performedKm: string;
+    nextDueKm: string;
+    nextDueDate: string;
   };
 
   SERVICE_STATUS_LABELS: { PENDING_APPROVAL: string; APPROVED: string };
   ROLE_LABELS: { ADMIN: string; DRIVER: string };
+  /** ERP roadmap Phase 2. */
+  VAT_RATE_LABELS: {
+    STANDARD: string;
+    REDUCED: string;
+    SUPER_REDUCED: string;
+    ZERO: string;
+    EXEMPT: string;
+  };
+  /** ERP roadmap Phase 3. */
+  EXPENSE_TYPE_LABELS: {
+    OPERATION: string;
+    INVESTMENT: string;
+    NON_OPERATING: string;
+  };
+  /** ERP roadmap Phase 1. The list a `LookupItem` belongs to, by name. */
+  LOOKUP_KIND_LABELS: {
+    FUEL_TYPE: string;
+    PAYMENT_METHOD: string;
+    SUPPLEMENT_TYPE: string;
+    END_CLIENT: string;
+    /** ERP roadmap Phase 2. */
+    GAS_STATION: string;
+    /** ERP roadmap Phase 3. */
+    INVOICE_STATE: string;
+    /** ERP roadmap Phase 5. */
+    MAINTENANCE_TYPE: string;
+  };
 
   MILEAGE_VIOLATION_MESSAGES: Record<string, (label: string) => string>;
   SERVICE_TIME_VIOLATION_MESSAGES: Record<string, string>;
@@ -62,6 +148,7 @@ export interface Dictionary {
     invalidNumber: string;
     invalidTime: string;
     invalidDate: string;
+    invalidMoney: string;
     arrivalBeforeDeparture: string;
     loginIdentifierFormat: string;
     passwordTooShort: (min: number) => string;
@@ -78,6 +165,18 @@ export interface Dictionary {
     dateRangeInverted: string;
     driverRequired: string;
     driverNotAllowed: string;
+    /** ERP roadmap Phase 1: the config screen's consumption field. */
+    invalidLiters: string;
+    /** ERP roadmap Phase 1: a whole, non-negative km value (oil-change interval). */
+    invalidWholeKm: string;
+    /** ERP roadmap Phase 2/3: an unrecognised VAT rate value. */
+    invalidVatRate: string;
+    /** ERP roadmap Phase 4: no services chosen when issuing an invoice. */
+    selectAtLeastOneService: string;
+    /** ERP roadmap Phase 5: the daily-km log's worked-hours field. */
+    invalidWorkedHours: string;
+    invalidYear: string;
+    invalidMonth: string;
   };
 
   ERRORS: {
@@ -100,11 +199,20 @@ export interface Dictionary {
     vehicleInactive: string;
     driverInactive: string;
     userNotDriver: string;
+    /** ERP roadmap Phase 3. */
+    supplierInactive: string;
+    categoryInactive: string;
+    /** ERP roadmap Phase 4: a chosen service is not approved, priced,
+     * unbilled, or on this client's routes. */
+    serviceNotBillable: string;
     alreadyApproved: string;
     deleteBlocked: string;
     deleteSelfBlocked: string;
     cannotDeactivateSelf: string;
     cannotDemoteSelf: string;
+    /** ERP roadmap Phase 2: a fuel type/gas station/payment method id that
+     * belongs to a different `LookupKind` than the field expects. */
+    lookupKindMismatch: string;
   };
 
   CONSTRAINT_MESSAGES: {
@@ -124,6 +232,29 @@ export interface Dictionary {
     valueInUse: string;
     stillReferenced: string;
     brokenRelation: string;
+    rateNonNegative: string;
+    /** ERP roadmap Phase 1. */
+    lookupNameTaken: string;
+    configInvalidValue: string;
+    /** ERP roadmap Phase 2. */
+    refuelCodeTaken: string;
+    refuelOdometerNegative: string;
+    refuelLitersInvalid: string;
+    refuelTotalNegative: string;
+    refuelBaseVatMismatch: string;
+    /** ERP roadmap Phase 3. */
+    invoiceCodeTaken: string;
+    invoiceBaseNegative: string;
+    invoiceVatMismatch: string;
+    /** ERP roadmap Phase 5. */
+    dailyKmLogDateTaken: string;
+    maintenanceCodeTaken: string;
+    personnelCostMonthTaken: string;
+    workedHoursNegative: string;
+    personnelCostAmountsNegative: string;
+    personnelCostMonthRange: string;
+    personnelCostTotalMismatch: string;
+    maintenanceKmNegative: string;
   };
 
   AUTH: {
@@ -155,6 +286,17 @@ export interface Dictionary {
       blockerApprovals: (count: number) => string;
       blockerStatusChanges: (count: number) => string;
       blockerDefaultForUsers: (count: number) => string;
+      /** ERP roadmap Phase 2. */
+      blockerRefuellings: (count: number) => string;
+      /** ERP roadmap Phase 3. */
+      blockerReceivedInvoices: (count: number) => string;
+      /** ERP roadmap Phase 4. */
+      blockerRoutes: (count: number) => string;
+      blockerIssuedInvoices: (count: number) => string;
+      /** ERP roadmap Phase 5. */
+      blockerMaintenanceRecords: (count: number) => string;
+      blockerDailyKmLogs: (count: number) => string;
+      blockerPersonnelCosts: (count: number) => string;
       dangerZone: string;
       /** The abbreviated count used inside charts, where room is scarce. */
       servicesShort: (count: number) => string;
@@ -344,6 +486,11 @@ export interface Dictionary {
       noRoutes: string;
       noRoutesHint: string;
       routeCodeHint: string;
+      /** The route form's admin-only rate field (ERP roadmap Phase 0). */
+      defaultRateHint: string;
+      /** The route form's admin-only client link (ERP roadmap Phase 4). */
+      routeClientHint: string;
+      noClientLinked: string;
       routeSnapshotNote: string;
       routeActiveHint: string;
       routeActiveHintWithDrivers: (count: number) => string;
@@ -398,6 +545,314 @@ export interface Dictionary {
       selectDriverToStart: string;
       /** Placeholder option in the admin Add Service driver picker. */
       chooseDriver: string;
+      /** ERP roadmap Phase 2: placeholder option in the refuelling vehicle picker. */
+      chooseVehicle: string;
+
+      /** The service review page's rate card. */
+      rateSectionTitle: string;
+      rateHint: string;
+      noRate: string;
+      editRate: string;
+      saveRate: string;
+      savingRate: string;
+      rateUpdated: string;
+      rateUpdateFailed: string;
+
+      /** The service review page's supplement editor (ERP roadmap Phase 4). */
+      supplementSectionTitle: string;
+      supplementHint: string;
+      noSupplement: string;
+      editSupplement: string;
+      saveSupplement: string;
+      savingSupplement: string;
+      supplementUpdated: string;
+      supplementUpdateFailed: string;
+      chooseSupplementTypeOptional: string;
+      baseSectionTitle: string;
+      noBase: string;
+
+      /** Clients master data (ERP roadmap Phase 1). */
+      clientsTitle: string;
+      newClient: string;
+      editClient: string;
+      clientCreated: string;
+      clientUpdated: string;
+      clientDeleted: string;
+      noClients: string;
+      noClientsHint: string;
+      searchClients: string;
+      clientTaxIdHint: string;
+      clientActiveHint: string;
+
+      /**
+       * The generic simple-lookup lists (fuel types, payment methods,
+       * supplement types, end clients — ERP roadmap Phase 1). One set of
+       * strings for every kind, parameterised by the kind's own display name,
+       * rather than a copy per kind.
+       */
+      lookup: {
+        sectionTitle: string;
+        sectionHint: string;
+        newItem: string;
+        editItem: (kindLabel: string) => string;
+        created: string;
+        updated: string;
+        deleted: string;
+        empty: string;
+        emptyHint: string;
+        nameHint: string;
+        activeHint: string;
+        search: string;
+        backToLists: string;
+      };
+
+      /** The single operational-defaults screen (`99_Config`, Phase 1). */
+      config: {
+        title: string;
+        hint: string;
+        saved: string;
+        oilChangeHint: string;
+        consumptionHint: string;
+        fuelPriceHint: string;
+      };
+
+      /** The refuelling module (`02Repostajes`, ERP roadmap Phase 2). */
+      refuelling: {
+        title: string;
+        newRefuelling: string;
+        editRefuelling: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        noRefuellings: string;
+        noRefuellingsHint: string;
+        vehicleHint: string;
+        driverHint: string;
+        odometerHint: string;
+        kmSinceLastUnavailable: string;
+        detailSectionTitle: string;
+        categorisationSectionTitle: string;
+        categorisationHint: string;
+        chooseFuelType: string;
+        chooseGasStation: string;
+        choosePaymentMethod: string;
+      };
+
+      /** Suppliers master data (ERP roadmap Phase 3). */
+      suppliersTitle: string;
+      newSupplier: string;
+      editSupplier: string;
+      supplierCreated: string;
+      supplierUpdated: string;
+      supplierDeleted: string;
+      noSuppliers: string;
+      noSuppliersHint: string;
+      searchSuppliers: string;
+      supplierTaxIdHint: string;
+      supplierActiveHint: string;
+
+      /** Expense categories master data (ERP roadmap Phase 3). */
+      expenseCategories: {
+        title: string;
+        newItem: string;
+        editItem: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        empty: string;
+        emptyHint: string;
+        activeHint: string;
+        expenseTypeHint: string;
+        defaultVatRateHint: string;
+      };
+
+      /** The received-invoices module (ERP roadmap Phase 3). */
+      receivedInvoices: {
+        title: string;
+        newInvoice: string;
+        editInvoice: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        noInvoices: string;
+        noInvoicesHint: string;
+        supplierHint: string;
+        categoryHint: string;
+        vehicleHint: string;
+        chooseSupplier: string;
+        chooseCategory: string;
+        chooseVehicleOptional: string;
+        chooseState: string;
+        detailSectionTitle: string;
+      };
+
+      /** The investment summary report (ERP roadmap Phase 3, `07_Inversiones`). */
+      investments: {
+        title: string;
+        hint: string;
+        vehicleColumn: string;
+        totalColumn: string;
+        invoiceCountColumn: string;
+        noInvestments: string;
+        noInvestmentsHint: string;
+      };
+
+      /** The issued-invoices module (ERP roadmap Phase 4). */
+      issuedInvoices: {
+        title: string;
+        newInvoice: string;
+        editInvoice: string;
+        created: string;
+        deleted: string;
+        noInvoices: string;
+        noInvoicesHint: string;
+        chooseClient: string;
+        clientHint: string;
+        servicesSectionTitle: string;
+        servicesHint: string;
+        noBillableServices: string;
+        noBillableServicesHint: string;
+        selectAll: string;
+        selectedCount: (count: number) => string;
+        detailSectionTitle: string;
+        linkedServicesTitle: string;
+      };
+
+      /** The quarterly tax summary (ERP roadmap Phase 4, `06_Impuestos`). */
+      taxes: {
+        title: string;
+        hint: string;
+        periodColumn: string;
+        vatOutputColumn: string;
+        vatInputColumn: string;
+        balanceColumn: string;
+        balanceDue: string;
+        balanceRefund: string;
+        noData: string;
+        noDataHint: string;
+      };
+
+      /** The daily-km-log module (ERP roadmap Phase 5, `00KmDiariosReales`). */
+      dailyKm: {
+        title: string;
+        newLog: string;
+        editLog: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        noLogs: string;
+        noLogsHint: string;
+        vehicleHint: string;
+        chooseRouteOptional: string;
+        chooseDriverOptional: string;
+        workedHoursHint: string;
+      };
+
+      /** The personnel-cost module (ERP roadmap Phase 5, `04Personal`). */
+      personnel: {
+        title: string;
+        newCost: string;
+        editCost: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        noCosts: string;
+        noCostsHint: string;
+        userHint: string;
+        totalHint: string;
+        dailyFixedCostLabel: string;
+      };
+
+      /** The maintenance module (ERP roadmap Phase 5, `05Mantenimiento`). */
+      maintenance: {
+        title: string;
+        newRecord: string;
+        editRecord: string;
+        created: string;
+        updated: string;
+        deleted: string;
+        noRecords: string;
+        noRecordsHint: string;
+        vehicleHint: string;
+        typeHint: string;
+        chooseType: string;
+        nextDueHint: string;
+        dueSummaryTitle: string;
+        dueSummaryHint: string;
+        noDue: string;
+        /** DetailRow label on the edit page's urgency card. */
+        urgencyLabel: string;
+        urgency: {
+          URGENT: string;
+          UPCOMING: string;
+          OK: string;
+          UNKNOWN: string;
+        };
+      };
+
+      /** The analytics layer (ERP roadmap Phase 6, `00Dashboard` / `00Análisis`). */
+      analytics: {
+        title: string;
+        hint: string;
+        allTime: string;
+        periodLabel: string;
+        allYears: string;
+        allMonths: string;
+        apply: string;
+        /** Headline KPI card labels. */
+        revenue: string;
+        fuelCost: string;
+        personnelCost: string;
+        operatingExpense: string;
+        margin: string;
+        marginRatio: string;
+        emptyKm: string;
+        avgConsumption: string;
+        avgFuelPrice: string;
+        /** Section headings. */
+        marginTrendTitle: string;
+        marginTrendHint: string;
+        perVehicleTitle: string;
+        perContractTitle: string;
+        perDriverTitle: string;
+        recoveryTitle: string;
+        recoveryHint: string;
+        simulatorTitle: string;
+        simulatorHint: string;
+        noData: string;
+        noDataHint: string;
+        /** Column headers shared across the tables. */
+        vehicleColumn: string;
+        contractColumn: string;
+        driverColumn: string;
+        clientColumn: string;
+        servicesColumn: string;
+        daysWorkedColumn: string;
+        actualKmColumn: string;
+        serviceKmColumn: string;
+        emptyKmColumn: string;
+        revenuePerKmColumn: string;
+        efficiencyColumn: string;
+        estimatedFuelColumn: string;
+        fuelPerKmColumn: string;
+        avgTicketColumn: string;
+        investmentColumn: string;
+        profitColumn: string;
+        recoveryColumn: string;
+        outstandingColumn: string;
+        recovered: string;
+        /** Scenario simulator field labels and outputs. */
+        simRevenue: string;
+        simServiceKm: string;
+        simConsumption: string;
+        simFuelPrice: string;
+        simPersonnel: string;
+        simOtherCosts: string;
+        simFuelCost: string;
+        simMargin: string;
+        simMarginRatio: string;
+        simReset: string;
+      };
     };
 
     nav: {
@@ -408,12 +863,33 @@ export interface Dictionary {
       toggleSidebar: string;
       panel: string;
       dashboard: string;
+      /** ERP roadmap Phase 6: the analytics layer. */
+      analytics: string;
       sectionOperations: string;
       sectionMasterData: string;
+      /** ERP roadmap Phase 1: clients, lists, config. */
+      sectionFinance: string;
       services: string;
       drivers: string;
       vehicles: string;
       routes: string;
+      clients: string;
+      suppliers: string;
+      lists: string;
+      config: string;
+      refuellings: string;
+      receivedInvoices: string;
+      investments: string;
+      expenseCategories: string;
+      issuedInvoices: string;
+      taxes: string;
+      /** ERP roadmap Phase 5: daily km logs, personnel costs, maintenance. */
+      sectionFleet: string;
+      dailyKm: string;
+      personnel: string;
+      maintenance: string;
+      /** ERP roadmap Phase 3: the low-frequency configuration screens. */
+      sectionSettings: string;
     };
 
     /** The bell dropdown, both roles (SRS-free — see `prisma/schema.prisma`). */

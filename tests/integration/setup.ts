@@ -14,6 +14,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeEach } from 'vitest';
 
+import { REFUELLING_CODE_SEQUENCE } from '@/modules/refuelling/repository/refuelling.repository';
+import { RECEIVED_INVOICE_CODE_SEQUENCE } from '@/modules/received-invoices/repository/received-invoice.repository';
+import { ISSUED_INVOICE_CODE_SEQUENCE } from '@/modules/issued-invoices/repository/issued-invoice.repository';
+import { MAINTENANCE_CODE_SEQUENCE } from '@/modules/maintenance/repository/maintenance-record.repository';
 import { SERVICE_CODE_SEQUENCE } from '@/modules/services/domain/service-code';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -51,10 +55,42 @@ const TABLES = [
   'service_status_history',
   'services',
   'driver_routes',
+  // ERP roadmap Phase 2: references vehicles, users and lookup_items, so it
+  // must be truncated before all three.
+  'refuellings',
+  // ERP roadmap Phase 3: references suppliers, expense_categories, vehicles
+  // and lookup_items, so it must be truncated before all four.
+  'received_invoices',
+  // ERP roadmap Phase 4: references clients and lookup_items; `services`
+  // (already listed above) references this table in turn, via
+  // `issued_invoice_id`.
+  'issued_invoices',
+  // ERP roadmap Phase 5: references vehicles, routes, users and lookup_items
+  // (maintenance_records -> lookup_items), so all three must be truncated
+  // before them.
+  'daily_km_logs',
+  'personnel_costs',
+  'maintenance_records',
   'users',
   'routes',
   'vehicles',
+  // ERP roadmap Phase 1. No FK relations to worry about in the ordering.
+  'clients',
+  'lookup_items',
+  // ERP roadmap Phase 3. Same reasoning.
+  'suppliers',
+  'expense_categories',
 ] as const;
+
+/** `app_config` is a singleton (see the model's doc comment) — truncated and
+ * reseeded on its own rather than joining `TABLES`, so every test starts from
+ * the same known defaults instead of whatever an earlier test's `update()`
+ * left behind. */
+const APP_CONFIG_DEFAULTS = {
+  oilChangeIntervalKm: 15_000,
+  defaultConsumptionMlPer100Km: 11_000,
+  defaultFuelPriceCentsPerLiter: 152,
+};
 
 beforeEach(async () => {
   // One statement so it is a single transaction.
@@ -71,6 +107,28 @@ beforeEach(async () => {
   await testPrisma.$executeRawUnsafe(
     `ALTER SEQUENCE "${SERVICE_CODE_SEQUENCE}" RESTART WITH 1`,
   );
+
+  // ERP roadmap Phase 2/3: the same standalone-sequence reasoning applies to
+  // `refuelling_code_seq` and `received_invoice_code_seq`.
+  await testPrisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "${REFUELLING_CODE_SEQUENCE}" RESTART WITH 1`,
+  );
+  await testPrisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "${RECEIVED_INVOICE_CODE_SEQUENCE}" RESTART WITH 1`,
+  );
+  await testPrisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "${ISSUED_INVOICE_CODE_SEQUENCE}" RESTART WITH 1`,
+  );
+  // ERP roadmap Phase 5: same standalone-sequence reasoning for `maintenance_code_seq`.
+  await testPrisma.$executeRawUnsafe(
+    `ALTER SEQUENCE "${MAINTENANCE_CODE_SEQUENCE}" RESTART WITH 1`,
+  );
+
+  await testPrisma.appConfig.upsert({
+    where: { id: 'default' },
+    create: { id: 'default', ...APP_CONFIG_DEFAULTS },
+    update: APP_CONFIG_DEFAULTS,
+  });
 });
 
 afterAll(async () => {

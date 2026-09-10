@@ -2,8 +2,9 @@
 
 import type { FormState } from '@/app/(app)/admin/actions';
 import { ActiveToggle, EntityForm } from '@/components/admin/entity-form';
-import { Field, Input } from '@/components/ui/field';
+import { Field, Input, MoneyInput, Select } from '@/components/ui/field';
 import { Alert } from '@/components/ui/primitives';
+import { centsToInputValue } from '@/lib/money/money';
 import { FIELD_LABELS, UI } from '@/lib/i18n/messages';
 
 /** Create/edit a route/contract (SRS 14.1, 14.2). */
@@ -12,6 +13,7 @@ export function RouteForm({
   submitLabel,
   initial,
   assignedDriverCount,
+  clients,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   submitLabel: string;
@@ -21,9 +23,15 @@ export function RouteForm({
     origin: string;
     destination: string;
     isActive: boolean;
+    /** EUR cents, or null if none set (ERP roadmap Phase 0). */
+    defaultRateCents: number | null;
+    /** ERP roadmap Phase 4, or null if this route has no client yet. */
+    clientId: string | null;
   };
   /** Only supplied when editing; drives the deactivation warning. */
   assignedDriverCount?: number;
+  /** Active clients to choose from (ERP roadmap Phase 4). */
+  clients: { id: string; name: string }[];
 }) {
   return (
     <EntityForm action={action} submitLabel={submitLabel}>
@@ -95,6 +103,55 @@ export function RouteForm({
           </Field>
 
           {initial ? <Alert tone="info">{UI.admin.routeSnapshotNote}</Alert> : null}
+
+          {/* Admin-only (ERP roadmap Phase 0): a driver never sees a rate
+              anywhere in the app. Snapshotted onto every new service filed on
+              this route; editing it here does not touch existing services. */}
+          <Field
+            label={FIELD_LABELS.defaultRate}
+            optional
+            errors={fieldErrors?.['defaultRate']}
+            hint={UI.admin.defaultRateHint}
+          >
+            {(props) => (
+              <MoneyInput
+                {...props}
+                name="defaultRate"
+                placeholder="0,00"
+                defaultValue={
+                  values?.['defaultRate'] ??
+                  (initial?.defaultRateCents != null
+                    ? centsToInputValue(initial.defaultRateCents)
+                    : '')
+                }
+              />
+            )}
+          </Field>
+
+          {/* ERP roadmap Phase 4 (roadmap §6 B4, "Contrato = Route"). A
+              service inherits its billable client through this link, so it
+              is set once here rather than on every individual service. */}
+          <Field
+            label={FIELD_LABELS.client}
+            optional
+            errors={fieldErrors?.['clientId']}
+            hint={UI.admin.routeClientHint}
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="clientId"
+                defaultValue={values?.['clientId'] ?? initial?.clientId ?? ''}
+              >
+                <option value="">{UI.admin.noClientLinked}</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
 
           <ActiveToggle
             defaultChecked={values ? values['isActive'] === 'on' : (initial?.isActive ?? true)}

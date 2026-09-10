@@ -14,6 +14,13 @@ const ROUTE_SELECT = {
   name: true,
   origin: true,
   destination: true,
+  // Admin-only. Safe here because every caller of this repository is already
+  // gated by `routeService`'s `assertAdmin` — a driver's route picker comes
+  // from `userRepository.listAssignableRoutes`, a separate query that never
+  // selects this column.
+  defaultRateCents: true,
+  // ERP roadmap Phase 4. Same admin-only reasoning as `defaultRateCents`.
+  clientId: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -91,18 +98,21 @@ export const routeRepository = {
    *
    * Driver assignments are not in this list. They are configuration, not
    * history, and are removed alongside the route — the confirmation says how
-   * many, so nobody loses an assignment silently.
+   * many, so nobody loses an assignment silently. `dailyKmLogs` (ERP
+   * roadmap Phase 5) joined `services` once a daily km entry could name a
+   * route too.
    */
   async countDependents(
     id: string,
     client: PrismaClientLike = prisma,
-  ): Promise<{ services: number; assignedDrivers: number }> {
-    const [services, assignedDrivers] = await Promise.all([
+  ): Promise<{ services: number; assignedDrivers: number; dailyKmLogs: number }> {
+    const [services, assignedDrivers, dailyKmLogs] = await Promise.all([
       client.service.count({ where: { routeId: id } }),
       client.driverRoute.count({ where: { routeId: id } }),
+      client.dailyKmLog.count({ where: { routeId: id } }),
     ]);
 
-    return { services, assignedDrivers };
+    return { services, assignedDrivers, dailyKmLogs };
   },
 
   async delete(id: string, client: PrismaClientLike = prisma): Promise<void> {
@@ -111,7 +121,13 @@ export const routeRepository = {
   },
 
   async create(
-    data: Prisma.RouteCreateInput,
+    // Unchecked, not the "checked" `RouteCreateInput` — ERP roadmap Phase 4's
+    // `clientId` is a foreign-key scalar, and the checked variant replaces
+    // every FK scalar with `client: { connect: { id } }` relation syntax
+    // instead of accepting the column directly. `defaultRateCents` was never
+    // affected (it isn't a foreign key), which is why this went unnoticed
+    // until a real FK column was added here.
+    data: Prisma.RouteUncheckedCreateInput,
     client: PrismaClientLike = prisma,
   ): Promise<RouteRecord> {
     return client.route.create({ data, select: ROUTE_SELECT });
@@ -119,7 +135,7 @@ export const routeRepository = {
 
   async update(
     id: string,
-    data: Prisma.RouteUpdateInput,
+    data: Prisma.RouteUncheckedUpdateInput,
     client: PrismaClientLike = prisma,
   ): Promise<RouteRecord> {
     return client.route.update({ where: { id }, data, select: ROUTE_SELECT });

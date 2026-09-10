@@ -137,6 +137,73 @@ export function TimeInput({ className, ...props }: ComponentProps<'input'>) {
   );
 }
 
+/**
+ * A calendar date (ERP roadmap Phase 3's received-invoice date — a
+ * transcribed document date, not a server-set business date; see the doc
+ * comment on `ReceivedInvoice` in `schema.prisma`). Opens the OS date
+ * picker, the same reasoning as {@link TimeInput}.
+ */
+export function DateInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <input type="date" className={cn(controlBase, 'h-11 sm:h-10', className)} {...props} />
+  );
+}
+
+/**
+ * A euro amount (ERP roadmap Phase 0 and everything financial after it).
+ *
+ * `type="text"` with `inputMode="decimal"`, for the same reason as
+ * {@link KmInput}: a Spanish keyboard types a comma, and a native number input
+ * would either reject it or silently discard it depending on the browser.
+ * Validated and converted to whole cents by `moneySchema`
+ * (`modules/shared/schemas/common.ts`), not here.
+ */
+export function MoneyInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={cn(controlBase, 'h-11 pr-8 font-mono sm:h-10', className)}
+        {...props}
+      />
+      <span
+        aria-hidden
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm"
+      >
+        €
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A litre amount (ERP roadmap Phase 1's config screen; Phase 2's refuelling
+ * module will reuse it for litres pumped). Same shape as {@link MoneyInput}
+ * — text, `inputMode="decimal"`, a unit suffix — because the reason is
+ * identical: a native number input mishandles a comma decimal.
+ */
+export function LitersInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        className={cn(controlBase, 'h-11 pr-8 font-mono sm:h-10', className)}
+        {...props}
+      />
+      <span
+        aria-hidden
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs"
+      >
+        L
+      </span>
+    </div>
+  );
+}
+
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {
   return (
     <div className="relative">
