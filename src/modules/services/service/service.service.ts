@@ -159,9 +159,16 @@ async function resolveBody(
     select: { origin: true, destination: true, defaultRateCents: true },
   });
 
+  // Client change request (2026-09-09): the driver may override the route's
+  // origin/destination on this service. A blank field falls back to the route's
+  // current value; whichever wins is snapshotted (SRS 14.5), so editing the
+  // route master later still cannot rewrite this row.
+  const origin = body.origin?.trim() || route.origin;
+  const destination = body.destination?.trim() || route.destination;
+
   return {
-    origin: route.origin,
-    destination: route.destination,
+    origin,
+    destination,
     routeDefaultRateCents: route.defaultRateCents,
     ...calculateMileage(body),
   };

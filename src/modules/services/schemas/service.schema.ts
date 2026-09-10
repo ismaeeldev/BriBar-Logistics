@@ -34,6 +34,9 @@ import {
   timeOfDaySchema,
   uuidSchema,
 } from '@/modules/shared/schemas/common';
+
+/** Matches the width of `routes.origin` / `routes.destination` (VarChar 160). */
+const LOCATION_MAX_LENGTH = 160;
 import { validateMileage, type OdometerReadings } from '../domain/mileage';
 import { validateServiceTimes, type ServiceTimes } from '../domain/service-times';
 import { ServiceStatus } from '../domain/service-status';
@@ -48,6 +51,18 @@ import { ServiceStatus } from '../domain/service-status';
 const serviceBodyShape = {
   vehicleId: uuidSchema,
   routeId: uuidSchema,
+
+  /**
+   * Client change request (2026-09-09): a driver may adjust the route's
+   * origin/destination on the service itself — a run is sometimes only half the
+   * route, or finishes at a different site. This relaxes SRS 9.5/14.4 ("the
+   * driver cannot override them") the same bounded way decision #7 relaxed 9.5:
+   * the value is still snapshotted onto the service (14.5), so route history is
+   * untouched. Absent or blank means "use the route's current value" — resolved
+   * server-side in `resolveBody`.
+   */
+  origin: optionalText(FIELD_LABELS.origin, LOCATION_MAX_LENGTH),
+  destination: optionalText(FIELD_LABELS.destination, LOCATION_MAX_LENGTH),
 
   startDashboardKm: odometerKmSchema,
   startBaseKm: odometerKmSchema,

@@ -58,6 +58,8 @@ function toEchoValues(formData: FormData): Record<string, string> {
   const keys = [
     'vehicleId',
     'routeId',
+    'origin',
+    'destination',
     'startDashboardKm',
     'startBaseKm',
     'endBaseKm',
@@ -88,6 +90,8 @@ function toPayload(formData: FormData): Record<string, unknown> {
   return {
     vehicleId: text('vehicleId'),
     routeId: text('routeId'),
+    origin: text('origin'),
+    destination: text('destination'),
     startDashboardKm: text('startDashboardKm'),
     startBaseKm: text('startBaseKm'),
     endBaseKm: text('endBaseKm'),
