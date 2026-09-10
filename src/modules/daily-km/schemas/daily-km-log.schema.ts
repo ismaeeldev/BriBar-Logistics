@@ -21,13 +21,21 @@ import {
 /** Whole minutes, from up to one decimal hour of input ("8,5" -> 510). */
 const WORKED_HOURS_PATTERN = /^\d+([.,]\d)?$/;
 
-const workedMinutesSchema = z
-  .preprocess((value) => {
+const workedMinutesSchema = z.preprocess(
+  (value) => {
     if (typeof value !== 'string') return value;
     const trimmed = value.trim();
     return trimmed === '' ? undefined : trimmed;
-  }, z.string().regex(WORKED_HOURS_PATTERN, VALIDATION.invalidWorkedHours).transform((value) => Math.round(Number(value.replace(',', '.')) * 60)))
-  .optional();
+  },
+  // `.optional()` sits inside the preprocess, not outside it: a blank string
+  // becomes `undefined` here, and the outer form (`text(formData, …)` returns
+  // `""`) must be able to submit that as "no hours entered".
+  z
+    .string()
+    .regex(WORKED_HOURS_PATTERN, VALIDATION.invalidWorkedHours)
+    .transform((value) => Math.round(Number(value.replace(',', '.')) * 60))
+    .optional(),
+);
 
 export const createDailyKmLogSchema = z.strictObject({
   vehicleId: uuidSchema,

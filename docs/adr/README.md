@@ -26,3 +26,4 @@ recorded; they are requirements.
 | [0015](0015-issued-invoices-and-taxes.md)        | Issued invoices, service billing, and the tax summary (Phase 4)| Accepted |
 | [0016](0016-fleet-and-personnel-logs.md)         | Daily real km, personnel costs, and maintenance (Phase 5)     | Accepted |
 | [0017](0017-analytics-and-dashboard.md)          | Analytics and dashboard layer (Phase 6)                       | Accepted |
+| [0018](0018-one-time-data-import.md)             | The one-time data import and cutover (Phase 7)                | Accepted |
