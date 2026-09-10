@@ -35,7 +35,8 @@
     "lint:fix": "eslint . --fix",
     "build:en": "dotenv -e .env.en -- pnpm build",
     "erp:import": "dotenv -e .env -- tsx scripts/import-erp.ts",
-    "erp:snapshot": "dotenv -e .env -- tsx scripts/export-snapshot.ts"
+    "erp:snapshot": "dotenv -e .env -- tsx scripts/export-snapshot.ts",
+    "erp:import:xlsm": "dotenv -e .env -- tsx scripts/import-erp-xlsm.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

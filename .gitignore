@@ -63,3 +63,9 @@ Thumbs.db
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# ERP import: the client workbook and any generated bundle live outside git
+# (the anonymised copy is versioned under docs/erp-migration/ via the roadmap branch).
+/ERP_Transporte_ANONIMIZADO.xlsm
+/erp-bundle*.json
+/snapshot-*/
