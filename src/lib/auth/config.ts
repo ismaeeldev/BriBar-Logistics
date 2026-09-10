@@ -132,15 +132,18 @@ export const authConfig = {
       const { pathname } = request.nextUrl;
       const user = auth?.user;
 
-      if (isPublicPath(pathname)) {
-        // A signed-in user has no business on the login page; send them to
-        // their dashboard instead of showing a form they cannot use.
-        if (user) {
-          const destination = user.role === Role.ADMIN ? '/admin' : '/driver';
-          return Response.redirect(new URL(destination, request.nextUrl));
-        }
-        return true;
-      }
+      // Public paths (`/login`) are always reachable, even with a session.
+      //
+      // The middleware runs on the Edge and only checks the JWT's signature;
+      // `requireUser` runs on Node and re-reads the database, so a token that
+      // decodes here can still be rejected there — the account was
+      // deactivated or deleted, or the database was restored from a point
+      // before the account existed (which is exactly what a fresh cutover
+      // looks like). When that happens the authenticated layout redirects to
+      // `/login`, and if this middleware bounced a "signed-in" user straight
+      // back to their dashboard the two would loop forever. Letting `/login`
+      // render lets them sign in again and replace the stale token.
+      if (isPublicPath(pathname)) return true;
 
       // Returning false makes Auth.js redirect to `pages.signIn` with a
       // callbackUrl, so the user lands where they were headed after logging in.

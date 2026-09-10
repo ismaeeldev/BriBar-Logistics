@@ -6,18 +6,27 @@
  * optional — absent means "all time", the natural default for a
  * whole-history view. No custom date ranges: the client's own sheets filter
  * by calendar period, not arbitrary spans.
+ *
+ * A malformed query string (`?year=abc`, `?month=99`) degrades to "all
+ * time" rather than throwing — a bookmarked or hand-edited URL must not 500
+ * the page. `.catch(undefined)` turns any parse failure on a part into
+ * "not filtered".
  */
 import { z } from 'zod';
 
-const yearSchema = z.preprocess(
-  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.coerce.number().int().min(2000).max(2100).optional(),
-);
+const yearSchema = z
+  .preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.coerce.number().int().min(2000).max(2100).optional(),
+  )
+  .catch(undefined);
 
-const monthSchema = z.preprocess(
-  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.coerce.number().int().min(1).max(12).optional(),
-);
+const monthSchema = z
+  .preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.coerce.number().int().min(1).max(12).optional(),
+  )
+  .catch(undefined);
 
 export const analyticsFilterSchema = z.object({
   year: yearSchema,
