@@ -34,6 +34,7 @@ import { SERVICE_CODE_SEQUENCE } from '../domain/service-code';
  */
 const SERVICE_INCLUDE = {
   driver: { select: { id: true, name: true, loginIdentifier: true } },
+  secondaryDriver: { select: { id: true, name: true } },
   vehicle: {
     select: { id: true, registrationPlate: true, referenceName: true, isActive: true },
   },

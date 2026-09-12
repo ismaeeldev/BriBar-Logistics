@@ -1,11 +1,11 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireUser } from '@/lib/auth/session';
 import { isAppError } from '@/lib/errors/app-error';
 import { toFieldErrors } from '@/lib/http/api-response';
+import { revalidatePathSafely } from '@/lib/http/revalidate-safely';
 import { ERRORS } from '@/lib/i18n/messages';
 import { logger } from '@/lib/logger';
 import { Role } from '@/modules/services/domain/service-status';
@@ -58,6 +58,7 @@ function toEchoValues(formData: FormData): Record<string, string> {
   const keys = [
     'vehicleId',
     'routeId',
+    'secondaryDriverId',
     'origin',
     'destination',
     'startDashboardKm',
@@ -90,6 +91,7 @@ function toPayload(formData: FormData): Record<string, unknown> {
   return {
     vehicleId: text('vehicleId'),
     routeId: text('routeId'),
+    secondaryDriverId: text('secondaryDriverId'),
     origin: text('origin'),
     destination: text('destination'),
     startDashboardKm: text('startDashboardKm'),
@@ -169,10 +171,10 @@ export async function createServiceAction(
 
   // Outside the try: `redirect` works by throwing, so catching it here would
   // report a successful submission as an error.
-  revalidatePath('/driver');
-  revalidatePath('/services');
-  revalidatePath('/admin');
-  revalidatePath('/admin/services');
+  revalidatePathSafely('/driver');
+  revalidatePathSafely('/services');
+  revalidatePathSafely('/admin');
+  revalidatePathSafely('/admin/services');
   redirect(
     returnTo === 'admin'
       ? `/admin/services/${createdId}?created=1`
@@ -217,12 +219,12 @@ export async function updateServiceAction(
     return toFormState(error, 'updateServiceAction', toEchoValues(formData));
   }
 
-  revalidatePath('/driver');
-  revalidatePath('/services');
-  revalidatePath('/admin');
-  revalidatePath('/admin/services');
-  revalidatePath(`/services/${serviceId}`);
-  revalidatePath(`/admin/services/${serviceId}`);
+  revalidatePathSafely('/driver');
+  revalidatePathSafely('/services');
+  revalidatePathSafely('/admin');
+  revalidatePathSafely('/admin/services');
+  revalidatePathSafely(`/services/${serviceId}`);
+  revalidatePathSafely(`/admin/services/${serviceId}`);
 
   redirect(
     returnTo === 'admin'

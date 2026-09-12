@@ -14,6 +14,8 @@
  */
 import { z } from 'zod';
 
+import { optionalUuidSchema } from '@/modules/shared/schemas/common';
+
 const yearSchema = z
   .preprocess(
     (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -32,6 +34,8 @@ export const analyticsFilterSchema = z.object({
   year: yearSchema,
   /** Only meaningful alongside `year`; ignored on its own. */
   month: monthSchema,
+  /** Absent means "Todos" - every vehicle (client decision 2026-09-13). */
+  vehicleId: optionalUuidSchema.catch(undefined),
 });
 
 export type AnalyticsFilter = z.output<typeof analyticsFilterSchema>;

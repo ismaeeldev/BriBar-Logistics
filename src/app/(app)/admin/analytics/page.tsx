@@ -6,19 +6,25 @@
  * operational analysis layer that sits alongside the operational dashboard at
  * `/admin` (which stays as it is: approvals, pending work, the 14-day
  * activity trend).
+ *
+ * Client decision 2026-09-13 dropped the per-vehicle/per-contract/per-driver
+ * breakdown tables (they were not calculating correctly against the client's
+ * spreadsheet and are deferred) in favour of a single "Todos" or one-vehicle
+ * filter on the headline KPIs, and moved "Recuperación de la inversión" to
+ * `/admin/investments`, next to the investment totals it is computed from.
  */
-import { ChartColumn, Gauge, PiggyBank, TrendingUp, Users, Wrench } from 'lucide-react';
+import { ChartColumn, TrendingUp, Wrench } from 'lucide-react';
 
 import { MarginTrend } from '@/components/charts/margin-trend';
 import { ScenarioSimulator } from '@/components/admin/scenario-simulator';
 import { Card, CardBody, CardHeader, CardTitle, EmptyState, PageHeader } from '@/components/ui/primitives';
-import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { NUMBER_LOCALE, UI } from '@/lib/i18n/messages';
 import { centsToEuros, formatEuros } from '@/lib/money/money';
 import { formatLiters } from '@/lib/units/fuel';
 import { analyticsService } from '@/modules/analytics/service/analytics.service';
 import { analyticsFilterSchema } from '@/modules/analytics/schemas/analytics.schema';
+import { analyticsRepository } from '@/modules/analytics/repository/analytics.repository';
 import { configRepository } from '@/modules/config/repository/config.repository';
 import { cn } from '@/lib/utils/cn';
 
@@ -36,10 +42,6 @@ function km(value: number): string {
 
 function euros(cents: number): string {
   return formatEuros(cents, NUMBER_LOCALE);
-}
-
-function centsPerKm(value: number | null): string {
-  return value === null ? '—' : formatEuros(value, NUMBER_LOCALE);
 }
 
 /** One headline figure. */
@@ -83,16 +85,12 @@ export default async function AdminAnalyticsPage({
   const params = await searchParams;
   const filter = analyticsFilterSchema.parse(params);
 
-  const [overview, monthly, perVehicle, perContract, perDriver, recovery, config] =
-    await Promise.all([
-      analyticsService.overview(actor, filter),
-      analyticsService.monthlyMargin(actor),
-      analyticsService.perVehicle(actor, filter),
-      analyticsService.perContract(actor, filter),
-      analyticsService.perDriver(actor, filter),
-      analyticsService.investmentRecovery(actor),
-      configRepository.get(),
-    ]);
+  const [overview, monthly, vehicles, config] = await Promise.all([
+    analyticsService.overview(actor, filter),
+    analyticsService.monthlyMargin(actor),
+    analyticsRepository.vehicles(),
+    configRepository.get(),
+  ]);
 
   const years = [...new Set(monthly.map((row) => row.year))].sort((a, b) => b - a);
   const hasData =
@@ -108,14 +106,16 @@ export default async function AdminAnalyticsPage({
         ? String(filter.year)
         : `${String(filter.month).padStart(2, '0')}/${filter.year}`;
 
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === filter.vehicleId);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={A.title}
         section={UI.nav.sectionOperations}
-        description={`${A.periodLabel}: ${periodText}`}
+        description={`${A.periodLabel}: ${periodText}${selectedVehicle ? ` · ${selectedVehicle.registrationPlate}` : ''}`}
         filters={
-          <form method="get" className="flex items-center gap-2">
+          <form method="get" className="flex flex-wrap items-center gap-2">
             <select
               name="year"
               defaultValue={filter.year ?? ''}
@@ -140,6 +140,21 @@ export default async function AdminAnalyticsPage({
                 </option>
               ))}
             </select>
+            {/* "Todos" (client decision 2026-09-13): an empty value scopes the
+                KPIs back to the whole fleet. */}
+            <select
+              name="vehicleId"
+              defaultValue={filter.vehicleId ?? ''}
+              className="border-input bg-card h-9 rounded-lg border px-2 text-sm"
+            >
+              <option value="">{A.allVehicles}</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.registrationPlate}
+                  {vehicle.referenceName ? ` — ${vehicle.referenceName}` : ''}
+                </option>
+              ))}
+            </select>
             <button
               type="submit"
               className="bg-primary text-primary-foreground h-9 rounded-lg px-3 text-sm font-medium"
@@ -158,7 +173,11 @@ export default async function AdminAnalyticsPage({
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label={A.revenue} value={euros(overview.revenueCents)} />
             <Stat label={A.fuelCost} value={euros(overview.fuelCents)} />
-            <Stat label={A.personnelCost} value={euros(overview.personnelCents)} />
+            {/* Personnel cost cannot be attributed to one vehicle - hidden
+                rather than shown as a misleading fleet-wide figure. */}
+            {overview.filter.vehicleId === null ? (
+              <Stat label={A.personnelCost} value={euros(overview.personnelCents)} />
+            ) : null}
             <Stat label={A.operatingExpense} value={euros(overview.operatingExpenseCents)} />
             <Stat
               label={A.margin}
@@ -207,168 +226,6 @@ export default async function AdminAnalyticsPage({
               </CardBody>
             </Card>
           ) : null}
-
-          {/* Per vehicle */}
-          <Section icon={<Gauge className="size-5 text-sky-600" />} title={A.perVehicleTitle}>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <Th>{A.vehicleColumn}</Th>
-                  <Th>{A.revenue}</Th>
-                  <Th>{A.fuelCost}</Th>
-                  <Th>{A.margin}</Th>
-                  <Th className="hidden lg:table-cell">{A.actualKmColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.emptyKmColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.fuelPerKmColumn}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {perVehicle.map((row) => (
-                  <tr key={row.vehicleId} className="border-b last:border-0">
-                    <Td className="py-2.5 font-semibold uppercase">{row.plate}</Td>
-                    <Td className="py-2.5">{euros(row.revenueCents)}</Td>
-                    <Td className="py-2.5">{euros(row.fuelCents)}</Td>
-                    <Td
-                      className={cn(
-                        'py-2.5 font-bold',
-                        row.marginCents >= 0 ? 'text-emerald-600' : 'text-destructive',
-                      )}
-                    >
-                      {euros(row.marginCents)}
-                    </Td>
-                    <Td className="hidden py-2.5 lg:table-cell">{km(row.actualKm)}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">
-                      {km(row.emptyKm)} · {pct(row.emptyKmRatio)}
-                    </Td>
-                    <Td className="hidden py-2.5 lg:table-cell">
-                      {centsPerKm(row.fuelCostPerKmCents)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Section>
-
-          {/* Per contract */}
-          <Section icon={<ChartColumn className="size-5 text-violet-600" />} title={A.perContractTitle}>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <Th>{A.contractColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.clientColumn}</Th>
-                  <Th>{A.servicesColumn}</Th>
-                  <Th>{A.revenue}</Th>
-                  <Th className="hidden lg:table-cell">{A.serviceKmColumn}</Th>
-                  <Th>{A.revenuePerKmColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.efficiencyColumn}</Th>
-                  <Th>{A.margin}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {perContract.map((row) => (
-                  <tr key={row.routeId} className="border-b last:border-0">
-                    <Td className="py-2.5">
-                      <span className="font-semibold">{row.code}</span>
-                      <span className="text-muted-foreground ml-1.5 text-xs">{row.name}</span>
-                    </Td>
-                    <Td className="text-muted-foreground hidden py-2.5 text-xs lg:table-cell">
-                      {row.clientName ?? '—'}
-                    </Td>
-                    <Td className="py-2.5">{row.serviceCount}</Td>
-                    <Td className="py-2.5">{euros(row.revenueCents)}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">{km(row.serviceKm)}</Td>
-                    <Td className="py-2.5">{centsPerKm(row.revenuePerServiceKmCents)}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">{pct(row.efficiencyRatio)}</Td>
-                    <Td
-                      className={cn(
-                        'py-2.5 font-bold',
-                        row.marginCents >= 0 ? 'text-emerald-600' : 'text-destructive',
-                      )}
-                    >
-                      {euros(row.marginCents)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Section>
-
-          {/* Per driver */}
-          <Section icon={<Users className="size-5 text-amber-600" />} title={A.perDriverTitle}>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <Th>{A.driverColumn}</Th>
-                  <Th>{A.servicesColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.daysWorkedColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.actualKmColumn}</Th>
-                  <Th>{A.revenue}</Th>
-                  <Th>{A.revenuePerKmColumn}</Th>
-                  <Th className="hidden lg:table-cell">{A.avgTicketColumn}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {perDriver.map((row) => (
-                  <tr key={row.driverId} className="border-b last:border-0">
-                    <Td className="py-2.5 font-semibold">{row.name}</Td>
-                    <Td className="py-2.5">{row.serviceCount}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">{row.daysWorked}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">{km(row.actualKm)}</Td>
-                    <Td className="py-2.5">{euros(row.revenueCents)}</Td>
-                    <Td className="py-2.5">{centsPerKm(row.revenuePerActualKmCents)}</Td>
-                    <Td className="hidden py-2.5 lg:table-cell">
-                      {row.averageTicketCents === null ? '—' : euros(row.averageTicketCents)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Section>
-
-          {/* Investment recovery */}
-          {recovery.length > 0 ? (
-            <Section
-              icon={<PiggyBank className="size-5 text-emerald-600" />}
-              title={A.recoveryTitle}
-              hint={A.recoveryHint}
-            >
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <Th>{A.vehicleColumn}</Th>
-                    <Th>{A.investmentColumn}</Th>
-                    <Th>{A.profitColumn}</Th>
-                    <Th>{A.recoveryColumn}</Th>
-                    <Th>{A.outstandingColumn}</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recovery.map((row) => (
-                    <tr key={row.vehicleId} className="border-b last:border-0">
-                      <Td className="py-2.5 font-semibold uppercase">{row.plate}</Td>
-                      <Td className="py-2.5">{euros(row.investmentCents)}</Td>
-                      <Td
-                        className={cn(
-                          'py-2.5',
-                          row.cumulativeProfitCents >= 0 ? '' : 'text-destructive',
-                        )}
-                      >
-                        {euros(row.cumulativeProfitCents)}
-                      </Td>
-                      <Td className="py-2.5">
-                        {row.recovered ? (
-                          <span className="text-emerald-600 font-semibold">{A.recovered}</span>
-                        ) : (
-                          pct(row.recoveryRatio)
-                        )}
-                      </Td>
-                      <Td className="py-2.5">{euros(row.outstandingCents)}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          ) : null}
         </>
       )}
 
@@ -385,40 +242,14 @@ export default async function AdminAnalyticsPage({
           <ScenarioSimulator
             defaults={{
               revenueEuros: Math.round(centsToEuros(overview.revenueCents)),
+              emptyKm: overview.emptyKm,
               serviceKm: overview.serviceKm,
               consumptionLPer100Km: config.defaultConsumptionMlPer100Km / 1_000,
               fuelPriceEurosPerLiter: config.defaultFuelPriceCentsPerLiter / 100,
-              personnelEuros: Math.round(centsToEuros(overview.personnelCents)),
-              otherCostsEuros: Math.round(centsToEuros(overview.operatingExpenseCents)),
             }}
           />
         </CardBody>
       </Card>
     </div>
-  );
-}
-
-function Section({
-  icon,
-  title,
-  hint,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {icon}
-          {title}
-        </CardTitle>
-        {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
-      </CardHeader>
-      <CardBody className="overflow-x-auto">{children}</CardBody>
-    </Card>
   );
 }

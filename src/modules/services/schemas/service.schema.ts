@@ -30,6 +30,7 @@ import {
   moneySchema,
   odometerKmSchema,
   optionalText,
+  optionalUuidSchema,
   paginationSchema,
   timeOfDaySchema,
   uuidSchema,
@@ -51,6 +52,15 @@ import { ServiceStatus } from '../domain/service-status';
 const serviceBodyShape = {
   vehicleId: uuidSchema,
   routeId: uuidSchema,
+
+  /**
+   * "Conductor adicional" (client decision 2026-09-13): a second driver
+   * riding along, free choice from any active driver. Optional - most
+   * services have none. Checked against the database in `resolveBody`, the
+   * same "never trust the picker" discipline every other reference here
+   * follows.
+   */
+  secondaryDriverId: optionalUuidSchema,
 
   /**
    * Client change request (2026-09-09): a driver may adjust the route's

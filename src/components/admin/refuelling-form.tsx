@@ -165,14 +165,21 @@ export function RefuellingForm({
             </CardHeader>
             <CardBody className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label={FIELD_LABELS.fuelType} optional errors={fieldErrors?.['fuelTypeId']}>
+                <Field
+                  label={FIELD_LABELS.fuelType}
+                  required
+                  errors={fieldErrors?.['fuelTypeId']}
+                >
                   {(props) => (
                     <Select
                       {...props}
                       name="fuelTypeId"
+                      required
                       defaultValue={values?.['fuelTypeId'] ?? initial?.fuelTypeId ?? ''}
                     >
-                      <option value="">{UI.admin.refuelling.chooseFuelType}</option>
+                      <option value="" disabled>
+                        {UI.admin.refuelling.chooseFuelType}
+                      </option>
                       {context.fuelTypes.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}
@@ -184,16 +191,19 @@ export function RefuellingForm({
 
                 <Field
                   label={FIELD_LABELS.gasStation}
-                  optional
+                  required
                   errors={fieldErrors?.['gasStationId']}
                 >
                   {(props) => (
                     <Select
                       {...props}
                       name="gasStationId"
+                      required
                       defaultValue={values?.['gasStationId'] ?? initial?.gasStationId ?? ''}
                     >
-                      <option value="">{UI.admin.refuelling.chooseGasStation}</option>
+                      <option value="" disabled>
+                        {UI.admin.refuelling.chooseGasStation}
+                      </option>
                       {context.gasStations.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}
@@ -205,16 +215,19 @@ export function RefuellingForm({
 
                 <Field
                   label={FIELD_LABELS.paymentMethod}
-                  optional
+                  required
                   errors={fieldErrors?.['paymentMethodId']}
                 >
                   {(props) => (
                     <Select
                       {...props}
                       name="paymentMethodId"
+                      required
                       defaultValue={values?.['paymentMethodId'] ?? initial?.paymentMethodId ?? ''}
                     >
-                      <option value="">{UI.admin.refuelling.choosePaymentMethod}</option>
+                      <option value="" disabled>
+                        {UI.admin.refuelling.choosePaymentMethod}
+                      </option>
                       {context.paymentMethods.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}

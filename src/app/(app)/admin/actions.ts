@@ -1,11 +1,11 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireAdmin } from '@/lib/auth/session';
 import { isAppError } from '@/lib/errors/app-error';
 import { toFieldErrors } from '@/lib/http/api-response';
+import { revalidatePathSafely } from '@/lib/http/revalidate-safely';
 import { ERRORS } from '@/lib/i18n/messages';
 import { logger } from '@/lib/logger';
 import { clientService } from '@/modules/clients/service/client.service';
@@ -146,9 +146,9 @@ export async function approveServiceAction(serviceId: string): Promise<void> {
   const actor = await requireAdmin();
   await serviceService.approve(actor, serviceId);
 
-  revalidatePath('/admin');
-  revalidatePath('/admin/services');
-  revalidatePath(`/admin/services/${serviceId}`);
+  revalidatePathSafely('/admin');
+  revalidatePathSafely('/admin/services');
+  revalidatePathSafely(`/admin/services/${serviceId}`);
 }
 
 /**
@@ -172,8 +172,8 @@ export async function updateServiceRateAction(serviceId: string, rateInput: stri
 
   await serviceService.updateRate(actor, serviceId, parsed.data.rate ?? null);
 
-  revalidatePath('/admin/services');
-  revalidatePath(`/admin/services/${serviceId}`);
+  revalidatePathSafely('/admin/services');
+  revalidatePathSafely(`/admin/services/${serviceId}`);
 }
 
 /**
@@ -200,8 +200,8 @@ export async function updateServiceSupplementAction(
     supplementTypeId: parsed.data.supplementTypeId,
   });
 
-  revalidatePath('/admin/services');
-  revalidatePath(`/admin/services/${serviceId}`);
+  revalidatePathSafely('/admin/services');
+  revalidatePathSafely(`/admin/services/${serviceId}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ export async function createVehicleAction(
     return toFormState(error, 'createVehicleAction', echo(formData));
   }
 
-  revalidatePath('/admin/vehicles');
+  revalidatePathSafely('/admin/vehicles');
   redirect('/admin/vehicles?created=1');
 }
 
@@ -267,7 +267,7 @@ export async function updateVehicleAction(
     return toFormState(error, 'updateVehicleAction', echo(formData));
   }
 
-  revalidatePath('/admin/vehicles');
+  revalidatePathSafely('/admin/vehicles');
   redirect('/admin/vehicles?updated=1');
 }
 
@@ -302,7 +302,7 @@ export async function createClientAction(
     return toFormState(error, 'createClientAction', echo(formData));
   }
 
-  revalidatePath('/admin/clients');
+  revalidatePathSafely('/admin/clients');
   redirect('/admin/clients?created=1');
 }
 
@@ -334,7 +334,7 @@ export async function updateClientAction(
     return toFormState(error, 'updateClientAction', echo(formData));
   }
 
-  revalidatePath('/admin/clients');
+  revalidatePathSafely('/admin/clients');
   redirect('/admin/clients?updated=1');
 }
 
@@ -372,7 +372,7 @@ export async function createLookupItemAction(
     return toFormState(error, 'createLookupItemAction', echo(formData));
   }
 
-  revalidatePath(`/admin/lists/${kind}`);
+  revalidatePathSafely(`/admin/lists/${kind}`);
   redirect(`/admin/lists/${kind}?created=1`);
 }
 
@@ -404,7 +404,7 @@ export async function updateLookupItemAction(
     return toFormState(error, 'updateLookupItemAction', echo(formData));
   }
 
-  revalidatePath(`/admin/lists/${kind}`);
+  revalidatePathSafely(`/admin/lists/${kind}`);
   redirect(`/admin/lists/${kind}?updated=1`);
 }
 
@@ -439,7 +439,7 @@ export async function updateConfigAction(
     return toFormState(error, 'updateConfigAction', echo(formData));
   }
 
-  revalidatePath('/admin/config');
+  revalidatePathSafely('/admin/config');
   redirect('/admin/config?updated=1');
 }
 
@@ -484,7 +484,7 @@ export async function createRefuellingAction(
     return toFormState(error, 'createRefuellingAction', echo(formData));
   }
 
-  revalidatePath('/admin/refuellings');
+  revalidatePathSafely('/admin/refuellings');
   redirect('/admin/refuellings?created=1');
 }
 
@@ -511,8 +511,8 @@ export async function updateRefuellingAction(
     return toFormState(error, 'updateRefuellingAction', echo(formData));
   }
 
-  revalidatePath('/admin/refuellings');
-  revalidatePath(`/admin/refuellings/${refuellingId}`);
+  revalidatePathSafely('/admin/refuellings');
+  revalidatePathSafely(`/admin/refuellings/${refuellingId}`);
   redirect(`/admin/refuellings/${refuellingId}?updated=1`);
 }
 
@@ -554,7 +554,7 @@ export async function createDailyKmLogAction(
     return toFormState(error, 'createDailyKmLogAction', echo(formData));
   }
 
-  revalidatePath('/admin/daily-km');
+  revalidatePathSafely('/admin/daily-km');
   redirect('/admin/daily-km?created=1');
 }
 
@@ -581,8 +581,8 @@ export async function updateDailyKmLogAction(
     return toFormState(error, 'updateDailyKmLogAction', echo(formData));
   }
 
-  revalidatePath('/admin/daily-km');
-  revalidatePath(`/admin/daily-km/${dailyKmLogId}`);
+  revalidatePathSafely('/admin/daily-km');
+  revalidatePathSafely(`/admin/daily-km/${dailyKmLogId}`);
   redirect(`/admin/daily-km/${dailyKmLogId}?updated=1`);
 }
 
@@ -625,7 +625,7 @@ export async function createPersonnelCostAction(
     return toFormState(error, 'createPersonnelCostAction', echo(formData));
   }
 
-  revalidatePath('/admin/personnel');
+  revalidatePathSafely('/admin/personnel');
   redirect('/admin/personnel?created=1');
 }
 
@@ -652,8 +652,8 @@ export async function updatePersonnelCostAction(
     return toFormState(error, 'updatePersonnelCostAction', echo(formData));
   }
 
-  revalidatePath('/admin/personnel');
-  revalidatePath(`/admin/personnel/${personnelCostId}`);
+  revalidatePathSafely('/admin/personnel');
+  revalidatePathSafely(`/admin/personnel/${personnelCostId}`);
   redirect(`/admin/personnel/${personnelCostId}?updated=1`);
 }
 
@@ -695,7 +695,7 @@ export async function createMaintenanceRecordAction(
     return toFormState(error, 'createMaintenanceRecordAction', echo(formData));
   }
 
-  revalidatePath('/admin/maintenance');
+  revalidatePathSafely('/admin/maintenance');
   redirect('/admin/maintenance?created=1');
 }
 
@@ -722,8 +722,8 @@ export async function updateMaintenanceRecordAction(
     return toFormState(error, 'updateMaintenanceRecordAction', echo(formData));
   }
 
-  revalidatePath('/admin/maintenance');
-  revalidatePath(`/admin/maintenance/${maintenanceRecordId}`);
+  revalidatePathSafely('/admin/maintenance');
+  revalidatePathSafely(`/admin/maintenance/${maintenanceRecordId}`);
   redirect(`/admin/maintenance/${maintenanceRecordId}?updated=1`);
 }
 
@@ -758,7 +758,7 @@ export async function createSupplierAction(
     return toFormState(error, 'createSupplierAction', echo(formData));
   }
 
-  revalidatePath('/admin/suppliers');
+  revalidatePathSafely('/admin/suppliers');
   redirect('/admin/suppliers?created=1');
 }
 
@@ -790,7 +790,7 @@ export async function updateSupplierAction(
     return toFormState(error, 'updateSupplierAction', echo(formData));
   }
 
-  revalidatePath('/admin/suppliers');
+  revalidatePathSafely('/admin/suppliers');
   redirect('/admin/suppliers?updated=1');
 }
 
@@ -826,7 +826,7 @@ export async function createExpenseCategoryAction(
     return toFormState(error, 'createExpenseCategoryAction', echo(formData));
   }
 
-  revalidatePath('/admin/expense-categories');
+  revalidatePathSafely('/admin/expense-categories');
   redirect('/admin/expense-categories?created=1');
 }
 
@@ -859,7 +859,7 @@ export async function updateExpenseCategoryAction(
     return toFormState(error, 'updateExpenseCategoryAction', echo(formData));
   }
 
-  revalidatePath('/admin/expense-categories');
+  revalidatePathSafely('/admin/expense-categories');
   redirect('/admin/expense-categories?updated=1');
 }
 
@@ -903,8 +903,8 @@ export async function createReceivedInvoiceAction(
     return toFormState(error, 'createReceivedInvoiceAction', echo(formData));
   }
 
-  revalidatePath('/admin/received-invoices');
-  revalidatePath('/admin/investments');
+  revalidatePathSafely('/admin/received-invoices');
+  revalidatePathSafely('/admin/investments');
   redirect('/admin/received-invoices?created=1');
 }
 
@@ -931,9 +931,9 @@ export async function updateReceivedInvoiceAction(
     return toFormState(error, 'updateReceivedInvoiceAction', echo(formData));
   }
 
-  revalidatePath('/admin/received-invoices');
-  revalidatePath(`/admin/received-invoices/${invoiceId}`);
-  revalidatePath('/admin/investments');
+  revalidatePathSafely('/admin/received-invoices');
+  revalidatePathSafely(`/admin/received-invoices/${invoiceId}`);
+  revalidatePathSafely('/admin/investments');
   redirect(`/admin/received-invoices/${invoiceId}?updated=1`);
 }
 
@@ -978,8 +978,8 @@ export async function createIssuedInvoiceAction(
   // Every service the invoice grouped moves from "billable" to "billed", so
   // the admin services list (which shows billing status) and the picker
   // this action's own form reads from both need to see the change.
-  revalidatePath('/admin/issued-invoices');
-  revalidatePath('/admin/services');
+  revalidatePathSafely('/admin/issued-invoices');
+  revalidatePathSafely('/admin/services');
   redirect(`/admin/issued-invoices/${createdId}?created=1`);
 }
 
@@ -1010,8 +1010,8 @@ export async function updateIssuedInvoiceAction(
     return toFormState(error, 'updateIssuedInvoiceAction', echo(formData));
   }
 
-  revalidatePath('/admin/issued-invoices');
-  revalidatePath(`/admin/issued-invoices/${invoiceId}`);
+  revalidatePathSafely('/admin/issued-invoices');
+  revalidatePathSafely(`/admin/issued-invoices/${invoiceId}`);
   redirect(`/admin/issued-invoices/${invoiceId}?updated=1`);
 }
 
@@ -1050,7 +1050,7 @@ export async function createRouteAction(
     return toFormState(error, 'createRouteAction', echo(formData));
   }
 
-  revalidatePath('/admin/routes');
+  revalidatePathSafely('/admin/routes');
   redirect('/admin/routes?created=1');
 }
 
@@ -1088,8 +1088,8 @@ export async function updateRouteAction(
 
   // Editing origin/destination changes what *future* services snapshot, so the
   // Add Service context is stale for every driver holding this route.
-  revalidatePath('/admin/routes');
-  revalidatePath('/services/new');
+  revalidatePathSafely('/admin/routes');
+  revalidatePathSafely('/services/new');
   redirect('/admin/routes?updated=1');
 }
 
@@ -1152,7 +1152,7 @@ export async function createUserAction(
     return toFormState(error, 'createUserAction', echo(formData));
   }
 
-  revalidatePath('/admin/users');
+  revalidatePathSafely('/admin/users');
   redirect('/admin/users?created=1');
 }
 
@@ -1218,8 +1218,8 @@ export async function updateUserAction(
     return toFormState(error, 'updateUserAction', echo(formData));
   }
 
-  revalidatePath('/admin/users');
-  revalidatePath(`/admin/users/${userId}`);
+  revalidatePathSafely('/admin/users');
+  revalidatePathSafely(`/admin/users/${userId}`);
   redirect('/admin/users?updated=1');
 }
 
@@ -1257,7 +1257,7 @@ export async function deleteVehicleAction(
     return toDeleteState(error, 'deleteVehicleAction');
   }
 
-  revalidatePath('/admin/vehicles');
+  revalidatePathSafely('/admin/vehicles');
   redirect('/admin/vehicles?deleted=1');
 }
 
@@ -1272,7 +1272,7 @@ export async function deleteClientAction(
     return toDeleteState(error, 'deleteClientAction');
   }
 
-  revalidatePath('/admin/clients');
+  revalidatePathSafely('/admin/clients');
   redirect('/admin/clients?deleted=1');
 }
 
@@ -1288,7 +1288,7 @@ export async function deleteLookupItemAction(
     return toDeleteState(error, 'deleteLookupItemAction');
   }
 
-  revalidatePath(`/admin/lists/${kind}`);
+  revalidatePathSafely(`/admin/lists/${kind}`);
   redirect(`/admin/lists/${kind}?deleted=1`);
 }
 
@@ -1303,7 +1303,7 @@ export async function deleteRefuellingAction(
     return toDeleteState(error, 'deleteRefuellingAction');
   }
 
-  revalidatePath('/admin/refuellings');
+  revalidatePathSafely('/admin/refuellings');
   redirect('/admin/refuellings?deleted=1');
 }
 
@@ -1318,7 +1318,7 @@ export async function deleteDailyKmLogAction(
     return toDeleteState(error, 'deleteDailyKmLogAction');
   }
 
-  revalidatePath('/admin/daily-km');
+  revalidatePathSafely('/admin/daily-km');
   redirect('/admin/daily-km?deleted=1');
 }
 
@@ -1333,7 +1333,7 @@ export async function deletePersonnelCostAction(
     return toDeleteState(error, 'deletePersonnelCostAction');
   }
 
-  revalidatePath('/admin/personnel');
+  revalidatePathSafely('/admin/personnel');
   redirect('/admin/personnel?deleted=1');
 }
 
@@ -1348,7 +1348,7 @@ export async function deleteMaintenanceRecordAction(
     return toDeleteState(error, 'deleteMaintenanceRecordAction');
   }
 
-  revalidatePath('/admin/maintenance');
+  revalidatePathSafely('/admin/maintenance');
   redirect('/admin/maintenance?deleted=1');
 }
 
@@ -1363,7 +1363,7 @@ export async function deleteSupplierAction(
     return toDeleteState(error, 'deleteSupplierAction');
   }
 
-  revalidatePath('/admin/suppliers');
+  revalidatePathSafely('/admin/suppliers');
   redirect('/admin/suppliers?deleted=1');
 }
 
@@ -1378,7 +1378,7 @@ export async function deleteExpenseCategoryAction(
     return toDeleteState(error, 'deleteExpenseCategoryAction');
   }
 
-  revalidatePath('/admin/expense-categories');
+  revalidatePathSafely('/admin/expense-categories');
   redirect('/admin/expense-categories?deleted=1');
 }
 
@@ -1393,8 +1393,8 @@ export async function deleteReceivedInvoiceAction(
     return toDeleteState(error, 'deleteReceivedInvoiceAction');
   }
 
-  revalidatePath('/admin/received-invoices');
-  revalidatePath('/admin/investments');
+  revalidatePathSafely('/admin/received-invoices');
+  revalidatePathSafely('/admin/investments');
   redirect('/admin/received-invoices?deleted=1');
 }
 
@@ -1410,8 +1410,8 @@ export async function deleteIssuedInvoiceAction(
   }
 
   // Deleting the invoice frees every service it grouped back to "billable".
-  revalidatePath('/admin/issued-invoices');
-  revalidatePath('/admin/services');
+  revalidatePathSafely('/admin/issued-invoices');
+  revalidatePathSafely('/admin/services');
   redirect('/admin/issued-invoices?deleted=1');
 }
 
@@ -1426,7 +1426,7 @@ export async function deleteRouteAction(
     return toDeleteState(error, 'deleteRouteAction');
   }
 
-  revalidatePath('/admin/routes');
+  revalidatePathSafely('/admin/routes');
   redirect('/admin/routes?deleted=1');
 }
 
@@ -1441,6 +1441,6 @@ export async function deleteUserAction(
     return toDeleteState(error, 'deleteUserAction');
   }
 
-  revalidatePath('/admin/users');
+  revalidatePathSafely('/admin/users');
   redirect('/admin/users?deleted=1');
 }

@@ -25,6 +25,8 @@ export interface ServiceListItem {
   /** `yyyy-MM-dd`. A calendar day, not an instant. */
   serviceDate: string;
   driver: { id: string; name: string };
+  /** "Conductor adicional" - a second driver riding along, if any. */
+  secondaryDriver: { id: string; name: string } | null;
   vehicle: { id: string; registrationPlate: string; referenceName: string | null };
   route: { id: string; code: string; name: string };
   origin: string;
@@ -62,6 +64,9 @@ export function toServiceListItem(service: ServiceWithRelations): ServiceListIte
     serviceCode: service.serviceCode,
     serviceDate: toIsoDate(service.serviceDate),
     driver: { id: service.driver.id, name: service.driver.name },
+    secondaryDriver: service.secondaryDriver
+      ? { id: service.secondaryDriver.id, name: service.secondaryDriver.name }
+      : null,
     vehicle: {
       id: service.vehicle.id,
       registrationPlate: service.vehicle.registrationPlate,
@@ -167,6 +172,8 @@ export interface ServiceContextDto {
     isDefault: boolean;
   }[];
   defaultRouteId: string | null;
+  hasAssignedRoutes: boolean;
+  coDrivers: { id: string; name: string }[];
 }
 
 export function toServiceContextDto(context: {
@@ -176,6 +183,8 @@ export function toServiceContextDto(context: {
   vehicles: { id: string; registrationPlate: string; referenceName: string | null }[];
   routes: ServiceContextDto['routes'];
   defaultRouteId: string | null;
+  hasAssignedRoutes: boolean;
+  coDrivers: { id: string; name: string }[];
 }): ServiceContextDto {
   return { ...context, serviceDate: toIsoDate(context.serviceDate) };
 }

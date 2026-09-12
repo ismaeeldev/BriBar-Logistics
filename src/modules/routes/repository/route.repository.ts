@@ -151,6 +151,20 @@ export const routeRepository = {
   async countAssignedDrivers(id: string, client: PrismaClientLike = prisma): Promise<number> {
     return client.driverRoute.count({ where: { routeId: id } });
   },
+
+  /**
+   * Whether this route may be chosen for a new service by a driver with no
+   * assignments of their own (free-choice fallback, client decision
+   * 2026-09-13) - the same active-only gate `vehicleRepository.isSelectable`
+   * applies to vehicles (SRS 13.5).
+   */
+  async isSelectable(id: string, client: PrismaClientLike = prisma): Promise<boolean> {
+    const found = await client.route.findFirst({
+      where: { id, isActive: true },
+      select: { id: true },
+    });
+    return found !== null;
+  },
 } as const;
 
 export type RouteRepository = typeof routeRepository;

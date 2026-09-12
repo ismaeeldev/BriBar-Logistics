@@ -88,6 +88,7 @@ export default async function AdminServiceDetailPage({
           </div>
           <p className="text-muted-foreground text-sm">
             {formatBusinessDate(service.serviceDate)} · {service.driver.name}
+            {service.secondaryDriver ? ` + ${service.secondaryDriver.name}` : ''}
           </p>
         </div>
 

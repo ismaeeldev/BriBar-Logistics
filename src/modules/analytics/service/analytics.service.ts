@@ -3,11 +3,16 @@
  * for `00Dashboard` / `00Análisis` / `90_Modelo`.
  *
  * Admin-only, and entirely derived: no table, no migration, the same shape
- * as `taxService` (Phase 4) and `receivedInvoiceService.investmentSummary`
- * (Phase 3). Each method fetches the projections it needs from
- * `analyticsRepository`, buckets them by fiscal period / vehicle / contract /
- * driver in application code, and applies the `domain/analytics-math`
+ * as `taxService` (Phase 4). Each method fetches the projections it needs
+ * from `analyticsRepository`, buckets them by fiscal period (and optionally
+ * one vehicle) in application code, and applies the `domain/analytics-math`
  * formulas. See ADR 0017 for why the grouping is not SQL `GROUP BY`.
+ *
+ * Client decision 2026-09-13 dropped the separate per-vehicle/per-contract/
+ * per-driver breakdown tables in favour of an optional `vehicleId` filter on
+ * `overview` itself, and moved `investmentRecovery` off this page onto
+ * `/admin/investments` (still computed here — it needs revenue/fuel/expense
+ * aggregated the same way `overview` does — just no longer rendered here).
  *
  * "Revenue" throughout is `Σ service.baseCents` — the "Base imponible"
  * (rate + supplement) Phase 4 made a stored column — over services that have
@@ -15,32 +20,33 @@
  * approved would not change a historical figure; a priced but still-pending
  * service is revenue in progress and is counted.
  *
+ * "Fuel cost" throughout is `Σ refuelling.baseCents` — VAT-exclusive - never
+ * `totalCents`, which is what was actually paid at the pump but is not itself
+ * a business cost (client decision 2026-09-13). The one exception is the
+ * average pump price, which is deliberately VAT-inclusive.
+ *
  * "Personnel cost" is a fleet-level monthly total (`04_Personal`) and is
- * **not** attributed to individual vehicles or contracts — the sheet does
- * not split it either. It appears in the fleet-wide margin only; per-vehicle
- * and per-contract margins are revenue minus the costs that *can* be
- * attributed.
+ * **not** attributed to individual vehicles — the sheet does not split it
+ * either, so `overview` excludes it from both the figure and the margin
+ * whenever `filter.vehicleId` narrows to one vehicle.
  */
 import type { Actor } from '@/lib/auth/session';
 import { forbidden } from '@/lib/errors/app-error';
 import {
   averageFuelPriceCentsPerLiter,
-  averageTicketCents,
   consumptionMlPer100Km,
-  costPerKmCents,
-  efficiencyRatio,
   emptyKm,
-  estimatedFuelCents,
   investmentRecovery,
   marginCents,
   safeRatio,
   type InvestmentRecovery,
 } from '@/modules/analytics/domain/analytics-math';
-import { configRepository } from '@/modules/config/repository/config.repository';
+import { kmSinceLast } from '@/modules/refuelling/domain/consumption';
 import { Role } from '@/modules/services/domain/service-status';
 import {
   analyticsRepository,
   type AnalyticsReceivedInvoiceRow,
+  type AnalyticsRefuellingRow,
   type AnalyticsServiceRow,
 } from '../repository/analytics.repository';
 import type { AnalyticsFilter } from '../schemas/analytics.schema';
@@ -78,9 +84,17 @@ const INVESTMENT = 'INVESTMENT';
 // --- DTOs -------------------------------------------------------------------
 
 export interface AnalyticsOverview {
-  filter: { year: number | null; month: number | null };
+  filter: { year: number | null; month: number | null; vehicleId: string | null };
   revenueCents: number;
+  /** "Base imponible" only - VAT excluded (client decision 2026-09-13). */
   fuelCents: number;
+  /**
+   * Fleet-wide only - never attributable to one vehicle (`04_Personal` has no
+   * per-vehicle split). `0` whenever `filter.vehicleId` narrows to a single
+   * vehicle, and left out of `marginCents` in that case too - the same
+   * "can't attribute it, don't fake it" rule the old per-vehicle table
+   * followed.
+   */
   personnelCents: number;
   operatingExpenseCents: number;
   investmentCents: number;
@@ -91,6 +105,8 @@ export interface AnalyticsOverview {
   serviceKm: number;
   emptyKm: number;
   litresMl: number;
+  /** The pump price actually paid, VAT included - what a driver sees at the
+   * pump, unlike `fuelCents` above. */
   avgFuelPriceCentsPerLiter: number | null;
   avgConsumptionMlPer100Km: number | null;
 }
@@ -103,49 +119,6 @@ export interface MonthlyMarginRow {
   personnelCents: number;
   operatingExpenseCents: number;
   marginCents: number;
-}
-
-export interface VehicleAnalyticsRow {
-  vehicleId: string;
-  plate: string;
-  name: string | null;
-  revenueCents: number;
-  fuelCents: number;
-  operatingExpenseCents: number;
-  marginCents: number;
-  actualKm: number;
-  serviceKm: number;
-  emptyKm: number;
-  emptyKmRatio: number | null;
-  litresMl: number;
-  avgConsumptionMlPer100Km: number | null;
-  fuelCostPerKmCents: number | null;
-}
-
-export interface ContractAnalyticsRow {
-  routeId: string;
-  code: string;
-  name: string;
-  clientName: string | null;
-  serviceCount: number;
-  revenueCents: number;
-  serviceKm: number;
-  revenuePerServiceKmCents: number | null;
-  efficiencyRatio: number | null;
-  estimatedFuelCents: number;
-  marginCents: number;
-}
-
-export interface DriverAnalyticsRow {
-  driverId: string;
-  name: string;
-  serviceCount: number;
-  daysWorked: number;
-  actualKm: number;
-  serviceKm: number;
-  revenueCents: number;
-  revenuePerActualKmCents: number | null;
-  averageTicketCents: number | null;
 }
 
 export interface VehicleRecoveryRow extends InvestmentRecovery {
@@ -169,6 +142,41 @@ function operatingExpenseOf(invoice: AnalyticsReceivedInvoiceRow): number {
   return invoice.expenseType === OPERATION ? invoice.totalCents : 0;
 }
 
+/**
+ * Attaches each refuel's `kmSinceLast` - the odometer delta versus that same
+ * vehicle's previous fill-up, matching the client's own "Litros repostaje /
+ * Km recorridos" method (client decision 2026-09-13) - rather than the fleet-
+ * wide period totals `consumptionMlPer100Km` used before, which mixed
+ * `Refuelling.litersMl` against an unrelated `DailyKmLog` total.
+ *
+ * Computed over every refuel a vehicle has ever had, not just the filtered
+ * period: a fill-up right after a period boundary still needs the previous
+ * fill (which may fall just before it) to know its own distance.
+ */
+function attachKmSinceLast(
+  refuellings: AnalyticsRefuellingRow[],
+): (AnalyticsRefuellingRow & { kmSinceLast: number | null })[] {
+  const byVehicle = new Map<string, AnalyticsRefuellingRow[]>();
+  for (const row of refuellings) {
+    const rows = byVehicle.get(row.vehicleId);
+    if (rows) rows.push(row);
+    else byVehicle.set(row.vehicleId, [row]);
+  }
+
+  const result: (AnalyticsRefuellingRow & { kmSinceLast: number | null })[] = [];
+  for (const rows of byVehicle.values()) {
+    rows.sort(
+      (a, b) => a.refuelDate.getTime() - b.refuelDate.getTime() || a.odometerKm - b.odometerKm,
+    );
+    let previousOdometerKm: number | null = null;
+    for (const row of rows) {
+      result.push({ ...row, kmSinceLast: kmSinceLast(row.odometerKm, previousOdometerKm) });
+      previousOdometerKm = row.odometerKm;
+    }
+  }
+  return result;
+}
+
 // --- service -------------------------------------------------------------
 
 export const analyticsService = {
@@ -183,27 +191,56 @@ export const analyticsService = {
       analyticsRepository.dailyKmLogs(),
     ]);
 
-    const s = services.filter((row) => dateInFilter(row.serviceDate, filter));
-    const r = refuellings.filter((row) => dateInFilter(row.refuelDate, filter));
-    const inv = received.filter((row) => dateInFilter(row.invoiceDate, filter));
-    const p = personnel.filter((row) => inFilter(row.year, row.month, filter));
-    const km = dailyKm.filter((row) => dateInFilter(row.date, filter));
+    const vehicleId = filter.vehicleId;
+    const matchesVehicle = (rowVehicleId: string | null) =>
+      vehicleId === undefined || rowVehicleId === vehicleId;
+
+    const s = services.filter(
+      (row) => dateInFilter(row.serviceDate, filter) && matchesVehicle(row.vehicleId),
+    );
+    // Every refuel this vehicle has ever had, so `attachKmSinceLast` can find
+    // the previous fill even when it falls outside the filtered period -
+    // filtered to the period (and vehicle) only afterwards.
+    const rWithKm = attachKmSinceLast(
+      vehicleId === undefined ? refuellings : refuellings.filter((row) => row.vehicleId === vehicleId),
+    ).filter((row) => dateInFilter(row.refuelDate, filter));
+    const inv = received.filter(
+      (row) => dateInFilter(row.invoiceDate, filter) && matchesVehicle(row.vehicleId),
+    );
+    // Personnel cost has no per-vehicle split (see the doc comment at the top
+    // of this file) - it only means anything fleet-wide, so a vehicle filter
+    // excludes it rather than showing a fleet-wide figure mislabelled as one
+    // vehicle's cost (client decision 2026-09-13).
+    const p = vehicleId === undefined ? personnel.filter((row) => inFilter(row.year, row.month, filter)) : [];
+    const km = dailyKm.filter(
+      (row) => dateInFilter(row.date, filter) && matchesVehicle(row.vehicleId),
+    );
 
     const revenueCents = sum(s.map(baseOf));
-    const fuelCents = sum(r.map((row) => row.totalCents));
+    // "Base imponible" only - VAT is not a real cost (client decision
+    // 2026-09-13). The average pump price below still uses the VAT-inclusive
+    // total, since that is the price actually paid at the pump.
+    const fuelCents = sum(rWithKm.map((row) => row.baseCents));
+    const fuelGrossCents = sum(rWithKm.map((row) => row.totalCents));
     const personnelCents = sum(p.map((row) => row.totalCents));
     const operatingExpenseCents = sum(inv.map(operatingExpenseOf));
     const investmentCents = sum(
       inv.filter((row) => row.expenseType === INVESTMENT).map((row) => row.totalCents),
     );
-    const margin = marginCents(revenueCents, [fuelCents, personnelCents, operatingExpenseCents]);
+    const costs = vehicleId === undefined ? [fuelCents, personnelCents, operatingExpenseCents] : [fuelCents, operatingExpenseCents];
+    const margin = marginCents(revenueCents, costs);
 
     const actualKm = sum(km.map((row) => row.actualKm));
     const serviceKm = sum(s.map((row) => row.serviceKm));
-    const litresMl = sum(r.map((row) => row.litersMl));
+    const litresMl = sum(rWithKm.map((row) => row.litersMl));
+    // Km recorridos for the consumption ratio: the odometer distance each
+    // refuel in the period actually covers, not `actualKm` above (a separate,
+    // independently-entered `DailyKmLog` total the two used to be mismatched
+    // against).
+    const kmSinceLastTotal = sum(rWithKm.map((row) => row.kmSinceLast ?? 0));
 
     return {
-      filter: { year: filter.year ?? null, month: filter.month ?? null },
+      filter: { year: filter.year ?? null, month: filter.month ?? null, vehicleId: vehicleId ?? null },
       revenueCents,
       fuelCents,
       personnelCents,
@@ -216,8 +253,8 @@ export const analyticsService = {
       serviceKm,
       emptyKm: emptyKm(actualKm, serviceKm),
       litresMl,
-      avgFuelPriceCentsPerLiter: averageFuelPriceCentsPerLiter(fuelCents, litresMl),
-      avgConsumptionMlPer100Km: consumptionMlPer100Km(litresMl, actualKm),
+      avgFuelPriceCentsPerLiter: averageFuelPriceCentsPerLiter(fuelGrossCents, litresMl),
+      avgConsumptionMlPer100Km: consumptionMlPer100Km(litresMl, kmSinceLastTotal),
     };
   },
 
@@ -261,7 +298,9 @@ export const analyticsService = {
     }
     for (const refuel of refuellings) {
       const { year, month } = partsOf(refuel.refuelDate);
-      row(year, month).fuelCents += refuel.totalCents;
+      // "Base imponible" only - VAT is not a real cost (client decision
+      // 2026-09-13).
+      row(year, month).fuelCents += refuel.baseCents;
     }
     for (const invoice of received) {
       const { year, month } = partsOf(invoice.invoiceDate);
@@ -283,153 +322,13 @@ export const analyticsService = {
       .sort((a, b) => (a.year !== b.year ? a.year - b.year : a.month - b.month));
   },
 
-  async perVehicle(actor: Actor, filter: AnalyticsFilter): Promise<VehicleAnalyticsRow[]> {
-    assertAdmin(actor);
-
-    const [vehicles, services, refuellings, received, dailyKm] = await Promise.all([
-      analyticsRepository.vehicles(),
-      analyticsRepository.services(),
-      analyticsRepository.refuellings(),
-      analyticsRepository.receivedInvoices(),
-      analyticsRepository.dailyKmLogs(),
-    ]);
-
-    const s = services.filter((row) => dateInFilter(row.serviceDate, filter));
-    const r = refuellings.filter((row) => dateInFilter(row.refuelDate, filter));
-    const inv = received.filter((row) => dateInFilter(row.invoiceDate, filter));
-    const km = dailyKm.filter((row) => dateInFilter(row.date, filter));
-
-    return vehicles
-      .map((vehicle) => {
-        const vs = s.filter((row) => row.vehicleId === vehicle.id);
-        const vr = r.filter((row) => row.vehicleId === vehicle.id);
-        const vi = inv.filter((row) => row.vehicleId === vehicle.id);
-        const vkm = km.filter((row) => row.vehicleId === vehicle.id);
-
-        const revenueCents = sum(vs.map(baseOf));
-        const fuelCents = sum(vr.map((row) => row.totalCents));
-        const operatingExpenseCents = sum(vi.map(operatingExpenseOf));
-        const actualKm = sum(vkm.map((row) => row.actualKm));
-        const serviceKm = sum(vs.map((row) => row.serviceKm));
-        const litresMl = sum(vr.map((row) => row.litersMl));
-        const empty = emptyKm(actualKm, serviceKm);
-
-        return {
-          vehicleId: vehicle.id,
-          plate: vehicle.registrationPlate,
-          name: vehicle.referenceName,
-          revenueCents,
-          fuelCents,
-          operatingExpenseCents,
-          marginCents: marginCents(revenueCents, [fuelCents, operatingExpenseCents]),
-          actualKm,
-          serviceKm,
-          emptyKm: empty,
-          emptyKmRatio: safeRatio(empty, actualKm),
-          litresMl,
-          avgConsumptionMlPer100Km: consumptionMlPer100Km(litresMl, actualKm),
-          fuelCostPerKmCents: costPerKmCents(fuelCents, actualKm),
-        };
-      })
-      .filter(
-        (row) =>
-          row.revenueCents > 0 || row.fuelCents > 0 || row.actualKm > 0 || row.serviceKm > 0,
-      );
-  },
-
-  async perContract(actor: Actor, filter: AnalyticsFilter): Promise<ContractAnalyticsRow[]> {
-    assertAdmin(actor);
-
-    const [routes, services, dailyKm, config] = await Promise.all([
-      analyticsRepository.routes(),
-      analyticsRepository.services(),
-      analyticsRepository.dailyKmLogs(),
-      configRepository.get(),
-    ]);
-
-    const s = services.filter((row) => dateInFilter(row.serviceDate, filter));
-    const km = dailyKm.filter((row) => dateInFilter(row.date, filter));
-
-    return routes
-      .map((route) => {
-        const rs = s.filter((row) => row.routeId === route.id);
-        const rkm = km.filter((row) => row.routeId === route.id);
-
-        const revenueCents = sum(rs.map(baseOf));
-        const serviceKm = sum(rs.map((row) => row.serviceKm));
-        const actualKm = sum(rkm.map((row) => row.actualKm));
-        const estimated = estimatedFuelCents(
-          serviceKm,
-          config.defaultConsumptionMlPer100Km,
-          config.defaultFuelPriceCentsPerLiter,
-        );
-
-        return {
-          routeId: route.id,
-          code: route.code,
-          name: route.name,
-          clientName: route.clientName,
-          serviceCount: rs.length,
-          revenueCents,
-          serviceKm,
-          revenuePerServiceKmCents: costPerKmCents(revenueCents, serviceKm),
-          efficiencyRatio: actualKm > 0 ? efficiencyRatio(serviceKm, actualKm) : null,
-          estimatedFuelCents: estimated,
-          marginCents: marginCents(revenueCents, [estimated]),
-        };
-      })
-      .filter((row) => row.serviceCount > 0 || row.revenueCents > 0);
-  },
-
-  async perDriver(actor: Actor, filter: AnalyticsFilter): Promise<DriverAnalyticsRow[]> {
-    assertAdmin(actor);
-
-    const [drivers, services, dailyKm] = await Promise.all([
-      analyticsRepository.drivers(),
-      analyticsRepository.services(),
-      analyticsRepository.dailyKmLogs(),
-    ]);
-
-    const s = services.filter((row) => dateInFilter(row.serviceDate, filter));
-    const km = dailyKm.filter((row) => dateInFilter(row.date, filter));
-
-    return drivers
-      .map((driver) => {
-        const ds = s.filter((row) => row.driverId === driver.id);
-        const dkm = km.filter((row) => row.driverId === driver.id);
-
-        const serviceKm = sum(ds.map((row) => row.serviceKm));
-        const actualKm = sum(dkm.map((row) => row.actualKm));
-        const revenueCents = sum(ds.map(baseOf));
-        // Days worked: distinct daily-km dates if logged, else distinct
-        // service dates — the sheet's "días trabajados" from whichever record
-        // the fleet actually keeps.
-        const daysFromKm = new Set(dkm.map((row) => row.date.getTime())).size;
-        const daysFromServices = new Set(ds.map((row) => row.serviceDate.getTime())).size;
-        const daysWorked = daysFromKm > 0 ? daysFromKm : daysFromServices;
-        const perKmBasis = actualKm > 0 ? actualKm : serviceKm;
-
-        return {
-          driverId: driver.id,
-          name: driver.name,
-          serviceCount: ds.length,
-          daysWorked,
-          actualKm,
-          serviceKm,
-          revenueCents,
-          revenuePerActualKmCents: costPerKmCents(revenueCents, perKmBasis),
-          averageTicketCents: averageTicketCents(revenueCents, ds.length),
-        };
-      })
-      .filter((row) => row.serviceCount > 0 || row.actualKm > 0);
-  },
-
   /**
-   * "Recovery = accumulated vehicle profit vs. total investment"
-   * (roadmap §2, `07_Inversiones`). All-time by design — a recovery figure
-   * for one month is meaningless. Attributed profit is
-   * `revenue − fuel − operating expense` for the vehicle, the same basis as
-   * `perVehicle`'s margin, accumulated over every record.
+   * "Recovery = accumulated vehicle profit vs. total investment" (roadmap §2,
+   * `07_Inversiones`) — moved to the Inversiones page (client decision
+   * 2026-09-13; the Análisis page no longer shows per-vehicle/contract/driver
+   * breakdowns at all). All-time by design — a recovery figure for one month
+   * is meaningless. Attributed profit is `revenue − fuel − operating expense`
+   * for the vehicle, accumulated over every record.
    */
   async investmentRecovery(actor: Actor): Promise<VehicleRecoveryRow[]> {
     assertAdmin(actor);
@@ -448,7 +347,9 @@ export const analyticsService = {
         const vi = received.filter((row) => row.vehicleId === vehicle.id);
 
         const revenueCents = sum(vs.map(baseOf));
-        const fuelCents = sum(vr.map((row) => row.totalCents));
+        // "Base imponible" only - VAT is not a real cost (client decision
+        // 2026-09-13), same fix as `overview`/`monthlyMargin`.
+        const fuelCents = sum(vr.map((row) => row.baseCents));
         const operatingExpenseCents = sum(vi.map(operatingExpenseOf));
         const investmentCents = sum(
           vi.filter((row) => row.expenseType === INVESTMENT).map((row) => row.totalCents),

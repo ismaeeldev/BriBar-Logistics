@@ -18,7 +18,6 @@
  */
 import type { PrismaClientLike } from '@/lib/db/prisma';
 import { prisma } from '@/lib/db/prisma';
-import { Role } from '@/modules/services/domain/service-status';
 
 export interface AnalyticsServiceRow {
   serviceDate: Date;
@@ -36,7 +35,14 @@ export interface AnalyticsRefuellingRow {
   refuelDate: Date;
   vehicleId: string;
   driverId: string;
+  /** Whole km. Used to derive the distance since this vehicle's previous
+   * refuel (`kmSinceLast`), the same odometer-delta method the single-refuel
+   * detail view already uses. */
+  odometerKm: number;
   litersMl: number;
+  /** EUR cents, tax-inclusive - what was actually paid at the pump. Only used
+   * for the average pump price (`averageFuelPriceCentsPerLiter`); every cost
+   * aggregate uses `baseCents` instead (client decision 2026-09-13). */
   totalCents: number;
   baseCents: number;
 }
@@ -70,19 +76,6 @@ export interface AnalyticsVehicle {
   referenceName: string | null;
 }
 
-export interface AnalyticsRoute {
-  id: string;
-  code: string;
-  name: string;
-  clientId: string | null;
-  clientName: string | null;
-}
-
-export interface AnalyticsDriver {
-  id: string;
-  name: string;
-}
-
 export const analyticsRepository = {
   async services(client: PrismaClientLike = prisma): Promise<AnalyticsServiceRow[]> {
     return client.service.findMany({
@@ -105,6 +98,7 @@ export const analyticsRepository = {
         refuelDate: true,
         vehicleId: true,
         driverId: true,
+        odometerKm: true,
         litersMl: true,
         totalCents: true,
         baseCents: true,
@@ -159,35 +153,6 @@ export const analyticsRepository = {
     return client.vehicle.findMany({
       select: { id: true, registrationPlate: true, referenceName: true },
       orderBy: [{ isActive: 'desc' }, { registrationPlate: 'asc' }],
-    });
-  },
-
-  async routes(client: PrismaClientLike = prisma): Promise<AnalyticsRoute[]> {
-    const rows = await client.route.findMany({
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        clientId: true,
-        client: { select: { name: true } },
-      },
-      orderBy: [{ isActive: 'desc' }, { code: 'asc' }],
-    });
-
-    return rows.map((row) => ({
-      id: row.id,
-      code: row.code,
-      name: row.name,
-      clientId: row.clientId,
-      clientName: row.client?.name ?? null,
-    }));
-  },
-
-  async drivers(client: PrismaClientLike = prisma): Promise<AnalyticsDriver[]> {
-    return client.user.findMany({
-      where: { role: Role.DRIVER },
-      select: { id: true, name: true },
-      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
     });
   },
 } as const;

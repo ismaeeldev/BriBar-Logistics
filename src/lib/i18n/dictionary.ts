@@ -19,6 +19,7 @@ export interface Dictionary {
     serviceCode: string;
     serviceDate: string;
     driver: string;
+    secondaryDriver: string;
     vehicle: string;
     route: string;
     origin: string;
@@ -135,6 +136,8 @@ export interface Dictionary {
     INVOICE_STATE: string;
     /** ERP roadmap Phase 5. */
     MAINTENANCE_TYPE: string;
+    /** How a client pays an issued invoice, distinct from `PAYMENT_METHOD`. */
+    CLIENT_PAYMENT_METHOD: string;
   };
 
   MILEAGE_VIOLATION_MESSAGES: Record<string, (label: string) => string>;
@@ -191,10 +194,12 @@ export interface Dictionary {
     invalidFilters: string;
     serviceApprovedDuringEdit: string;
     serviceLocked: string;
-    noDefaultRoute: string;
     noDefaultVehicle: string;
     noActiveVehicles: string;
+    noActiveRoutes: string;
     routeNotAssigned: string;
+    secondaryDriverSameAsDriver: string;
+    secondaryDriverInvalid: string;
     routeInactive: string;
     vehicleInactive: string;
     driverInactive: string;
@@ -391,6 +396,8 @@ export interface Dictionary {
       notesSection: string;
       driverNotesSection: string;
       onlyOneRoute: string;
+      noAssignedRoutesHint: string;
+      noSecondaryDriver: string;
       configurationRequired: string;
       submitted: string;
       submittedHint: string;
@@ -695,6 +702,13 @@ export interface Dictionary {
         invoiceCountColumn: string;
         noInvestments: string;
         noInvestmentsHint: string;
+        recoveryTitle: string;
+        recoveryHint: string;
+        investmentColumn: string;
+        profitColumn: string;
+        recoveryColumn: string;
+        outstandingColumn: string;
+        recovered: string;
       };
 
       /** The issued-invoices module (ERP roadmap Phase 4). */
@@ -798,6 +812,8 @@ export interface Dictionary {
         periodLabel: string;
         allYears: string;
         allMonths: string;
+        /** "Todos" (client decision 2026-09-13). */
+        allVehicles: string;
         apply: string;
         /** Headline KPI card labels. */
         revenue: string;
@@ -812,45 +828,17 @@ export interface Dictionary {
         /** Section headings. */
         marginTrendTitle: string;
         marginTrendHint: string;
-        perVehicleTitle: string;
-        perContractTitle: string;
-        perDriverTitle: string;
-        recoveryTitle: string;
-        recoveryHint: string;
         simulatorTitle: string;
         simulatorHint: string;
         noData: string;
         noDataHint: string;
-        /** Column headers shared across the tables. */
-        vehicleColumn: string;
-        contractColumn: string;
-        driverColumn: string;
-        clientColumn: string;
-        servicesColumn: string;
-        daysWorkedColumn: string;
         actualKmColumn: string;
-        serviceKmColumn: string;
-        emptyKmColumn: string;
-        revenuePerKmColumn: string;
-        efficiencyColumn: string;
-        estimatedFuelColumn: string;
-        fuelPerKmColumn: string;
-        avgTicketColumn: string;
-        investmentColumn: string;
-        profitColumn: string;
-        recoveryColumn: string;
-        outstandingColumn: string;
-        recovered: string;
-        /** Scenario simulator field labels and outputs. */
+        /** Scenario simulator field labels and output (matched to the
+         * client's own spreadsheet, client decision 2026-09-13). */
         simRevenue: string;
+        simEmptyKm: string;
         simServiceKm: string;
-        simConsumption: string;
-        simFuelPrice: string;
-        simPersonnel: string;
-        simOtherCosts: string;
-        simFuelCost: string;
-        simMargin: string;
-        simMarginRatio: string;
+        simEmptyKmFuelCost: string;
         simReset: string;
       };
     };

@@ -183,6 +183,12 @@ export default async function ServiceDetailPage({
                 }
               />
               <DetailRow label={FIELD_LABELS.driver} value={service.driver.name} />
+              {service.secondaryDriver ? (
+                <DetailRow
+                  label={FIELD_LABELS.secondaryDriver}
+                  value={service.secondaryDriver.name}
+                />
+              ) : null}
             </dl>
           </CardBody>
         </Card>

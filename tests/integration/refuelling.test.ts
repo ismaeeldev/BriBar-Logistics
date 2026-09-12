@@ -15,9 +15,20 @@ import { refuellingService } from '@/modules/refuelling/service/refuelling.servi
 import { prisma, seedFixture, type Fixture } from './helpers';
 
 let fixture: Fixture;
+let fuelTypeId: string;
+let gasStationId: string;
+let paymentMethodId: string;
 
 beforeEach(async () => {
   fixture = await seedFixture();
+  const [fuelType, gasStation, paymentMethod] = await Promise.all([
+    lookupService.create(fixture.admin, 'FUEL_TYPE', { name: 'Diésel', isActive: true }),
+    lookupService.create(fixture.admin, 'GAS_STATION', { name: 'Repsol', isActive: true }),
+    lookupService.create(fixture.admin, 'PAYMENT_METHOD', { name: 'Tarjeta', isActive: true }),
+  ]);
+  fuelTypeId = fuelType.id;
+  gasStationId = gasStation.id;
+  paymentMethodId = paymentMethod.id;
 });
 
 async function expectAppError(promise: Promise<unknown>, code: string): Promise<AppError> {
@@ -40,6 +51,9 @@ function refuellingBody(fixture: Fixture, overrides: Record<string, unknown> = {
     liters: 45_000,
     total: 7_200, // €72.00
     vatRate: 'STANDARD' as const,
+    fuelTypeId,
+    gasStationId,
+    paymentMethodId,
     ...overrides,
   };
 }
@@ -101,31 +115,20 @@ describe('creating a refuelling (ERP roadmap Phase 2)', () => {
     );
   });
 
-  it('accepts an optional fuel type/gas station/payment method of the right kind', async () => {
-    const fuelType = await lookupService.create(fixture.admin, 'FUEL_TYPE', {
-      name: 'Diésel',
-      isActive: true,
-    });
+  it('accepts a fuel type/gas station/payment method of the right kind', async () => {
+    const created = await refuellingService.create(fixture.admin, refuellingBody(fixture));
 
-    const created = await refuellingService.create(
-      fixture.admin,
-      refuellingBody(fixture, { fuelTypeId: fuelType.id }),
-    );
-
-    expect(created.fuelTypeId).toBe(fuelType.id);
+    expect(created.fuelTypeId).toBe(fuelTypeId);
+    expect(created.gasStationId).toBe(gasStationId);
+    expect(created.paymentMethodId).toBe(paymentMethodId);
   });
 
   it('rejects a lookup id from the wrong kind', async () => {
-    const paymentMethod = await lookupService.create(fixture.admin, 'PAYMENT_METHOD', {
-      name: 'Tarjeta',
-      isActive: true,
-    });
-
     await expectAppError(
       refuellingService.create(
         fixture.admin,
         // A payment method's id, offered as the fuel type.
-        refuellingBody(fixture, { fuelTypeId: paymentMethod.id }),
+        refuellingBody(fixture, { fuelTypeId: paymentMethodId }),
       ),
       'BUSINESS_RULE_VIOLATION',
     );

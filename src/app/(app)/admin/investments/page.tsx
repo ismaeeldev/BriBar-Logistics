@@ -2,24 +2,37 @@
  * Investment summary (ERP roadmap Phase 3, `07_Inversiones`, `/admin/investments`).
  *
  * A live aggregate, not a stored table — see `receivedInvoiceService
- * .investmentSummary`'s doc comment and ADR 0014 for why, and for what this
- * page deliberately does not attempt (payback/recovery against accumulated
- * profit, which needs Phase 6's analytics layer).
+ * .investmentSummary`'s doc comment and ADR 0014 for why.
+ *
+ * The recovery section below it (client decision 2026-09-13, moved off
+ * `/admin/analytics`) is computed by `analyticsService.investmentRecovery`
+ * instead — payback against accumulated profit needs revenue and every other
+ * cost source aggregated, which only the analytics layer does (ADR 0014's own
+ * deferral).
  */
 import { PiggyBank } from 'lucide-react';
 
-import { EmptyState, PageHeader } from '@/components/ui/primitives';
+import { EmptyState, PageHeader, Card, CardBody, CardHeader, CardTitle } from '@/components/ui/primitives';
 import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { FIELD_LABELS, NUMBER_LOCALE, UI } from '@/lib/i18n/messages';
 import { formatEuros } from '@/lib/money/money';
 import { receivedInvoiceService } from '@/modules/received-invoices/service/received-invoice.service';
+import { analyticsService } from '@/modules/analytics/service/analytics.service';
+import { cn } from '@/lib/utils/cn';
 
 export const metadata = { title: UI.admin.investments.title };
 
+function pct(ratio: number | null): string {
+  return ratio === null ? '—' : `${(ratio * 100).toFixed(1)}%`;
+}
+
 export default async function AdminInvestmentsPage() {
   const actor = await requireAdmin();
-  const rows = await receivedInvoiceService.investmentSummary(actor);
+  const [rows, recovery] = await Promise.all([
+    receivedInvoiceService.investmentSummary(actor),
+    analyticsService.investmentRecovery(actor),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -85,6 +98,59 @@ export default async function AdminInvestmentsPage() {
           </table>
         </div>
       )}
+
+      {/* "Recuperación de la inversión" - moved here from Análisis (client
+          decision 2026-09-13), next to the totals it is computed against. */}
+      {recovery.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <PiggyBank className="size-5 text-emerald-600" />
+              {UI.admin.investments.recoveryTitle}
+            </CardTitle>
+            <p className="text-muted-foreground text-xs">{UI.admin.investments.recoveryHint}</p>
+          </CardHeader>
+          <CardBody className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b">
+                  <Th>{UI.admin.investments.vehicleColumn}</Th>
+                  <Th>{UI.admin.investments.investmentColumn}</Th>
+                  <Th>{UI.admin.investments.profitColumn}</Th>
+                  <Th>{UI.admin.investments.recoveryColumn}</Th>
+                  <Th>{UI.admin.investments.outstandingColumn}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {recovery.map((row) => (
+                  <tr key={row.vehicleId} className="border-b last:border-0">
+                    <Td className="py-2.5 font-semibold uppercase">{row.plate}</Td>
+                    <Td className="py-2.5">{formatEuros(row.investmentCents, NUMBER_LOCALE)}</Td>
+                    <Td
+                      className={cn(
+                        'py-2.5',
+                        row.cumulativeProfitCents >= 0 ? '' : 'text-destructive',
+                      )}
+                    >
+                      {formatEuros(row.cumulativeProfitCents, NUMBER_LOCALE)}
+                    </Td>
+                    <Td className="py-2.5">
+                      {row.recovered ? (
+                        <span className="font-semibold text-emerald-600">
+                          {UI.admin.investments.recovered}
+                        </span>
+                      ) : (
+                        pct(row.recoveryRatio)
+                      )}
+                    </Td>
+                    <Td className="py-2.5">{formatEuros(row.outstandingCents, NUMBER_LOCALE)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardBody>
+        </Card>
+      ) : null}
     </div>
   );
 }

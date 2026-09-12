@@ -54,6 +54,7 @@ const ORDERED_KM_FIELDS = [
 export interface ServiceFormValues {
   vehicleId: string;
   routeId: string;
+  secondaryDriverId: string;
   origin: string;
   destination: string;
   startDashboardKm: string;
@@ -234,6 +235,31 @@ export function ServiceForm({
             // SRS 9.5: the Driver field always reflects the authenticated user
             // and cannot be switched. It is not an input at all.
           />
+
+          {/* "Conductor adicional" (client decision 2026-09-13): free choice
+              among every other active driver, unlike the primary driver above. */}
+          <Field
+            label={FIELD_LABELS.secondaryDriver}
+            optional
+            errors={fieldErrors?.['secondaryDriverId']}
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="secondaryDriverId"
+                defaultValue={
+                  echoed?.['secondaryDriverId'] ?? initialValues?.secondaryDriverId ?? ''
+                }
+              >
+                <option value="">{UI.service.noSecondaryDriver}</option>
+                {context.coDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
         </CardBody>
       </Card>
 
@@ -245,7 +271,12 @@ export function ServiceForm({
           <CardTitle>{UI.service.routeSection}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
-          <Field label={FIELD_LABELS.route} required errors={fieldErrors?.['routeId']}>
+          <Field
+            label={FIELD_LABELS.route}
+            required
+            errors={fieldErrors?.['routeId']}
+            {...(context.hasAssignedRoutes ? {} : { hint: UI.service.noAssignedRoutesHint })}
+          >
             {(props) => (
               <Select
                 {...props}

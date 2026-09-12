@@ -93,7 +93,9 @@ enum AuditEntityType {
 enum LookupKind {
   /// `99_Listas` fuel types (diésel, adBlue, ...).
   FUEL_TYPE
-  /// `99_Listas` payment methods/forms (transferencia, tarjeta, ...).
+  /// `99_Listas` "Método de pago" - how the company pays a supplier
+  /// (refuellings, received invoices), e.g. transferencia, tarjeta. See
+  /// `CLIENT_PAYMENT_METHOD` for the client-facing counterpart.
   PAYMENT_METHOD
   /// `99_Listas` supplement types for a service surcharge (espera, festivo,
   /// nocturno, ...) - the list a future `Service.supplementType` will pick
@@ -114,6 +116,12 @@ enum LookupKind {
   /// `99_Listas` maintenance types (cambio de aceite, ITV, revisión, ...) -
   /// ERP roadmap Phase 5.
   MAINTENANCE_TYPE
+  /// `99_Listas` "Forma de pago" - how a *client* pays an issued invoice
+  /// (facturas emitidas). Deliberately separate from `PAYMENT_METHOD`, which
+  /// is how the company itself pays a supplier (refuellings, received
+  /// invoices) - the two lists were getting the same options entered into
+  /// whichever the admin found first (client decision 2026-09-13).
+  CLIENT_PAYMENT_METHOD
 
   @@map("lookup_kind")
 }
@@ -198,18 +206,20 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  defaultVehicle   Vehicle?               @relation("UserDefaultVehicle", fields: [defaultVehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  services         Service[]              @relation("ServiceDriver")
-  approvedServices Service[]              @relation("ServiceApprover")
-  routeAssignments DriverRoute[]
-  statusChanges    ServiceStatusHistory[]
-  auditEntries     AuditLog[]
-  notifications    Notification[]
+  defaultVehicle      Vehicle?               @relation("UserDefaultVehicle", fields: [defaultVehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  services            Service[]              @relation("ServiceDriver")
+  /// "Conductor adicional" services this user rode along on, not owns.
+  secondaryOnServices Service[]              @relation("ServiceSecondaryDriver")
+  approvedServices    Service[]              @relation("ServiceApprover")
+  routeAssignments    DriverRoute[]
+  statusChanges       ServiceStatusHistory[]
+  auditEntries        AuditLog[]
+  notifications       Notification[]
   /// ERP roadmap Phase 2: the driver a refuelling record was filed for.
-  refuellings      Refuelling[]           @relation("RefuellingDriver")
+  refuellings         Refuelling[]           @relation("RefuellingDriver")
   /// ERP roadmap Phase 5.
-  dailyKmLogs      DailyKmLog[]           @relation("DailyKmLogDriver")
-  personnelCosts   PersonnelCost[]        @relation("PersonnelCostUser")
+  dailyKmLogs         DailyKmLog[]           @relation("DailyKmLogDriver")
+  personnelCosts      PersonnelCost[]        @relation("PersonnelCostUser")
 
   /// Backs the admin user list and every "active drivers" picker.
   @@index([role, isActive], map: "users_role_is_active_idx")
@@ -347,9 +357,9 @@ model Client {
 /// name and tax id are the same two facts whichever side of the transaction
 /// they are on.
 model Supplier {
-  id     String  @id @default(uuid(7)) @db.Uuid
-  name   String  @db.VarChar(160)
-  taxId  String? @map("tax_id") @db.VarChar(32)
+  id    String  @id @default(uuid(7)) @db.Uuid
+  name  String  @db.VarChar(160)
+  taxId String? @map("tax_id") @db.VarChar(32)
 
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -408,17 +418,17 @@ model LookupItem {
   // (see the doc comment on `LookupKind` and ADR 0012's note on the same
   // trade-off). A row's `kind` still tells a reader which of the three a
   // given `LookupItem` is allowed to be referenced as.
-  refuellingsAsFuelType      Refuelling[] @relation("RefuellingFuelType")
-  refuellingsAsGasStation    Refuelling[] @relation("RefuellingGasStation")
-  refuellingsAsPaymentMethod Refuelling[] @relation("RefuellingPaymentMethod")
+  refuellingsAsFuelType           Refuelling[]        @relation("RefuellingFuelType")
+  refuellingsAsGasStation         Refuelling[]        @relation("RefuellingGasStation")
+  refuellingsAsPaymentMethod      Refuelling[]        @relation("RefuellingPaymentMethod")
   // ERP roadmap Phase 3 - same polymorphic-reference trade-off as above.
-  receivedInvoicesAsState          ReceivedInvoice[] @relation("ReceivedInvoiceState")
-  receivedInvoicesAsPaymentMethod  ReceivedInvoice[] @relation("ReceivedInvoicePaymentMethod")
+  receivedInvoicesAsState         ReceivedInvoice[]   @relation("ReceivedInvoiceState")
+  receivedInvoicesAsPaymentMethod ReceivedInvoice[]   @relation("ReceivedInvoicePaymentMethod")
   // ERP roadmap Phase 4 - same trade-off again.
-  servicesAsSupplementType   Service[]        @relation("ServiceSupplementType")
-  issuedInvoicesAsState      IssuedInvoice[]  @relation("IssuedInvoiceState")
+  servicesAsSupplementType        Service[]           @relation("ServiceSupplementType")
+  issuedInvoicesAsState           IssuedInvoice[]     @relation("IssuedInvoiceState")
   // ERP roadmap Phase 5.
-  maintenanceRecordsAsType   MaintenanceRecord[] @relation("MaintenanceRecordType")
+  maintenanceRecordsAsType        MaintenanceRecord[] @relation("MaintenanceRecordType")
 
   @@unique([kind, name], map: "lookup_items_kind_name_key")
   @@index([kind, isActive], map: "lookup_items_kind_is_active_idx")
@@ -520,16 +530,16 @@ model Refuelling {
   /// EUR cents, tax-inclusive - what was actually paid at the pump.
   totalCents Int @map("total_cents")
 
-  vatRate VatRate @map("vat_rate")
+  vatRate   VatRate @map("vat_rate")
   /// `baseFromGross(totalCents, vatRate)` - the spreadsheet's own
   /// `Base = Total/1.21` formula, generalised to all five rates.
-  baseCents Int @map("base_cents")
+  baseCents Int     @map("base_cents")
   /// Always `totalCents - baseCents`, not a second independent VAT
   /// calculation - see `refuelling.service.ts` for why computing it that way,
   /// rather than via `applyVat(baseCents, vatRate).vatCents`, is what makes
   /// `refuellings_base_vat_sum` unconditionally true rather than off by a
   /// cent on a compounding-rounding input.
-  vatCents Int @map("vat_cents")
+  vatCents  Int     @map("vat_cents")
 
   /// The three optional categorisations (`99_Listas`). Nullable: the
   /// financial facts above are what matters most on a first pass, and these
@@ -602,11 +612,11 @@ model ReceivedInvoice {
   /// EUR cents, tax-exclusive - the "Base imponible" printed on the invoice.
   baseCents Int @map("base_cents")
 
-  vatRate VatRate @map("vat_rate")
+  vatRate    VatRate @map("vat_rate")
   /// `applyVat(baseCents, vatRate).vatCents` - see the model doc comment.
-  vatCents Int @map("vat_cents")
+  vatCents   Int     @map("vat_cents")
   /// Always `baseCents + vatCents`.
-  totalCents Int @map("total_cents")
+  totalCents Int     @map("total_cents")
 
   stateId         String? @map("state_id") @db.Uuid
   paymentMethodId String? @map("payment_method_id") @db.Uuid
@@ -665,10 +675,10 @@ model IssuedInvoice {
   /// actually billed.
   baseCents Int @map("base_cents")
 
-  vatRate VatRate @map("vat_rate")
+  vatRate    VatRate @map("vat_rate")
   /// `applyVat(baseCents, vatRate).vatCents`.
-  vatCents Int @map("vat_cents")
-  totalCents Int @map("total_cents")
+  vatCents   Int     @map("vat_cents")
+  totalCents Int     @map("total_cents")
 
   stateId String? @map("state_id") @db.Uuid
   notes   String? @db.Text
@@ -760,18 +770,18 @@ model PersonnelCost {
   month  Int
 
   /// EUR cents. "real" - the base amount paid this month.
-  baseCents Int @map("base_cents")
+  baseCents       Int  @map("base_cents")
   /// "h. extra".
-  overtimeCents Int? @map("overtime_cents")
+  overtimeCents   Int? @map("overtime_cents")
   /// "dietas".
   allowancesCents Int? @map("allowances_cents")
   /// "otros".
-  otherCents Int? @map("other_cents")
+  otherCents      Int? @map("other_cents")
   /// `baseCents + COALESCE(overtimeCents,0) + COALESCE(allowancesCents,0) +
   /// COALESCE(otherCents,0)` - stored and CHECK-enforced
   /// (`personnel_costs_total_formula`), plain addition with no rounding
   /// ambiguity, unlike `dailyFixedCostCents` above.
-  totalCents Int @map("total_cents")
+  totalCents      Int  @map("total_cents")
 
   notes String? @db.Text
 
@@ -860,6 +870,13 @@ model Service {
   vehicleId String @map("vehicle_id") @db.Uuid
   routeId   String @map("route_id") @db.Uuid
 
+  /// "Conductor adicional" (roadmap): a second driver riding along on this
+  /// service. Free choice among active drivers, no assignment restriction -
+  /// unlike `driverId` this is not who the service belongs to (ownership,
+  /// history and billing all stay keyed on `driverId` alone), just a record
+  /// of who else was there. Nullable: most services have no co-driver.
+  secondaryDriverId String? @map("secondary_driver_id") @db.Uuid
+
   /// SRS 14.5. Origin/destination as they stood when this service was written.
   /// Editing the route master later must not rewrite history.
   originSnapshot      String @map("origin_snapshot") @db.VarChar(160)
@@ -879,8 +896,8 @@ model Service {
   /// because `IssuedInvoice`'s "Base imponible = Σ service base" is this
   /// field's first real consumer; `LookupKind.SUPPLEMENT_TYPE` (Phase 1) was
   /// added in anticipation of exactly this.
-  supplementCents   Int?    @map("supplement_cents")
-  supplementTypeId  String? @map("supplement_type_id") @db.Uuid
+  supplementCents  Int?    @map("supplement_cents")
+  supplementTypeId String? @map("supplement_type_id") @db.Uuid
 
   /// `rateCents + COALESCE(supplementCents, 0)` - "Base imponible" (roadmap:
   /// "rate + supplement"). Stored and CHECK-enforced
@@ -939,12 +956,13 @@ model Service {
   approvedAt       DateTime? @map("approved_at") @db.Timestamptz(3)
   approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
 
-  driver         User           @relation("ServiceDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  approvedBy     User?          @relation("ServiceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vehicle        Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  route          Route          @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  supplementType LookupItem?    @relation("ServiceSupplementType", fields: [supplementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  issuedInvoice  IssuedInvoice? @relation(fields: [issuedInvoiceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  driver          User           @relation("ServiceDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  secondaryDriver User?          @relation("ServiceSecondaryDriver", fields: [secondaryDriverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  approvedBy      User?          @relation("ServiceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  route           Route          @relation(fields: [routeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  supplementType  LookupItem?    @relation("ServiceSupplementType", fields: [supplementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  issuedInvoice   IssuedInvoice? @relation(fields: [issuedInvoiceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   statusHistory ServiceStatusHistory[]
   notifications Notification[]
@@ -1046,7 +1064,7 @@ enum NotificationType {
 model Notification {
   id String @id @default(uuid(7)) @db.Uuid
 
-  recipientUserId String            @map("recipient_user_id") @db.Uuid
+  recipientUserId String           @map("recipient_user_id") @db.Uuid
   type            NotificationType
 
   /// Null only if the referenced service is ever removed - the notification
@@ -1059,7 +1077,7 @@ model Notification {
   readAt    DateTime? @map("read_at") @db.Timestamptz(3)
 
   recipient User     @relation(fields: [recipientUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  service   Service?  @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   // Backs the bell's own query: this recipient's unread notifications,
   // newest first.

@@ -71,11 +71,16 @@ async function seedService(
   });
 }
 
+function baseFromGross(totalCents: number): number {
+  return Math.round((totalCents * 100) / 121);
+}
+
 async function seedRefuelling(overrides: {
   refuelDate: string;
   vehicleId?: string;
   totalCents?: number;
   litersMl?: number;
+  odometerKm?: number;
   code?: string;
 }) {
   const totalCents = overrides.totalCents ?? 12_100;
@@ -85,12 +90,12 @@ async function seedRefuelling(overrides: {
       vehicleId: overrides.vehicleId ?? fixture.vehicleId,
       driverId: fixture.driver.userId,
       refuelDate: new Date(`${overrides.refuelDate}T00:00:00.000Z`),
-      odometerKm: 10_000,
+      odometerKm: overrides.odometerKm ?? 10_000,
       litersMl: overrides.litersMl ?? 50_000,
       totalCents,
       vatRate: 'STANDARD',
-      baseCents: Math.round((totalCents * 100) / 121),
-      vatCents: totalCents - Math.round((totalCents * 100) / 121),
+      baseCents: baseFromGross(totalCents),
+      vatCents: totalCents - baseFromGross(totalCents),
     },
   });
 }
@@ -130,7 +135,7 @@ async function seedReceivedInvoice(overrides: {
 }
 
 describe('analytics overview (ERP roadmap Phase 6)', () => {
-  it('sums revenue, fuel and operating expense into the operating margin', async () => {
+  it('sums revenue, fuel (base imponible, not VAT-inclusive) and operating expense into the operating margin', async () => {
     await seedService({ serviceDate: '2026-03-10', baseCents: 100_000, serviceKm: 200 });
     await seedRefuelling({ refuelDate: '2026-03-12', totalCents: 20_000 });
     await seedReceivedInvoice({
@@ -149,14 +154,88 @@ describe('analytics overview (ERP roadmap Phase 6)', () => {
     });
 
     const overview = await analyticsService.overview(fixture.admin, {});
+    const fuelBaseCents = baseFromGross(20_000);
 
     expect(overview.revenueCents).toBe(100_000);
-    expect(overview.fuelCents).toBe(20_000);
+    // Client decision 2026-09-13: fuel cost is "base imponible", not the
+    // VAT-inclusive total actually paid at the pump.
+    expect(overview.fuelCents).toBe(fuelBaseCents);
     expect(overview.operatingExpenseCents).toBe(10_000);
     expect(overview.personnelCents).toBe(30_000);
-    // 100_000 - 20_000 - 30_000 - 10_000
-    expect(overview.marginCents).toBe(40_000);
-    expect(overview.marginRatio).toBeCloseTo(0.4);
+    const expectedMargin = 100_000 - fuelBaseCents - 30_000 - 10_000;
+    expect(overview.marginCents).toBe(expectedMargin);
+    expect(overview.marginRatio).toBeCloseTo(expectedMargin / 100_000);
+  });
+
+  it('uses the VAT-inclusive total for the average pump price, unlike the fuel cost aggregate', async () => {
+    await seedRefuelling({
+      refuelDate: '2026-06-01',
+      totalCents: 12_100,
+      litersMl: 10_000,
+    });
+
+    const overview = await analyticsService.overview(fixture.admin, {});
+
+    // 121.00 EUR / 10 L = 12.10 EUR/L = 1210 cents/L, using the gross total.
+    expect(overview.avgFuelPriceCentsPerLiter).toBe(1_210);
+  });
+
+  it('scopes revenue, fuel and margin to one vehicle, and drops personnel cost from both (client decision 2026-09-13)', async () => {
+    await seedService({ serviceDate: '2026-03-10', vehicleId: fixture.vehicleId, baseCents: 80_000 });
+    await seedService({
+      serviceDate: '2026-03-11',
+      vehicleId: fixture.spareVehicleId,
+      baseCents: 20_000,
+      code: 'S-spare',
+    });
+    await seedRefuelling({ refuelDate: '2026-03-12', vehicleId: fixture.vehicleId, totalCents: 12_100 });
+    await prisma.personnelCost.create({
+      data: { userId: fixture.driver.userId, year: 2026, month: 3, baseCents: 30_000, totalCents: 30_000 },
+    });
+
+    const scoped = await analyticsService.overview(fixture.admin, { vehicleId: fixture.vehicleId });
+    const fuelBaseCents = baseFromGross(12_100);
+
+    expect(scoped.revenueCents).toBe(80_000);
+    expect(scoped.fuelCents).toBe(fuelBaseCents);
+    expect(scoped.personnelCents).toBe(0);
+    expect(scoped.marginCents).toBe(80_000 - fuelBaseCents);
+    expect(scoped.filter.vehicleId).toBe(fixture.vehicleId);
+  });
+
+  it('computes average consumption from the odometer distance since each refuel\'s previous fill, not a separate km log total', async () => {
+    // Outside the filtered period (March), but still needed as the baseline
+    // odometer reading the April fill's distance is measured from.
+    await seedRefuelling({
+      refuelDate: '2026-03-20',
+      odometerKm: 10_000,
+      litersMl: 40_000,
+      code: 'R-first',
+    });
+    // The only fill inside the filtered period: 200 km since the March fill
+    // (10_200 - 10_000), 30 L.
+    await seedRefuelling({
+      refuelDate: '2026-04-15',
+      odometerKm: 10_200,
+      litersMl: 30_000,
+      code: 'R-second',
+    });
+    // A daily-km log in the same period, deliberately different from the
+    // odometer delta above - it must not be what the ratio is based on.
+    await prisma.dailyKmLog.create({
+      data: {
+        vehicleId: fixture.vehicleId,
+        routeId: fixture.routeId,
+        driverId: fixture.driver.userId,
+        date: new Date('2026-04-10T00:00:00.000Z'),
+        actualKm: 999,
+      },
+    });
+
+    const overview = await analyticsService.overview(fixture.admin, { year: 2026, month: 4 });
+
+    // 30 L over 200 km -> 15 L/100km -> 15_000 mL/100km.
+    expect(overview.avgConsumptionMlPer100Km).toBe(15_000);
   });
 
   it('restricts to the requested year and month', async () => {
@@ -197,70 +276,6 @@ describe('analytics overview (ERP roadmap Phase 6)', () => {
   });
 });
 
-describe('per-vehicle analytics (ERP roadmap Phase 6)', () => {
-  it('attributes revenue, fuel and margin to each vehicle', async () => {
-    await seedService({ serviceDate: '2026-03-01', vehicleId: fixture.vehicleId, baseCents: 80_000 });
-    await seedService({
-      serviceDate: '2026-03-02',
-      vehicleId: fixture.spareVehicleId,
-      baseCents: 20_000,
-      code: 'S-b',
-    });
-    await seedRefuelling({ refuelDate: '2026-03-03', vehicleId: fixture.vehicleId, totalCents: 10_000 });
-
-    const rows = await analyticsService.perVehicle(fixture.admin, {});
-    const main = rows.find((row) => row.vehicleId === fixture.vehicleId);
-    const spare = rows.find((row) => row.vehicleId === fixture.spareVehicleId);
-
-    expect(main?.revenueCents).toBe(80_000);
-    expect(main?.fuelCents).toBe(10_000);
-    expect(main?.marginCents).toBe(70_000);
-    expect(spare?.revenueCents).toBe(20_000);
-    expect(spare?.fuelCents).toBe(0);
-  });
-});
-
-describe('per-contract analytics (ERP roadmap Phase 6)', () => {
-  it('groups by route and derives €/km and an estimated-fuel margin', async () => {
-    await seedService({
-      serviceDate: '2026-03-01',
-      routeId: fixture.routeId,
-      baseCents: 100_000,
-      serviceKm: 500,
-    });
-
-    const rows = await analyticsService.perContract(fixture.admin, {});
-    const row = rows.find((r) => r.routeId === fixture.routeId);
-
-    expect(row?.revenueCents).toBe(100_000);
-    expect(row?.serviceKm).toBe(500);
-    // 100_000 c over 500 km -> 200 c/km.
-    expect(row?.revenuePerServiceKmCents).toBe(200);
-    // Margin = revenue - estimated fuel; estimated fuel is positive, so margin < revenue.
-    expect(row?.marginCents).toBeLessThan(100_000);
-    expect(row?.estimatedFuelCents).toBeGreaterThan(0);
-  });
-});
-
-describe('per-driver analytics (ERP roadmap Phase 6)', () => {
-  it('counts services, distinct days and revenue per driver', async () => {
-    await seedService({ serviceDate: '2026-03-01', driverId: fixture.driver.userId, baseCents: 30_000 });
-    await seedService({
-      serviceDate: '2026-03-02',
-      driverId: fixture.driver.userId,
-      baseCents: 30_000,
-      code: 'S-2',
-    });
-
-    const rows = await analyticsService.perDriver(fixture.admin, {});
-    const row = rows.find((r) => r.driverId === fixture.driver.userId);
-
-    expect(row?.serviceCount).toBe(2);
-    expect(row?.daysWorked).toBe(2);
-    expect(row?.revenueCents).toBe(60_000);
-    expect(row?.averageTicketCents).toBe(30_000);
-  });
-});
 
 describe('investment recovery (ERP roadmap Phase 6)', () => {
   it('measures cumulative profit against a vehicle investment', async () => {
@@ -293,6 +308,22 @@ describe('investment recovery (ERP roadmap Phase 6)', () => {
 
     expect(rows.some((r) => r.vehicleId === fixture.vehicleId)).toBe(true);
   });
+
+  it('deducts fuel at base imponible, not the VAT-inclusive total, from cumulative profit', async () => {
+    await seedReceivedInvoice({
+      invoiceDate: '2026-01-01',
+      vehicleId: fixture.vehicleId,
+      totalCents: 100_000,
+      expenseType: 'INVESTMENT',
+    });
+    await seedService({ serviceDate: '2026-02-01', vehicleId: fixture.vehicleId, baseCents: 40_000 });
+    await seedRefuelling({ refuelDate: '2026-02-02', vehicleId: fixture.vehicleId, totalCents: 12_100 });
+
+    const rows = await analyticsService.investmentRecovery(fixture.admin);
+    const row = rows.find((r) => r.vehicleId === fixture.vehicleId);
+
+    expect(row?.cumulativeProfitCents).toBe(40_000 - baseFromGross(12_100));
+  });
 });
 
 describe('monthly margin trend (ERP roadmap Phase 6)', () => {
@@ -305,5 +336,14 @@ describe('monthly margin trend (ERP roadmap Phase 6)', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ year: 2026, month: 1 });
     expect(rows[1]).toMatchObject({ year: 2026, month: 2 });
+  });
+
+  it('uses base imponible, not the VAT-inclusive total, for fuel cost (client decision 2026-09-13)', async () => {
+    await seedRefuelling({ refuelDate: '2026-03-05', totalCents: 20_000 });
+
+    const rows = await analyticsService.monthlyMargin(fixture.admin);
+    const march = rows.find((r) => r.year === 2026 && r.month === 3);
+
+    expect(march?.fuelCents).toBe(baseFromGross(20_000));
   });
 });

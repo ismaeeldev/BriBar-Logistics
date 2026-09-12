@@ -42,6 +42,7 @@ import { ERRORS } from '@/lib/i18n/messages';
 import { currentBusinessDate } from '@/lib/time/business-date';
 import { timeOfDayToDate, type TimeOfDay } from '@/lib/time/time-of-day';
 import { notificationService } from '@/modules/notifications/service/notification.service';
+import { routeRepository } from '@/modules/routes/repository/route.repository';
 import { userRepository } from '@/modules/users/repository/user.repository';
 import { vehicleRepository } from '@/modules/vehicles/repository/vehicle.repository';
 import { toPrismaPagination, type Pagination } from '@/modules/shared/schemas/common';
@@ -87,6 +88,14 @@ export interface ServiceContext {
     isDefault: boolean;
   }[];
   defaultRouteId: string | null;
+  /**
+   * Whether `routes` came from this driver's own assignments or, absent any,
+   * from every active route as a free-choice fallback (client decision
+   * 2026-09-13). The form uses this to explain why nothing is preselected.
+   */
+  hasAssignedRoutes: boolean;
+  /** "Conductor adicional": every other active driver, for the free-pick co-driver field (client decision 2026-09-13). */
+  coDrivers: { id: string; name: string }[];
 }
 
 /**
@@ -144,15 +153,36 @@ async function resolveBody(
     throw businessRuleViolation(ERRORS.validationFailed);
   }
 
-  // SRS 14.3, 26.2: the route must be assigned to *this* driver and active.
-  // Checked against the database on every write, so submitting an unassigned
-  // route id by hand fails regardless of what the picker offered.
-  const routeAssignable = await userRepository.isRouteAssignable(driverId, body.routeId, tx);
-  if (!routeAssignable) throw businessRuleViolation(ERRORS.routeNotAssigned);
+  // SRS 14.3, 26.2: the route must be assigned to *this* driver and active -
+  // unless the driver has no assignments at all, in which case (client
+  // decision 2026-09-13) any active route is allowed, matching the free-pick
+  // fallback `getContext` offers the form.
+  const [routeAssignable, hasAnyAssignment] = await Promise.all([
+    userRepository.isRouteAssignable(driverId, body.routeId, tx),
+    userRepository.listAssignableRoutes(driverId, tx).then((rows) => rows.length > 0),
+  ]);
+  if (!routeAssignable) {
+    const routeSelectable = !hasAnyAssignment && (await routeRepository.isSelectable(body.routeId, tx));
+    if (!routeSelectable) throw businessRuleViolation(ERRORS.routeNotAssigned);
+  }
 
   // SRS 13.5: only an active vehicle may be chosen for a new service.
   const vehicleSelectable = await vehicleRepository.isSelectable(body.vehicleId, tx);
   if (!vehicleSelectable) throw businessRuleViolation(ERRORS.vehicleInactive);
+
+  // "Conductor adicional" (client decision 2026-09-13): any active driver
+  // other than the primary one, re-checked here the same way the primary
+  // driver and vehicle are - a submitted id is never trusted just because a
+  // picker offered it.
+  if (body.secondaryDriverId !== undefined) {
+    if (body.secondaryDriverId === driverId) {
+      throw businessRuleViolation(ERRORS.secondaryDriverSameAsDriver);
+    }
+    const secondaryDriver = await userRepository.findById(body.secondaryDriverId, tx);
+    if (!secondaryDriver || secondaryDriver.role !== Role.DRIVER || !secondaryDriver.isActive) {
+      throw businessRuleViolation(ERRORS.secondaryDriverInvalid);
+    }
+  }
 
   const route = await tx.route.findUniqueOrThrow({
     where: { id: body.routeId },
@@ -194,6 +224,10 @@ function toColumns(
   return {
     vehicleId: body.vehicleId,
     routeId: body.routeId,
+    // "Conductor adicional": this is a full-replacement body (see the schema
+    // comment on `updateServiceSchema`), so a blank picker on either create
+    // or edit means "no co-driver", not "leave whatever was there".
+    secondaryDriverId: body.secondaryDriverId ?? null,
     // SRS 14.5, 21.4: the snapshot is taken at write time, so a later edit to
     // the route master cannot rewrite this service's history.
     originSnapshot: resolved.origin,
@@ -236,13 +270,35 @@ export const serviceService = {
     if (!driver || driver.role !== Role.DRIVER) throw notFound();
     if (!driver.isActive) throw businessRuleViolation(ERRORS.driverInactive);
 
-    const [assignments, vehicles] = await Promise.all([
+    const [assignments, vehicles, activeDrivers] = await Promise.all([
       userRepository.listAssignableRoutes(driverId),
       vehicleRepository.list({ isActive: true }),
+      userRepository.list({ role: Role.DRIVER, isActive: true }),
     ]);
 
-    if (assignments.length === 0) throw configurationRequired(ERRORS.noDefaultRoute);
     if (vehicles.length === 0) throw configurationRequired(ERRORS.noActiveVehicles);
+
+    const hasAssignedRoutes = assignments.length > 0;
+
+    // Client decision 2026-09-13: a driver with no assigned routes is not
+    // blocked from creating a service — they may pick freely from every
+    // active route instead of waiting on an administrator (SRS 14.3 still
+    // governs the assigned case below unchanged).
+    const routes = hasAssignedRoutes
+      ? assignments.map((assignment) => ({
+          ...assignment.route,
+          isDefault: assignment.isDefault,
+        }))
+      : (await routeRepository.list({ isActive: true })).map((route) => ({
+          id: route.id,
+          code: route.code,
+          name: route.name,
+          origin: route.origin,
+          destination: route.destination,
+          isDefault: false,
+        }));
+
+    if (routes.length === 0) throw configurationRequired(ERRORS.noActiveRoutes);
 
     const defaultAssignment = assignments.find((assignment) => assignment.isDefault);
 
@@ -263,11 +319,14 @@ export const serviceService = {
         registrationPlate: vehicle.registrationPlate,
         referenceName: vehicle.referenceName,
       })),
-      routes: assignments.map((assignment) => ({
-        ...assignment.route,
-        isDefault: assignment.isDefault,
-      })),
+      routes,
       defaultRouteId: defaultAssignment?.route.id ?? null,
+      hasAssignedRoutes,
+      // "Conductor adicional" (client decision 2026-09-13): any other active
+      // driver, free choice, not just this driver's own assignments.
+      coDrivers: activeDrivers
+        .filter((candidate) => candidate.id !== driverId)
+        .map((candidate) => ({ id: candidate.id, name: candidate.name })),
     };
   },
 

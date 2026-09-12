@@ -185,6 +185,60 @@ describe('creating a service (SRS 9, 26.2)', () => {
 
     expect(service.endsNextDay).toBe(true);
   });
+
+  it('lets a driver with no assigned routes pick any active route freely (client decision 2026-09-13)', async () => {
+    await prisma.driverRoute.deleteMany({ where: { driverId: fixture.driver.userId } });
+
+    const service = await serviceService.create(
+      fixture.driver,
+      serviceBody(fixture, { routeId: fixture.unassignedRouteId }),
+    );
+
+    expect(service.routeId).toBe(fixture.unassignedRouteId);
+  });
+
+  it('still rejects an inactive route for a driver with no assignments', async () => {
+    await prisma.driverRoute.deleteMany({ where: { driverId: fixture.driver.userId } });
+
+    await expectAppError(
+      serviceService.create(
+        fixture.driver,
+        serviceBody(fixture, { routeId: fixture.inactiveRouteId }),
+      ),
+      'BUSINESS_RULE_VIOLATION',
+    );
+  });
+
+  describe('"Conductor adicional" (client decision 2026-09-13)', () => {
+    it('records a valid additional driver', async () => {
+      const service = await serviceService.create(
+        fixture.driver,
+        serviceBody(fixture, { secondaryDriverId: fixture.otherDriver.userId }),
+      );
+
+      expect(service.secondaryDriverId).toBe(fixture.otherDriver.userId);
+    });
+
+    it('rejects the same person as both drivers', async () => {
+      await expectAppError(
+        serviceService.create(
+          fixture.driver,
+          serviceBody(fixture, { secondaryDriverId: fixture.driver.userId }),
+        ),
+        'BUSINESS_RULE_VIOLATION',
+      );
+    });
+
+    it('rejects an administrator as the additional driver', async () => {
+      await expectAppError(
+        serviceService.create(
+          fixture.driver,
+          serviceBody(fixture, { secondaryDriverId: fixture.admin.userId }),
+        ),
+        'BUSINESS_RULE_VIOLATION',
+      );
+    });
+  });
 });
 
 describe('administrators filing on a driver behalf (client decision #7)', () => {
@@ -704,16 +758,30 @@ describe('the Add Service context (SRS 9.2, 18.3, 24.2)', () => {
     expect(offered).not.toContain(fixture.inactiveVehicleId);
   });
 
-  it('asks for configuration when the driver has no routes (SRS 24.2)', async () => {
+  it('offers every active route as a free choice when the driver has none assigned (client decision 2026-09-13)', async () => {
     await prisma.driverRoute.deleteMany({ where: { driverId: fixture.driver.userId } });
+
+    const context = await serviceService.getContext(fixture.driver);
+
+    expect(context.hasAssignedRoutes).toBe(false);
+    expect(context.defaultRouteId).toBeNull();
+    // Every active route in the system, not just this driver's own - the
+    // inactive route stays excluded the same way SRS 14.3 excludes it from an
+    // assigned picker.
+    expect(context.routes.map((route) => route.id).sort()).toEqual(
+      [fixture.routeId, fixture.otherRouteId, fixture.unassignedRouteId].sort(),
+    );
+  });
+
+  it('still asks for configuration when there are no active routes at all', async () => {
+    await prisma.driverRoute.deleteMany({ where: { driverId: fixture.driver.userId } });
+    await prisma.route.updateMany({ data: { isActive: false } });
 
     const error = await expectAppError(
       serviceService.getContext(fixture.driver),
       'CONFIGURATION_REQUIRED',
     );
 
-    // SRS 24.2 requires the message to say what an administrator must do, not
-    // merely that something is missing.
     expect(error.message).toMatch(/administrador/i);
   });
 

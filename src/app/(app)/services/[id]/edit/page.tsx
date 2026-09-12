@@ -70,6 +70,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
         initialValues={{
           vehicleId: service.vehicle.id,
           routeId: service.route.id,
+          secondaryDriverId: service.secondaryDriver?.id ?? '',
           origin: service.origin,
           destination: service.destination,
           startDashboardKm: String(service.startDashboardKm),
