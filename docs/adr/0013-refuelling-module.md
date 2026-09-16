@@ -67,17 +67,29 @@ of a wrong distance (`domain/consumption.ts`'s doc comment), so a backdated
 or mis-keyed entry shows as "not enough data" rather than reporting a
 plausible-looking wrong number.
 
-**A polymorphic reference, revalidated at the boundary.** `fuel_type_id`,
-`gas_station_id` and `payment_method_id` are three foreign keys into the same
-`lookup_items` table (ADR 0012's `LookupKind` design), and a foreign key
-alone cannot express "must be a `FUEL_TYPE`-kind row." `assertLookupKind` in
-`refuelling.service.ts` re-fetches the referenced row and checks its `kind`
-on every create and update, the same "service layer owns anything needing a
-query" principle (`docs/architecture.md`) that already governs
-`routeId`/`vehicleId` on a service. A legitimate request can never trip this
-— the admin form's three selects are each populated from one kind only — so
-it exists for the same reason `driverNotAllowed` exists on `Service`: a
-hand-crafted request, not a real user flow.
+**A polymorphic reference, revalidated at the boundary.** `fuel_type_id` and
+`gas_station_id` are foreign keys into the same `lookup_items` table (ADR
+0012's `LookupKind` design), and a foreign key alone cannot express "must be
+a `FUEL_TYPE`-kind row." `assertLookupKind` in `refuelling.service.ts`
+re-fetches the referenced row and checks its `kind` on every create and
+update, the same "service layer owns anything needing a query" principle
+(`docs/architecture.md`) that already governs `routeId`/`vehicleId` on a
+service. A legitimate request can never trip this — the admin form's selects
+are each populated from one kind only — so it exists for the same reason
+`driverNotAllowed` exists on `Service`: a hand-crafted request, not a real
+user flow.
+
+> **Update, 2026-09-17.** `payment_method_id` was a third such reference,
+> made mandatory on 2026-09-13 at the client's own request (see
+> `refuelling.schema.ts`'s former doc comment on `createRefuellingSchema`).
+> The
+> 2026-09-17 change-request document asks for it to be removed from this
+> module outright — not made optional, dropped: the column, the form field
+> and `assertLookupKind`'s third call are all gone
+> (`prisma/migrations/20260916213318_refuelling_drop_payment_method`).
+> `LookupKind.PAYMENT_METHOD` itself is untouched, because
+> `ReceivedInvoice.paymentMethodId` is a separate reference into the same
+> kind and was not part of this request.
 
 ## Consequences
 

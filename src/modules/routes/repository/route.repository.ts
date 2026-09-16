@@ -21,6 +21,8 @@ const ROUTE_SELECT = {
   defaultRateCents: true,
   // ERP roadmap Phase 4. Same admin-only reasoning as `defaultRateCents`.
   clientId: true,
+  // Client change request 2026-09-17. Same admin-only reasoning as `clientId`.
+  endClientId: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,

@@ -773,6 +773,7 @@ describe('received invoice constraints (ERP roadmap Phase 3)', () => {
       invoiceCode: String(Math.floor(Math.random() * 1e9)),
       supplierId,
       categoryId,
+      concept: 'Factura de prueba',
       invoiceDate: new Date('2026-09-02T00:00:00.000Z'),
       baseCents: 10_000,
       vatRate: 'STANDARD' as const,

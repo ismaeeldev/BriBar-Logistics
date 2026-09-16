@@ -10,6 +10,11 @@ import { ERRORS } from '@/lib/i18n/messages';
 import { logger } from '@/lib/logger';
 import { clientService } from '@/modules/clients/service/client.service';
 import { createClientSchema, updateClientSchema } from '@/modules/clients/schemas/client.schema';
+import { endClientService } from '@/modules/end-clients/service/end-client.service';
+import {
+  createEndClientSchema,
+  updateEndClientSchema,
+} from '@/modules/end-clients/schemas/end-client.schema';
 import { configService } from '@/modules/config/service/config.service';
 import { updateConfigSchema } from '@/modules/config/schemas/config.schema';
 import { lookupService } from '@/modules/lookup/service/lookup.service';
@@ -35,11 +40,7 @@ import {
   createReceivedInvoiceSchema,
   updateReceivedInvoiceSchema,
 } from '@/modules/received-invoices/schemas/received-invoice.schema';
-import { issuedInvoiceService } from '@/modules/issued-invoices/service/issued-invoice.service';
-import {
-  createIssuedInvoiceSchema,
-  updateIssuedInvoiceSchema,
-} from '@/modules/issued-invoices/schemas/issued-invoice.schema';
+
 import { createRouteSchema, updateRouteSchema } from '@/modules/routes/schemas/route.schema';
 import { routeService } from '@/modules/routes/service/route.service';
 import { dailyKmLogService } from '@/modules/daily-km/service/daily-km-log.service';
@@ -338,11 +339,76 @@ export async function updateClientAction(
   redirect('/admin/clients?updated=1');
 }
 
+export async function createEndClientAction(
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = createEndClientSchema.safeParse({
+      name: text(formData, 'name'),
+      taxId: text(formData, 'taxId'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await endClientService.create(actor, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'createEndClientAction', echo(formData));
+  }
+
+  revalidatePathSafely('/admin/end-clients');
+  redirect('/admin/end-clients?created=1');
+}
+
+export async function updateEndClientAction(
+  endClientId: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    const actor = await requireAdmin();
+
+    const parsed = updateEndClientSchema.safeParse({
+      name: text(formData, 'name'),
+      taxId: text(formData, 'taxId'),
+      isActive: checkbox(formData, 'isActive'),
+    });
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: ERRORS.validationFailed,
+        fieldErrors: toFieldErrors(parsed.error),
+        values: echo(formData),
+      };
+    }
+
+    await endClientService.update(actor, endClientId, parsed.data);
+  } catch (error) {
+    return toFormState(error, 'updateEndClientAction', echo(formData));
+  }
+
+  revalidatePathSafely('/admin/end-clients');
+  redirect('/admin/end-clients?updated=1');
+}
+
 // ---------------------------------------------------------------------------
 // Simple lookup lists (ERP roadmap Phase 1) — fuel types, payment methods,
-// supplement types, end clients. One action per verb, parameterised by
-// `kind`, rather than one per kind: the four lists are identical in shape, so
-// a fifth would be a new enum value and a route segment, not new code here.
+// supplement types. One action per verb, parameterised by `kind`, rather
+// than one per kind: the lists are identical in shape, so a new one is a new
+// enum value and a route segment, not new code here. End clients were
+// promoted out of this system to their own model (client change request
+// 2026-09-17, see `end-client.service.ts`) since a route now points at one.
 // ---------------------------------------------------------------------------
 
 export async function createLookupItemAction(
@@ -457,7 +523,6 @@ function refuellingFields(formData: FormData) {
     vatRate: text(formData, 'vatRate'),
     fuelTypeId: text(formData, 'fuelTypeId'),
     gasStationId: text(formData, 'gasStationId'),
-    paymentMethodId: text(formData, 'paymentMethodId'),
     notes: text(formData, 'notes'),
   };
 }
@@ -871,6 +936,7 @@ function receivedInvoiceFields(formData: FormData) {
   return {
     supplierId: text(formData, 'supplierId'),
     categoryId: text(formData, 'categoryId'),
+    concept: text(formData, 'concept'),
     vehicleId: text(formData, 'vehicleId'),
     invoiceDate: text(formData, 'invoiceDate'),
     base: text(formData, 'base'),
@@ -937,83 +1003,6 @@ export async function updateReceivedInvoiceAction(
   redirect(`/admin/received-invoices/${invoiceId}?updated=1`);
 }
 
-// ---------------------------------------------------------------------------
-// Issued invoices (ERP roadmap Phase 4)
-// ---------------------------------------------------------------------------
-
-export async function createIssuedInvoiceAction(
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  let createdId: string;
-  try {
-    const actor = await requireAdmin();
-
-    const parsed = createIssuedInvoiceSchema.safeParse({
-      clientId: text(formData, 'clientId'),
-      invoiceDate: text(formData, 'invoiceDate'),
-      vatRate: text(formData, 'vatRate'),
-      // A checkbox list, not a single field - every checked service submits
-      // its own `serviceIds` entry.
-      serviceIds: formData.getAll('serviceIds'),
-      stateId: text(formData, 'stateId'),
-      notes: text(formData, 'notes'),
-    });
-
-    if (!parsed.success) {
-      return {
-        status: 'error',
-        message: ERRORS.validationFailed,
-        fieldErrors: toFieldErrors(parsed.error),
-        values: echo(formData),
-      };
-    }
-
-    const created = await issuedInvoiceService.create(actor, parsed.data);
-    createdId = created.id;
-  } catch (error) {
-    return toFormState(error, 'createIssuedInvoiceAction', echo(formData));
-  }
-
-  // Every service the invoice grouped moves from "billable" to "billed", so
-  // the admin services list (which shows billing status) and the picker
-  // this action's own form reads from both need to see the change.
-  revalidatePathSafely('/admin/issued-invoices');
-  revalidatePathSafely('/admin/services');
-  redirect(`/admin/issued-invoices/${createdId}?created=1`);
-}
-
-export async function updateIssuedInvoiceAction(
-  invoiceId: string,
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  try {
-    const actor = await requireAdmin();
-
-    const parsed = updateIssuedInvoiceSchema.safeParse({
-      stateId: text(formData, 'stateId'),
-      notes: text(formData, 'notes'),
-    });
-
-    if (!parsed.success) {
-      return {
-        status: 'error',
-        message: ERRORS.validationFailed,
-        fieldErrors: toFieldErrors(parsed.error),
-        values: echo(formData),
-      };
-    }
-
-    await issuedInvoiceService.update(actor, invoiceId, parsed.data);
-  } catch (error) {
-    return toFormState(error, 'updateIssuedInvoiceAction', echo(formData));
-  }
-
-  revalidatePathSafely('/admin/issued-invoices');
-  revalidatePathSafely(`/admin/issued-invoices/${invoiceId}`);
-  redirect(`/admin/issued-invoices/${invoiceId}?updated=1`);
-}
 
 // ---------------------------------------------------------------------------
 // Routes (SRS 14)
@@ -1034,6 +1023,7 @@ export async function createRouteAction(
       isActive: checkbox(formData, 'isActive'),
       defaultRate: text(formData, 'defaultRate'),
       clientId: text(formData, 'clientId'),
+      endClientId: text(formData, 'endClientId'),
     });
 
     if (!parsed.success) {
@@ -1070,6 +1060,7 @@ export async function updateRouteAction(
       isActive: checkbox(formData, 'isActive'),
       defaultRate: text(formData, 'defaultRate'),
       clientId: text(formData, 'clientId'),
+      endClientId: text(formData, 'endClientId'),
     });
 
     if (!parsed.success) {
@@ -1276,6 +1267,21 @@ export async function deleteClientAction(
   redirect('/admin/clients?deleted=1');
 }
 
+export async function deleteEndClientAction(
+  endClientId: string,
+  _state: DeleteState,
+): Promise<DeleteState> {
+  try {
+    const actor = await requireAdmin();
+    await endClientService.remove(actor, endClientId);
+  } catch (error) {
+    return toDeleteState(error, 'deleteEndClientAction');
+  }
+
+  revalidatePathSafely('/admin/end-clients');
+  redirect('/admin/end-clients?deleted=1');
+}
+
 export async function deleteLookupItemAction(
   kind: LookupKind,
   itemId: string,
@@ -1398,22 +1404,7 @@ export async function deleteReceivedInvoiceAction(
   redirect('/admin/received-invoices?deleted=1');
 }
 
-export async function deleteIssuedInvoiceAction(
-  invoiceId: string,
-  _state: DeleteState,
-): Promise<DeleteState> {
-  try {
-    const actor = await requireAdmin();
-    await issuedInvoiceService.remove(actor, invoiceId);
-  } catch (error) {
-    return toDeleteState(error, 'deleteIssuedInvoiceAction');
-  }
 
-  // Deleting the invoice frees every service it grouped back to "billable".
-  revalidatePathSafely('/admin/issued-invoices');
-  revalidatePathSafely('/admin/services');
-  redirect('/admin/issued-invoices?deleted=1');
-}
 
 export async function deleteRouteAction(
   routeId: string,

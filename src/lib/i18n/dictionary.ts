@@ -76,10 +76,14 @@ export interface Dictionary {
     invoiceDate: string;
     supplier: string;
     category: string;
+    /** Client change request 2026-09-17 (ERP roadmap Phase 3). */
+    concept: string;
     expenseType: string;
     invoiceState: string;
     /** ERP roadmap Phase 4. */
     client: string;
+    /** Client change request 2026-09-17. */
+    endClient: string;
     supplement: string;
     supplementType: string;
     /** ERP roadmap Phase 5. */
@@ -498,6 +502,9 @@ export interface Dictionary {
       /** The route form's admin-only client link (ERP roadmap Phase 4). */
       routeClientHint: string;
       noClientLinked: string;
+      /** The route form's admin-only end-client link (client change request 2026-09-17). */
+      routeEndClientHint: string;
+      noEndClientLinked: string;
       routeSnapshotNote: string;
       routeActiveHint: string;
       routeActiveHintWithDrivers: (count: number) => string;
@@ -591,6 +598,19 @@ export interface Dictionary {
       clientTaxIdHint: string;
       clientActiveHint: string;
 
+      /** End clients master data (client change request 2026-09-17). */
+      endClientsTitle: string;
+      newEndClient: string;
+      editEndClient: string;
+      endClientCreated: string;
+      endClientUpdated: string;
+      endClientDeleted: string;
+      noEndClients: string;
+      noEndClientsHint: string;
+      searchEndClients: string;
+      endClientTaxIdHint: string;
+      endClientActiveHint: string;
+
       /**
        * The generic simple-lookup lists (fuel types, payment methods,
        * supplement types, end clients — ERP roadmap Phase 1). One set of
@@ -642,7 +662,6 @@ export interface Dictionary {
         categorisationHint: string;
         chooseFuelType: string;
         chooseGasStation: string;
-        choosePaymentMethod: string;
       };
 
       /** Suppliers master data (ERP roadmap Phase 3). */
@@ -690,6 +709,7 @@ export interface Dictionary {
         chooseCategory: string;
         chooseVehicleOptional: string;
         chooseState: string;
+        choosePaymentMethod: string;
         detailSectionTitle: string;
       };
 
@@ -862,6 +882,8 @@ export interface Dictionary {
       vehicles: string;
       routes: string;
       clients: string;
+      /** Client change request 2026-09-17. */
+      endClients: string;
       suppliers: string;
       lists: string;
       config: string;

@@ -37,6 +37,8 @@ import { lookupService } from '@/modules/lookup/service/lookup.service';
 import { ServiceStatus } from '@/modules/services/domain/service-status';
 import { toAdminServiceDetail } from '@/modules/services/service/service.presenter';
 import { serviceService } from '@/modules/services/service/service.service';
+import { configRepository } from '@/modules/config/repository/config.repository';
+import { estimatedFuelCents } from '@/modules/analytics/domain/analytics-math';
 
 export const metadata = { title: UI.admin.reviewTitle };
 
@@ -62,6 +64,13 @@ export default async function AdminServiceDetailPage({
   }
 
   const supplementTypes = await lookupService.list(actor, 'SUPPLEMENT_TYPE', { isActive: true });
+  const config = await configRepository.get();
+
+  const fuelCostCents = estimatedFuelCents(
+    service.actualKm,
+    config.defaultConsumptionMlPer100Km,
+    config.defaultFuelPriceCentsPerLiter
+  );
 
   const isPending = service.status === ServiceStatus.PENDING_APPROVAL;
 
@@ -301,6 +310,27 @@ export default async function AdminServiceDetailPage({
                       : UI.admin.noBase
                   }
                 />
+              </div>
+
+              <div className="border-t border-border/40 pt-4">
+                <DetailRow
+                  label="Coste combustible est."
+                  value={
+                    <span className="text-destructive font-semibold">
+                      {formatEuros(fuelCostCents, NUMBER_LOCALE)}
+                    </span>
+                  }
+                />
+                {service.baseCents != null ? (
+                  <DetailRow
+                    label="Margen bruto est."
+                    value={
+                      <span className={service.baseCents - fuelCostCents >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>
+                        {formatEuros(service.baseCents - fuelCostCents, NUMBER_LOCALE)}
+                      </span>
+                    }
+                  />
+                ) : null}
               </div>
             </CardBody>
           </Card>

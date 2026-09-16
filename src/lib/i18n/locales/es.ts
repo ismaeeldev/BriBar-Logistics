@@ -73,9 +73,11 @@ const FIELD_LABELS = {
   invoiceDate: 'Fecha de factura',
   supplier: 'Proveedor',
   category: 'Categoría',
+  concept: 'Concepto',
   expenseType: 'Tipo de gasto',
   invoiceState: 'Estado',
   client: 'Cliente',
+  endClient: 'Cliente final',
   supplement: 'Suplemento',
   supplementType: 'Tipo de suplemento',
   date: 'Fecha',
@@ -523,6 +525,8 @@ export const es: Dictionary = {
       routeClientHint:
         'A qué cliente pertenece este contrato. Los servicios de esta ruta se facturarán a este cliente.',
       noClientLinked: 'Sin cliente asociado',
+      routeEndClientHint: 'Para quién es en última instancia el transporte de este contrato.',
+      noEndClientLinked: 'Sin cliente final asociado',
       routeSnapshotNote:
         'Cambiar el origen o el destino solo afecta a los servicios que se registren a partir de ahora. Los servicios ya existentes conservan los valores con los que se crearon.',
       routeActiveHint:
@@ -622,10 +626,23 @@ export const es: Dictionary = {
       clientActiveHint:
         'Un cliente inactivo no aparece al facturar nuevos servicios. El historial se conserva.',
 
+      endClientsTitle: 'Clientes finales',
+      newEndClient: 'Nuevo cliente final',
+      editEndClient: 'Editar cliente final',
+      endClientCreated: 'Cliente final creado',
+      endClientUpdated: 'Cliente final actualizado',
+      endClientDeleted: 'Cliente final eliminado',
+      noEndClients: 'Sin clientes finales',
+      noEndClientsHint: 'Los clientes finales que dé de alta aparecerán aquí.',
+      searchEndClients: 'Buscar clientes finales…',
+      endClientTaxIdHint: 'CIF o NIF del cliente final. Puede añadirse más adelante.',
+      endClientActiveHint:
+        'Un cliente final inactivo no se ofrece al asignarlo a una ruta nueva. El historial se conserva.',
+
       lookup: {
         sectionTitle: 'Listas',
         sectionHint:
-          'Listas simples que se usan en otras partes de la aplicación: tipos de combustible, formas de pago, tipos de suplemento y clientes finales.',
+          'Listas simples que se usan en otras partes de la aplicación: tipos de combustible, formas de pago y tipos de suplemento.',
         newItem: 'Nuevo elemento',
         editItem: (kindLabel) => `Editar: ${kindLabel}`,
         created: 'Elemento creado',
@@ -668,7 +685,6 @@ export const es: Dictionary = {
         categorisationHint: 'Necesario para los informes de combustible y gasto.',
         chooseFuelType: 'Elegir tipo de combustible…',
         chooseGasStation: 'Elegir gasolinera…',
-        choosePaymentMethod: 'Elegir forma de pago…',
       },
 
       suppliersTitle: 'Proveedores',
@@ -717,6 +733,7 @@ export const es: Dictionary = {
         chooseCategory: 'Elegir categoría…',
         chooseVehicleOptional: 'Empresa (sin vehículo asociado)',
         chooseState: 'Elegir estado…',
+        choosePaymentMethod: 'Sin forma de pago',
         detailSectionTitle: 'Detalle de la factura',
       },
 
@@ -877,6 +894,7 @@ export const es: Dictionary = {
       vehicles: 'Vehículos',
       routes: 'Rutas',
       clients: 'Clientes',
+      endClients: 'Clientes finales',
       suppliers: 'Proveedores',
       lists: 'Listas',
       config: 'Parámetros',

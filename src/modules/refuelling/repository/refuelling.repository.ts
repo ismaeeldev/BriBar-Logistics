@@ -13,7 +13,6 @@ const REFUELLING_INCLUDE = {
   driver: { select: { id: true, name: true } },
   fuelType: { select: { id: true, name: true } },
   gasStation: { select: { id: true, name: true } },
-  paymentMethod: { select: { id: true, name: true } },
 } satisfies Prisma.RefuellingInclude;
 
 export type RefuellingWithRelations = Prisma.RefuellingGetPayload<{

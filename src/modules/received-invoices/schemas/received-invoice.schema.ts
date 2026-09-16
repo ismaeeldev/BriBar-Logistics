@@ -15,13 +15,20 @@ import {
   optionalText,
   optionalUuidSchema,
   requiredMoneySchema,
+  requiredText,
   uuidSchema,
   vatRateSchema,
 } from '@/modules/shared/schemas/common';
 
+export const CONCEPT_MAX_LENGTH = 200;
+
 export const createReceivedInvoiceSchema = z.strictObject({
   supplierId: uuidSchema,
   categoryId: uuidSchema,
+  // Required (client change request 2026-09-17): the human-readable line an
+  // administrator transcribes from the supplier's own document — what
+  // `notes` free text was doing informally before, now a real field.
+  concept: requiredText(FIELD_LABELS.concept, CONCEPT_MAX_LENGTH),
   vehicleId: optionalUuidSchema,
   invoiceDate: isoDateSchema,
   base: requiredMoneySchema,

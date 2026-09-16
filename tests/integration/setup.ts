@@ -16,7 +16,6 @@ import { afterAll, beforeEach } from 'vitest';
 
 import { REFUELLING_CODE_SEQUENCE } from '@/modules/refuelling/repository/refuelling.repository';
 import { RECEIVED_INVOICE_CODE_SEQUENCE } from '@/modules/received-invoices/repository/received-invoice.repository';
-import { ISSUED_INVOICE_CODE_SEQUENCE } from '@/modules/issued-invoices/repository/issued-invoice.repository';
 import { MAINTENANCE_CODE_SEQUENCE } from '@/modules/maintenance/repository/maintenance-record.repository';
 import { SERVICE_CODE_SEQUENCE } from '@/modules/services/domain/service-code';
 
@@ -76,6 +75,9 @@ const TABLES = [
   'vehicles',
   // ERP roadmap Phase 1. No FK relations to worry about in the ordering.
   'clients',
+  // Client change request 2026-09-17: `routes.end_client_id` references this,
+  // so it must be truncated after `routes`, same as `clients`.
+  'end_clients',
   'lookup_items',
   // ERP roadmap Phase 3. Same reasoning.
   'suppliers',
@@ -115,9 +117,6 @@ beforeEach(async () => {
   );
   await testPrisma.$executeRawUnsafe(
     `ALTER SEQUENCE "${RECEIVED_INVOICE_CODE_SEQUENCE}" RESTART WITH 1`,
-  );
-  await testPrisma.$executeRawUnsafe(
-    `ALTER SEQUENCE "${ISSUED_INVOICE_CODE_SEQUENCE}" RESTART WITH 1`,
   );
   // ERP roadmap Phase 5: same standalone-sequence reasoning for `maintenance_code_seq`.
   await testPrisma.$executeRawUnsafe(

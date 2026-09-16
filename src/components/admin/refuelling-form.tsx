@@ -11,7 +11,6 @@ export interface RefuellingFormContext {
   drivers: { id: string; name: string }[];
   fuelTypes: { id: string; name: string }[];
   gasStations: { id: string; name: string }[];
-  paymentMethods: { id: string; name: string }[];
 }
 
 const VAT_RATES = ['STANDARD', 'REDUCED', 'SUPER_REDUCED', 'ZERO', 'EXEMPT'] as const;
@@ -35,7 +34,6 @@ export function RefuellingForm({
     vatRate: string;
     fuelTypeId: string;
     gasStationId: string;
-    paymentMethodId: string;
     notes: string;
   };
 }) {
@@ -164,7 +162,7 @@ export function RefuellingForm({
               </p>
             </CardHeader>
             <CardBody className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={FIELD_LABELS.fuelType}
                   required
@@ -205,30 +203,6 @@ export function RefuellingForm({
                         {UI.admin.refuelling.chooseGasStation}
                       </option>
                       {context.gasStations.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-
-                <Field
-                  label={FIELD_LABELS.paymentMethod}
-                  required
-                  errors={fieldErrors?.['paymentMethodId']}
-                >
-                  {(props) => (
-                    <Select
-                      {...props}
-                      name="paymentMethodId"
-                      required
-                      defaultValue={values?.['paymentMethodId'] ?? initial?.paymentMethodId ?? ''}
-                    >
-                      <option value="" disabled>
-                        {UI.admin.refuelling.choosePaymentMethod}
-                      </option>
-                      {context.paymentMethods.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}
                         </option>

@@ -17,12 +17,11 @@ export const metadata = { title: UI.admin.refuelling.newRefuelling };
 export default async function NewRefuellingPage() {
   const actor = await requireAdmin();
 
-  const [vehicles, drivers, fuelTypes, gasStations, paymentMethods] = await Promise.all([
+  const [vehicles, drivers, fuelTypes, gasStations] = await Promise.all([
     vehicleRepository.list({ isActive: true }),
     userRepository.list({ role: Role.DRIVER, isActive: true }),
     lookupService.list(actor, 'FUEL_TYPE', { isActive: true }),
     lookupService.list(actor, 'GAS_STATION', { isActive: true }),
-    lookupService.list(actor, 'PAYMENT_METHOD', { isActive: true }),
   ]);
 
   return (
@@ -40,7 +39,7 @@ export default async function NewRefuellingPage() {
       <RefuellingForm
         action={createRefuellingAction}
         submitLabel={UI.common.create}
-        context={{ vehicles, drivers, fuelTypes, gasStations, paymentMethods }}
+        context={{ vehicles, drivers, fuelTypes, gasStations }}
       />
     </div>
   );

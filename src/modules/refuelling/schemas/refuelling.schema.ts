@@ -30,14 +30,15 @@ export const createRefuellingSchema = z.strictObject({
   liters: litersSchema,
   total: requiredMoneySchema,
   vatRate: vatRateSchema.default('STANDARD'),
-  // Mandatory (client decision 2026-09-13): fuel type, gas station and
-  // payment method are all needed for reporting, not fill-in-later
-  // categorisation. The `fuelType`/`gasStation`/`paymentMethod` columns stay
-  // nullable in the database — existing historical rows may still be blank —
-  // this only closes the gap for new submissions.
+  // Mandatory (client decision 2026-09-13): fuel type and gas station are
+  // needed for reporting, not fill-in-later categorisation. The
+  // `fuelType`/`gasStation` columns stay nullable in the database —
+  // existing historical rows may still be blank — this only closes the gap
+  // for new submissions. Payment method was dropped from this form entirely
+  // (client change request 2026-09-17, superseding the earlier decision to
+  // require it) — see `docs/adr/0013-refuelling-module.md`.
   fuelTypeId: uuidSchema,
   gasStationId: uuidSchema,
-  paymentMethodId: uuidSchema,
   notes: optionalText(FIELD_LABELS.observations),
 });
 

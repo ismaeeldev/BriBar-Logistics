@@ -353,6 +353,21 @@ async function main() {
       );
     }
 
+    // "Cliente final" (client change request 2026-09-17) - a real EndClient
+    // record, not the old `LookupKind.END_CLIENT` named list `01Servicios`
+    // has its own column D for.
+    const endClientByName = new Map<string, string>();
+    for (const name of new Set([
+      ...listCol('F', 2, 20),
+      ...services.map((r) => str(r['Cliente final'])).filter(Boolean),
+    ])) {
+      const existing = await prisma.endClient.findFirst({ where: { name }, select: { id: true } });
+      endClientByName.set(
+        name,
+        existing?.id ?? (await prisma.endClient.create({ data: { name }, select: { id: true } })).id,
+      );
+    }
+
     const supplierByName = new Map<string, string>();
     for (const name of new Set([
       ...listCol('J', 2, 40),
@@ -407,7 +422,9 @@ async function main() {
     await seedLookup('FUEL_TYPE', listCol('H', 2, 12));
     await seedLookup('PAYMENT_METHOD', [...listCol('I', 2, 8), ...listCol('O', 2, 8)]);
     await seedLookup('SUPPLEMENT_TYPE', listCol('T', 2, 12));
-    await seedLookup('END_CLIENT', listCol('F', 2, 20));
+    // "End client" no longer seeds `LookupKind.END_CLIENT` - see
+    // `endClientByName` above, which writes the real `EndClient` model
+    // (client change request 2026-09-17, ADR 0019).
     await seedLookup('GAS_STATION', listCol('G', 2, 12));
     await seedLookup('MAINTENANCE_TYPE', [
       ...listCol('X', 2, 12),
@@ -423,13 +440,25 @@ async function main() {
       if (name && rate !== null) tarifa.set(name, rate);
     }
     const contractOD = new Map<string, { o: string; d: string }>();
+    // Per-contract Client/End client (client change request 2026-09-17):
+    // `01Servicios` names both on every row (columns C/D), so - exactly like
+    // origin/destination above - the first non-blank value seen for a given
+    // Contrato is that route's client and end client. Real per-contract
+    // data, not the single hard-coded "Cliente 01" every route used to get.
+    const contractClients = new Map<string, { client: string; endClient: string }>();
     for (const r of services) {
       const c = str(r['Contrato']);
-      if (c && !contractOD.has(c)) {
+      if (!c) continue;
+      if (!contractOD.has(c)) {
         contractOD.set(c, {
           o: str(r['Origen']) || 'Sin especificar',
           d: str(r['Destino']) || 'Sin especificar',
         });
+      }
+      if (!contractClients.has(c)) {
+        const client = str(r['Cliente']);
+        const endClient = str(r['Cliente final']);
+        if (client || endClient) contractClients.set(c, { client, endClient });
       }
     }
     for (const name of new Set([
@@ -442,20 +471,37 @@ async function main() {
       if (rate === null) {
         for (const [tn, tv] of tarifa) if (name.startsWith(tn) || tn.startsWith(name)) rate = tv;
       }
+      const cc = contractClients.get(name);
+      const clientId = cc?.client ? (clientByName.get(cc.client) ?? null) : null;
+      const endClientId = cc?.endClient ? (endClientByName.get(cc.endClient) ?? null) : null;
       const code = routeCode(name);
-      const existing = await prisma.route.findFirst({ where: { code }, select: { id: true } });
+      const existing = await prisma.route.findFirst({
+        where: { code },
+        select: { id: true, clientId: true, endClientId: true },
+      });
+      if (existing) {
+        // Fill in only what is currently unset - an administrator's own
+        // edit through the app (client change request 2026-09-17's new
+        // `/admin/routes` fields) must never be clobbered by a re-run.
+        const fill: Prisma.RouteUncheckedUpdateInput = {};
+        if (existing.clientId === null && clientId !== null) fill.clientId = clientId;
+        if (existing.endClientId === null && endClientId !== null) fill.endClientId = endClientId;
+        if (Object.keys(fill).length > 0) {
+          await prisma.route.update({ where: { id: existing.id }, data: fill });
+        }
+        routeByName.set(name, existing.id);
+        continue;
+      }
       const data = {
         code,
         name,
         origin: od.o,
         destination: od.d,
         defaultRateCents: rate === null ? null : Math.round(rate * 100),
-        clientId: clientByName.get('Cliente 01') ?? null,
+        clientId,
+        endClientId,
       };
-      routeByName.set(
-        name,
-        existing?.id ?? (await prisma.route.create({ data, select: { id: true } })).id,
-      );
+      routeByName.set(name, (await prisma.route.create({ data, select: { id: true } })).id);
     }
 
     const cfg = wb.grid('99_Config');
@@ -590,9 +636,8 @@ async function main() {
         gasStationId: str(r['Gasolinera'])
           ? (lookup.get(`GAS_STATION:${str(r['Gasolinera'])}`) ?? null)
           : null,
-        paymentMethodId: str(r['Método pago'])
-          ? (lookup.get(`PAYMENT_METHOD:${str(r['Método pago'])}`) ?? null)
-          : null,
+        // `paymentMethodId` was removed from `Refuelling` (client change
+        // request 2026-09-17); the source column is simply not imported.
         notes: str(r['Observaciones']) || null,
       });
     }
@@ -625,6 +670,7 @@ async function main() {
         vatRate: rate,
         vatCents,
         totalCents,
+        concept: str(r['Concepto']) || 'Importación',
         stateId: lookup.get(`INVOICE_STATE:${paid ? 'Pagada' : 'Pendiente de pago'}`) ?? null,
         paymentMethodId: str(r['Forma de pago'])
           ? (lookup.get(`PAYMENT_METHOD:${str(r['Forma de pago'])}`) ?? null)

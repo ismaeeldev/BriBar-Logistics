@@ -22,8 +22,10 @@ import {
 } from '@/components/ui/primitives';
 import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
+import { formatBusinessDateValue } from '@/lib/time/business-date';
 import { FIELD_LABELS, NUMBER_LOCALE, UI } from '@/lib/i18n/messages';
 import { centsToInputValue, formatEuros } from '@/lib/money/money';
+import { Td, Th } from '@/components/ui/table';
 import { personnelCostService } from '@/modules/personnel/service/personnel-cost.service';
 import { userRepository } from '@/modules/users/repository/user.repository';
 
@@ -50,6 +52,7 @@ export default async function EditPersonnelCostPage({
 
   const users = await userRepository.list({ isActive: true });
   const periodLabel = `${String(cost.month).padStart(2, '0')}/${cost.year}`;
+  const servicesWorked = await personnelCostService.getServicesWorked(actor, id);
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -112,6 +115,48 @@ export default async function EditPersonnelCostPage({
         name={`${cost.user.name} · ${periodLabel}`}
         deletability={{ canDelete: true, blockers: [], cascades: [] }}
       />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Servicios realizados
+          </CardTitle>
+        </CardHeader>
+        <CardBody className="overflow-x-auto">
+          {servicesWorked.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-4 text-center">No hay servicios registrados en este periodo.</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b">
+                  <Th>{FIELD_LABELS.date}</Th>
+                  <Th>{FIELD_LABELS.route}</Th>
+                  <Th>{FIELD_LABELS.vehicle}</Th>
+                  <Th>Facturación</Th>
+                  <Th>Rol</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {servicesWorked.map((s) => (
+                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <Td className="py-2.5">
+                      <Link href={`/admin/services/${s.id}`} className="hover:underline text-foreground">
+                        {formatBusinessDateValue(s.date)}
+                      </Link>
+                    </Td>
+                    <Td className="py-2.5 text-muted-foreground">{s.route}</Td>
+                    <Td className="py-2.5 font-semibold uppercase text-foreground">{s.vehicle}</Td>
+                    <Td className="py-2.5">
+                      {s.baseCents !== null ? formatEuros(s.baseCents, NUMBER_LOCALE) : '—'}
+                    </Td>
+                    <Td className="py-2.5 text-muted-foreground">{s.role}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardBody>
+      </Card>
     </div>
   );
 }

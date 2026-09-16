@@ -75,9 +75,11 @@ const FIELD_LABELS = {
   invoiceDate: 'Invoice date',
   supplier: 'Supplier',
   category: 'Category',
+  concept: 'Concept',
   expenseType: 'Expense type',
   invoiceState: 'State',
   client: 'Client',
+  endClient: 'End client',
   supplement: 'Supplement',
   supplementType: 'Supplement type',
   date: 'Date',
@@ -516,6 +518,8 @@ export const en: Dictionary = {
       routeClientHint:
         'Which client this contract belongs to. Services on this route will be billed to this client.',
       noClientLinked: 'No client linked',
+      routeEndClientHint: 'Who this contract’s freight is ultimately for.',
+      noEndClientLinked: 'No end client linked',
       routeSnapshotNote:
         'Changing the origin or destination only affects services recorded from now on. Services that already exist keep the values they were created with.',
       routeActiveHint:
@@ -613,10 +617,23 @@ export const en: Dictionary = {
       clientActiveHint:
         'An inactive client does not appear when billing new services. Its history is kept.',
 
+      endClientsTitle: 'End clients',
+      newEndClient: 'New end client',
+      editEndClient: 'Edit end client',
+      endClientCreated: 'End client created',
+      endClientUpdated: 'End client updated',
+      endClientDeleted: 'End client deleted',
+      noEndClients: 'No end clients',
+      noEndClientsHint: 'End clients you add will appear here.',
+      searchEndClients: 'Search end clients…',
+      endClientTaxIdHint: "The end client's tax ID. Can be added later.",
+      endClientActiveHint:
+        'An inactive end client is not offered when assigning a new route. Its history is kept.',
+
       lookup: {
         sectionTitle: 'Lists',
         sectionHint:
-          'Simple lists used elsewhere in the app: fuel types, payment methods, supplement types and end clients.',
+          'Simple lists used elsewhere in the app: fuel types, payment methods and supplement types.',
         newItem: 'New item',
         editItem: (kindLabel) => `Edit: ${kindLabel}`,
         created: 'Item created',
@@ -659,7 +676,6 @@ export const en: Dictionary = {
         categorisationHint: 'Needed for fuel and expense reporting.',
         chooseFuelType: 'Choose a fuel type…',
         chooseGasStation: 'Choose a gas station…',
-        choosePaymentMethod: 'Choose a payment method…',
       },
 
       suppliersTitle: 'Suppliers',
@@ -708,6 +724,7 @@ export const en: Dictionary = {
         chooseCategory: 'Choose a category…',
         chooseVehicleOptional: 'Company (no vehicle)',
         chooseState: 'Choose a state…',
+        choosePaymentMethod: 'No payment method',
         detailSectionTitle: 'Invoice detail',
       },
 
@@ -868,6 +885,7 @@ export const en: Dictionary = {
       vehicles: 'Vehicles',
       routes: 'Routes',
       clients: 'Clients',
+      endClients: 'End clients',
       suppliers: 'Suppliers',
       lists: 'Lists',
       config: 'Defaults',

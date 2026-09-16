@@ -130,6 +130,7 @@ async function seedReceivedInvoice(overrides: {
       vatRate: 'STANDARD',
       vatCents: totalCents - Math.round((totalCents * 100) / 121),
       totalCents,
+      concept: 'Factura',
     },
   });
 }
@@ -252,7 +253,7 @@ describe('analytics overview (ERP roadmap Phase 6)', () => {
   it('keeps an investment out of operating expense but counts it separately', async () => {
     await seedReceivedInvoice({
       invoiceDate: '2026-04-01',
-      totalCents: 500_000,
+      totalCents: 500_000, 
       expenseType: 'INVESTMENT',
     });
 
@@ -282,7 +283,7 @@ describe('investment recovery (ERP roadmap Phase 6)', () => {
     await seedReceivedInvoice({
       invoiceDate: '2026-01-01',
       vehicleId: fixture.vehicleId,
-      totalCents: 100_000,
+      totalCents: 100_000,  
       expenseType: 'INVESTMENT',
     });
     await seedService({ serviceDate: '2026-02-01', vehicleId: fixture.vehicleId, baseCents: 40_000 });
@@ -300,7 +301,7 @@ describe('investment recovery (ERP roadmap Phase 6)', () => {
     await seedReceivedInvoice({
       invoiceDate: '2020-01-01',
       vehicleId: fixture.vehicleId,
-      totalCents: 100_000,
+      totalCents: 100_000, 
       expenseType: 'INVESTMENT',
     });
 
@@ -313,7 +314,7 @@ describe('investment recovery (ERP roadmap Phase 6)', () => {
     await seedReceivedInvoice({
       invoiceDate: '2026-01-01',
       vehicleId: fixture.vehicleId,
-      totalCents: 100_000,
+      totalCents: 100_000, 
       expenseType: 'INVESTMENT',
     });
     await seedService({ serviceDate: '2026-02-01', vehicleId: fixture.vehicleId, baseCents: 40_000 });

@@ -127,6 +127,18 @@ export interface VehicleRecoveryRow extends InvestmentRecovery {
   name: string | null;
 }
 
+export interface VehicleStatsRow {
+  vehicleId: string;
+  plate: string;
+  name: string | null;
+  serviceKm: number;
+  emptyKm: number;
+  actualKm: number;
+  litresMl: number;
+  avgConsumptionMlPer100Km: number | null;
+  avgFuelPriceCentsPerLiter: number | null;
+}
+
 // --- helpers --------------------------------------------------------------
 
 function sum(values: number[]): number {
@@ -256,6 +268,44 @@ export const analyticsService = {
       avgFuelPriceCentsPerLiter: averageFuelPriceCentsPerLiter(fuelGrossCents, litresMl),
       avgConsumptionMlPer100Km: consumptionMlPer100Km(litresMl, kmSinceLastTotal),
     };
+  },
+
+  async vehicleStats(actor: Actor, filter: AnalyticsFilter): Promise<VehicleStatsRow[]> {
+    assertAdmin(actor);
+
+    const [vehicles, services, refuellings, dailyKm] = await Promise.all([
+      analyticsRepository.vehicles(),
+      analyticsRepository.services(),
+      analyticsRepository.refuellings(),
+      analyticsRepository.dailyKmLogs(),
+    ]);
+
+    const rWithKm = attachKmSinceLast(refuellings);
+
+    return vehicles.map((vehicle) => {
+      const s = services.filter((row) => row.vehicleId === vehicle.id && dateInFilter(row.serviceDate, filter));
+      const r = rWithKm.filter((row) => row.vehicleId === vehicle.id && dateInFilter(row.refuelDate, filter));
+      const km = dailyKm.filter((row) => row.vehicleId === vehicle.id && dateInFilter(row.date, filter));
+
+      const actualKm = sum(km.map((row) => row.actualKm));
+      const serviceKm = sum(s.map((row) => row.serviceKm));
+      const litresMl = sum(r.map((row) => row.litersMl));
+      const kmSinceLastTotal = sum(r.map((row) => row.kmSinceLast ?? 0));
+      const fuelGrossCents = sum(r.map((row) => row.totalCents));
+
+      return {
+        vehicleId: vehicle.id,
+        plate: vehicle.registrationPlate,
+        name: vehicle.referenceName,
+        actualKm,
+        serviceKm,
+        emptyKm: emptyKm(actualKm, serviceKm),
+        litresMl,
+        avgConsumptionMlPer100Km: consumptionMlPer100Km(litresMl, kmSinceLastTotal),
+        avgFuelPriceCentsPerLiter: averageFuelPriceCentsPerLiter(fuelGrossCents, litresMl)
+      };
+    }).filter(row => row.actualKm > 0 || row.serviceKm > 0 || row.litresMl > 0)
+      .sort((a, b) => b.actualKm - a.actualKm);
   },
 
   /**

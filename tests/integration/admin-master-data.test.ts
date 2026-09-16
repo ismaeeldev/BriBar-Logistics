@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '@/lib/errors/app-error';
 import { clientService } from '@/modules/clients/service/client.service';
 import { configService } from '@/modules/config/service/config.service';
+import { endClientService } from '@/modules/end-clients/service/end-client.service';
 import { expenseCategoryService } from '@/modules/expense-categories/service/expense-category.service';
 import { lookupService } from '@/modules/lookup/service/lookup.service';
 import { routeService } from '@/modules/routes/service/route.service';
@@ -137,6 +138,25 @@ describe('routes (SRS 14, 26.5)', () => {
 
   it('does not let a driver list the route catalogue (SRS 14.3)', async () => {
     await expectAppError(routeService.list(fixture.driver), 'FORBIDDEN');
+  });
+
+  it('assigns Client and End Client together (client change request 2026-09-17)', async () => {
+    const client = await clientService.create(fixture.admin, {
+      name: 'Cliente de la ruta',
+      isActive: true,
+    });
+    const endClient = await endClientService.create(fixture.admin, {
+      name: 'Cliente final de la ruta',
+      isActive: true,
+    });
+
+    const updated = await routeService.update(fixture.admin, fixture.routeId, {
+      clientId: client.id,
+      endClientId: endClient.id,
+    });
+
+    expect(updated.clientId).toBe(client.id);
+    expect(updated.endClientId).toBe(endClient.id);
   });
 
   it('rejects a duplicate route code', async () => {
@@ -366,6 +386,71 @@ describe('clients (ERP roadmap Phase 1)', () => {
 
   it('does not let a driver list clients', async () => {
     await expectAppError(clientService.list(fixture.driver), 'FORBIDDEN');
+  });
+});
+
+describe('end clients (client change request 2026-09-17)', () => {
+  it('lets an administrator create, edit and deactivate', async () => {
+    const created = await endClientService.create(fixture.admin, {
+      name: 'Destinatario Final SL',
+      taxId: 'B87654321',
+      isActive: true,
+    });
+    expect(created.name).toBe('Destinatario Final SL');
+
+    const renamed = await endClientService.update(fixture.admin, created.id, {
+      name: 'Destinatario Final, S.L.',
+    });
+    expect(renamed.name).toBe('Destinatario Final, S.L.');
+    expect(renamed.taxId).toBe('B87654321');
+
+    const deactivated = await endClientService.update(fixture.admin, created.id, {
+      isActive: false,
+    });
+    expect(deactivated.isActive).toBe(false);
+  });
+
+  it('allows an end client with no tax id yet', async () => {
+    const created = await endClientService.create(fixture.admin, {
+      name: 'Sin CIF todavía',
+      isActive: true,
+    });
+    expect(created.taxId).toBeNull();
+  });
+
+  it('deletes an end client nothing references', async () => {
+    const created = await endClientService.create(fixture.admin, {
+      name: 'Para borrar',
+      isActive: true,
+    });
+
+    await endClientService.remove(fixture.admin, created.id);
+
+    await expectAppError(endClientService.getById(fixture.admin, created.id), 'NOT_FOUND');
+  });
+
+  it('blocks deleting an end client a route references', async () => {
+    const created = await endClientService.create(fixture.admin, {
+      name: 'Referenciado',
+      isActive: true,
+    });
+    await routeService.update(fixture.admin, fixture.routeId, { endClientId: created.id });
+
+    await expectAppError(
+      endClientService.remove(fixture.admin, created.id),
+      'BUSINESS_RULE_VIOLATION',
+    );
+  });
+
+  it('does not let a driver create one (SRS 20 convention)', async () => {
+    await expectAppError(
+      endClientService.create(fixture.driver, { name: 'Intento de conductor', isActive: true }),
+      'FORBIDDEN',
+    );
+  });
+
+  it('does not let a driver list end clients', async () => {
+    await expectAppError(endClientService.list(fixture.driver), 'FORBIDDEN');
   });
 });
 

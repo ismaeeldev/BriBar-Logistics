@@ -67,6 +67,39 @@ export const personnelCostService = {
     return withDailyFixedCost(found);
   },
 
+  async getServicesWorked(actor: Actor, costId: string) {
+    assertAdmin(actor);
+    const cost = await personnelCostRepository.findById(costId);
+    if (!cost) throw notFound();
+
+    const startDate = new Date(Date.UTC(cost.year, cost.month - 1, 1));
+    const endDate = new Date(Date.UTC(cost.year, cost.month, 1));
+
+    const services = await prisma.service.findMany({
+      where: {
+        serviceDate: { gte: startDate, lt: endDate },
+        OR: [
+          { driverId: cost.userId },
+          { secondaryDriverId: cost.userId }
+        ]
+      },
+      include: {
+        route: { select: { code: true, name: true } },
+        vehicle: { select: { registrationPlate: true } },
+      },
+      orderBy: { serviceDate: 'asc' }
+    });
+
+    return services.map(s => ({
+      id: s.id,
+      date: s.serviceDate,
+      route: s.route ? `${s.route.code} - ${s.route.name}` : '—',
+      vehicle: s.vehicle.registrationPlate,
+      baseCents: s.baseCents,
+      role: s.driverId === cost.userId ? 'Conductor principal' : 'Conductor adicional'
+    }));
+  },
+
   async create(actor: Actor, input: CreatePersonnelCostInput): Promise<PersonnelCostDetail> {
     assertAdmin(actor);
 

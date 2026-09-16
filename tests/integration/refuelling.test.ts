@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AppError } from '@/lib/errors/app-error';
 import { lookupService } from '@/modules/lookup/service/lookup.service';
+import { createRefuellingSchema } from '@/modules/refuelling/schemas/refuelling.schema';
 import { refuellingService } from '@/modules/refuelling/service/refuelling.service';
 
 import { prisma, seedFixture, type Fixture } from './helpers';
@@ -53,7 +54,6 @@ function refuellingBody(fixture: Fixture, overrides: Record<string, unknown> = {
     vatRate: 'STANDARD' as const,
     fuelTypeId,
     gasStationId,
-    paymentMethodId,
     ...overrides,
   };
 }
@@ -115,23 +115,29 @@ describe('creating a refuelling (ERP roadmap Phase 2)', () => {
     );
   });
 
-  it('accepts a fuel type/gas station/payment method of the right kind', async () => {
+  it('accepts a fuel type/gas station of the right kind', async () => {
     const created = await refuellingService.create(fixture.admin, refuellingBody(fixture));
 
     expect(created.fuelTypeId).toBe(fuelTypeId);
     expect(created.gasStationId).toBe(gasStationId);
-    expect(created.paymentMethodId).toBe(paymentMethodId);
   });
 
   it('rejects a lookup id from the wrong kind', async () => {
     await expectAppError(
       refuellingService.create(
         fixture.admin,
-        // A payment method's id, offered as the fuel type.
-        refuellingBody(fixture, { fuelTypeId: paymentMethodId }),
+        // A gas station's id, offered as the fuel type.
+        refuellingBody(fixture, { fuelTypeId: gasStationId }),
       ),
       'BUSINESS_RULE_VIOLATION',
     );
+  });
+
+  it('rejects a payment method field (client change request 2026-09-17, superseding 2026-09-13)', () => {
+    const result = createRefuellingSchema.safeParse(
+      refuellingBody(fixture, { paymentMethodId }),
+    );
+    expect(result.success).toBe(false);
   });
 
   it('records the creation in the audit log', async () => {

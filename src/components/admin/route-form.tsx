@@ -14,6 +14,7 @@ export function RouteForm({
   initial,
   assignedDriverCount,
   clients,
+  endClients,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   submitLabel: string;
@@ -27,11 +28,15 @@ export function RouteForm({
     defaultRateCents: number | null;
     /** ERP roadmap Phase 4, or null if this route has no client yet. */
     clientId: string | null;
+    /** Client change request 2026-09-17, or null if none assigned yet. */
+    endClientId: string | null;
   };
   /** Only supplied when editing; drives the deactivation warning. */
   assignedDriverCount?: number;
   /** Active clients to choose from (ERP roadmap Phase 4). */
   clients: { id: string; name: string }[];
+  /** Active end clients to choose from (client change request 2026-09-17). */
+  endClients: { id: string; name: string }[];
 }) {
   return (
     <EntityForm action={action} submitLabel={submitLabel}>
@@ -147,6 +152,30 @@ export function RouteForm({
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+
+          {/* Client change request 2026-09-17: "Cliente final" assignable in
+              the same place as Client, when editing a route. */}
+          <Field
+            label={FIELD_LABELS.endClient}
+            optional
+            errors={fieldErrors?.['endClientId']}
+            hint={UI.admin.routeEndClientHint}
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="endClientId"
+                defaultValue={values?.['endClientId'] ?? initial?.endClientId ?? ''}
+              >
+                <option value="">{UI.admin.noEndClientLinked}</option>
+                {endClients.map((endClient) => (
+                  <option key={endClient.id} value={endClient.id}>
+                    {endClient.name}
                   </option>
                 ))}
               </Select>

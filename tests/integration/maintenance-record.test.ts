@@ -187,10 +187,9 @@ describe('maintenance urgency (ERP roadmap Phase 5)', () => {
 
   it('reads the current odometer from the vehicle\'s most recent refuelling', async () => {
     const type = await createMaintenanceType(fixture);
-    const [fuelType, gasStation, paymentMethod] = await Promise.all([
+    const [fuelType, gasStation] = await Promise.all([
       lookupService.create(fixture.admin, 'FUEL_TYPE', { name: 'Diésel', isActive: true }),
       lookupService.create(fixture.admin, 'GAS_STATION', { name: 'Repsol', isActive: true }),
-      lookupService.create(fixture.admin, 'PAYMENT_METHOD', { name: 'Tarjeta', isActive: true }),
     ]);
 
     await refuellingService.create(fixture.admin, {
@@ -202,7 +201,6 @@ describe('maintenance urgency (ERP roadmap Phase 5)', () => {
       vatRate: 'STANDARD',
       fuelTypeId: fuelType.id,
       gasStationId: gasStation.id,
-      paymentMethodId: paymentMethod.id,
     });
 
     const created = await maintenanceRecordService.create(

@@ -9,9 +9,9 @@
  */
 import type { Actor } from '@/lib/auth/session';
 import { forbidden } from '@/lib/errors/app-error';
-import { issuedInvoiceRepository } from '@/modules/issued-invoices/repository/issued-invoice.repository';
 import { receivedInvoiceRepository } from '@/modules/received-invoices/repository/received-invoice.repository';
-import { Role } from '@/modules/services/domain/service-status';
+import { serviceRepository } from '@/modules/services/repository/service.repository';
+import { Role, ServiceStatus } from '@/modules/services/domain/service-status';
 import { fiscalPeriodFromParts } from '@/modules/shared/domain/fiscal-period';
 
 /** One quarter's VAT position. */
@@ -35,10 +35,11 @@ export const taxService = {
   async quarterlySummary(actor: Actor): Promise<QuarterlyTaxSummary[]> {
     assertAdmin(actor);
 
-    const [received, issued] = await Promise.all([
+    const [received, servicesPage] = await Promise.all([
       receivedInvoiceRepository.allForTaxSummary(),
-      issuedInvoiceRepository.allForTaxSummary(),
+      serviceRepository.list({ status: [ServiceStatus.APPROVED] }, { role: Role.ADMIN, userId: actor.userId }, { skip: 0, take: 999999 }),
     ]);
+    const issuedServices = servicesPage.items;
 
     const byPeriod = new Map<
       string,
@@ -63,8 +64,12 @@ export const taxService = {
     for (const invoice of received) {
       bucket(invoice.invoiceDate).vatInputCents += invoice.vatCents;
     }
-    for (const invoice of issued) {
-      bucket(invoice.invoiceDate).vatOutputCents += invoice.vatCents;
+    for (const service of issuedServices) {
+      if (service.baseCents != null) {
+        // Calculate 21% IVA from the service base
+        const vatCents = Math.round(service.baseCents * 0.21);
+        bucket(service.serviceDate).vatOutputCents += vatCents;
+      }
     }
 
     return Array.from(byPeriod.values())

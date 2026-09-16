@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '@/lib/errors/app-error';
 import { expenseCategoryService } from '@/modules/expense-categories/service/expense-category.service';
 import { lookupService } from '@/modules/lookup/service/lookup.service';
+import { createReceivedInvoiceSchema } from '@/modules/received-invoices/schemas/received-invoice.schema';
 import { receivedInvoiceService } from '@/modules/received-invoices/service/received-invoice.service';
 import { supplierService } from '@/modules/suppliers/service/supplier.service';
 
@@ -60,6 +61,7 @@ function invoiceBody(overrides: Record<string, unknown> = {}) {
   return {
     supplierId,
     categoryId: operationCategoryId,
+    concept: 'Factura de prueba',
     invoiceDate: '2026-09-02',
     base: 10_000, // €100.00
     vatRate: 'STANDARD' as const,
@@ -74,6 +76,25 @@ describe('creating a received invoice (ERP roadmap Phase 3)', () => {
 
     expect(first.invoiceCode).toBe('FR000001');
     expect(second.invoiceCode).toBe('FR000002');
+  });
+
+  it('stores and round-trips the concept (client change request 2026-09-17)', async () => {
+    const created = await receivedInvoiceService.create(
+      fixture.admin,
+      invoiceBody({ concept: 'Reparación de frenos' }),
+    );
+    expect(created.concept).toBe('Reparación de frenos');
+
+    const updated = await receivedInvoiceService.update(fixture.admin, created.id, {
+      concept: 'Reparación de frenos y neumáticos',
+    });
+    expect(updated.concept).toBe('Reparación de frenos y neumáticos');
+  });
+
+  it('rejects a request with no concept', () => {
+    const { concept: _concept, ...withoutConcept } = invoiceBody();
+    const result = createReceivedInvoiceSchema.safeParse(withoutConcept);
+    expect(result.success).toBe(false);
   });
 
   it('derives VAT and total forwards from the base amount', async () => {

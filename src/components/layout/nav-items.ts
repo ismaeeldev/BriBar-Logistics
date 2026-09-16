@@ -2,10 +2,10 @@ import {
   Building2,
   ChartColumn,
   ClipboardList,
-  FileOutput,
   FileText,
   Fuel,
   Gauge,
+  Handshake,
   Landmark,
   LayoutDashboard,
   ListTree,
@@ -90,6 +90,8 @@ export const ADMIN_SECTIONS: NavSection[] = [
       // ERP roadmap Phase 1/3: clients and suppliers are the same kind of
       // real-world entity vehicles/routes/drivers already are here.
       { href: '/admin/clients', label: UI.nav.clients, icon: Building2 },
+      // Client change request 2026-09-17: promoted from `LookupKind.END_CLIENT`.
+      { href: '/admin/end-clients', label: UI.nav.endClients, icon: Handshake },
       { href: '/admin/suppliers', label: UI.nav.suppliers, icon: Store },
     ],
   },
@@ -100,7 +102,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/refuellings', label: UI.nav.refuellings, icon: Fuel },
       { href: '/admin/received-invoices', label: UI.nav.receivedInvoices, icon: FileText },
-      { href: '/admin/issued-invoices', label: UI.nav.issuedInvoices, icon: FileOutput },
+
       { href: '/admin/investments', label: UI.nav.investments, icon: PiggyBank },
       { href: '/admin/taxes', label: UI.nav.taxes, icon: Landmark },
     ],

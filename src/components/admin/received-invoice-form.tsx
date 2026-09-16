@@ -2,7 +2,7 @@
 
 import type { FormState } from '@/app/(app)/admin/actions';
 import { EntityForm } from '@/components/admin/entity-form';
-import { DateInput, Field, MoneyInput, Select, Textarea } from '@/components/ui/field';
+import { DateInput, Field, Input, MoneyInput, Select, Textarea } from '@/components/ui/field';
 import { FIELD_LABELS, UI, VAT_RATE_LABELS } from '@/lib/i18n/messages';
 
 export interface ReceivedInvoiceFormContext {
@@ -28,6 +28,7 @@ export function ReceivedInvoiceForm({
   initial?: {
     supplierId: string;
     categoryId: string;
+    concept: string;
     vehicleId: string;
     invoiceDate: string;
     base: string;
@@ -92,6 +93,18 @@ export function ReceivedInvoiceForm({
               )}
             </Field>
           </div>
+
+          <Field label={FIELD_LABELS.concept} required errors={fieldErrors?.['concept']}>
+            {(props) => (
+              <Input
+                {...props}
+                name="concept"
+                required
+                autoComplete="off"
+                defaultValue={values?.['concept'] ?? initial?.concept ?? ''}
+              />
+            )}
+          </Field>
 
           <Field
             label={FIELD_LABELS.vehicle}
@@ -187,7 +200,7 @@ export function ReceivedInvoiceForm({
                   name="paymentMethodId"
                   defaultValue={values?.['paymentMethodId'] ?? initial?.paymentMethodId ?? ''}
                 >
-                  <option value="">{UI.admin.refuelling.choosePaymentMethod}</option>
+                  <option value="">{UI.admin.receivedInvoices.choosePaymentMethod}</option>
                   {context.paymentMethods.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}

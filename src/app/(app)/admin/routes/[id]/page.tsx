@@ -17,6 +17,7 @@ import { requireAdmin } from '@/lib/auth/session';
 import { ErrorCode, isAppError } from '@/lib/errors/app-error';
 import { UI } from '@/lib/i18n/messages';
 import { clientService } from '@/modules/clients/service/client.service';
+import { endClientService } from '@/modules/end-clients/service/end-client.service';
 import { routeService } from '@/modules/routes/service/route.service';
 
 export const metadata = { title: UI.admin.editRoute };
@@ -28,11 +29,13 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
   let route;
   let assignedDriverCount;
   let clients;
+  let endClients;
   try {
-    [route, assignedDriverCount, clients] = await Promise.all([
+    [route, assignedDriverCount, clients, endClients] = await Promise.all([
       routeService.getById(actor, id),
       routeService.countAssignedDrivers(actor, id),
       clientService.list(actor, { isActive: true }),
+      endClientService.list(actor, { isActive: true }),
     ]);
   } catch (error) {
     if (isAppError(error) && error.code === ErrorCode.NOT_FOUND) notFound();
@@ -64,6 +67,7 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
         submitLabel={UI.common.save}
         assignedDriverCount={assignedDriverCount}
         clients={clients}
+        endClients={endClients}
         initial={{
           code: route.code,
           name: route.name,
@@ -72,6 +76,7 @@ export default async function EditRoutePage({ params }: { params: Promise<{ id: 
           isActive: route.isActive,
           defaultRateCents: route.defaultRateCents,
           clientId: route.clientId,
+          endClientId: route.endClientId,
         }}
       />
 

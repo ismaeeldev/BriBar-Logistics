@@ -106,6 +106,7 @@ export default async function EditReceivedInvoicePage({
         initial={{
           supplierId: invoice.supplierId,
           categoryId: invoice.categoryId,
+          concept: invoice.concept,
           vehicleId: invoice.vehicleId ?? '',
           invoiceDate: toIsoDate(invoice.invoiceDate),
           base: centsToInputValue(invoice.baseCents),

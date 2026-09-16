@@ -46,12 +46,11 @@ export default async function EditRefuellingPage({
   }
   const { refuelling, kmSinceLastRefuel, consumptionMlPer100Km } = detail;
 
-  const [vehicles, drivers, fuelTypes, gasStations, paymentMethods] = await Promise.all([
+  const [vehicles, drivers, fuelTypes, gasStations] = await Promise.all([
     vehicleRepository.list({ isActive: true }),
     userRepository.list({ role: Role.DRIVER, isActive: true }),
     lookupService.list(actor, 'FUEL_TYPE', { isActive: true }),
     lookupService.list(actor, 'GAS_STATION', { isActive: true }),
-    lookupService.list(actor, 'PAYMENT_METHOD', { isActive: true }),
   ]);
 
   return (
@@ -112,7 +111,7 @@ export default async function EditRefuellingPage({
       <RefuellingForm
         action={updateRefuellingAction.bind(null, id)}
         submitLabel={UI.common.save}
-        context={{ vehicles, drivers, fuelTypes, gasStations, paymentMethods }}
+        context={{ vehicles, drivers, fuelTypes, gasStations }}
         initial={{
           vehicleId: refuelling.vehicleId,
           driverId: refuelling.driverId,
@@ -122,7 +121,6 @@ export default async function EditRefuellingPage({
           vatRate: refuelling.vatRate,
           fuelTypeId: refuelling.fuelTypeId ?? '',
           gasStationId: refuelling.gasStationId ?? '',
-          paymentMethodId: refuelling.paymentMethodId ?? '',
           notes: refuelling.notes ?? '',
         }}
       />

@@ -58,7 +58,9 @@ export interface MaintenanceRecordDetail extends MaintenanceRecordWithRelations 
  */
 async function currentOdometerKm(vehicleId: string): Promise<number | null> {
   const [refuel, kmLog] = await Promise.all([
-    refuellingRepository.previousForVehicle(vehicleId, new Date()),
+    // We want the absolute latest refuelling, so we pass a far-future date
+    // to bypass the `lte` filter in `previousForVehicle`.
+    refuellingRepository.previousForVehicle(vehicleId, new Date('9999-12-31T23:59:59Z')),
     dailyKmLogRepository.mostRecentForVehicle(vehicleId),
   ]);
 

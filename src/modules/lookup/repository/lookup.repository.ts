@@ -76,8 +76,9 @@ export const lookupRepository = {
   /**
    * What would stop this item being deleted.
    *
-   * `refuellings` may reference a `LookupItem` through three different
-   * columns (fuel type, gas station, payment method — ERP roadmap Phase 2);
+   * `refuellings` may reference a `LookupItem` through two different
+   * columns (fuel type, gas station — ERP roadmap Phase 2; a third, payment
+   * method, was removed by client change request 2026-09-17);
    * `receivedInvoices` through two more (state, payment method — Phase 3);
    * `services` (supplement type) and `issuedInvoices` (state) each through
    * one more (Phase 4); `maintenanceRecords` (maintenance type) through one
@@ -104,7 +105,6 @@ export const lookupRepository = {
     const [
       asFuelType,
       asGasStation,
-      asRefuellingPaymentMethod,
       asReceivedInvoiceState,
       asReceivedInvoicePaymentMethod,
       asSupplementType,
@@ -113,7 +113,6 @@ export const lookupRepository = {
     ] = await Promise.all([
       client.refuelling.count({ where: { fuelTypeId: id } }),
       client.refuelling.count({ where: { gasStationId: id } }),
-      client.refuelling.count({ where: { paymentMethodId: id } }),
       client.receivedInvoice.count({ where: { stateId: id } }),
       client.receivedInvoice.count({ where: { paymentMethodId: id } }),
       client.service.count({ where: { supplementTypeId: id } }),
@@ -122,7 +121,7 @@ export const lookupRepository = {
     ]);
 
     return {
-      refuellings: asFuelType + asGasStation + asRefuellingPaymentMethod,
+      refuellings: asFuelType + asGasStation,
       receivedInvoices: asReceivedInvoiceState + asReceivedInvoicePaymentMethod,
       services: asSupplementType,
       issuedInvoices: asIssuedInvoiceState,

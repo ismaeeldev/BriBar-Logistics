@@ -58,6 +58,12 @@ export const createRouteSchema = z.strictObject({
    * client, not just leave it unmentioned.
    */
   clientId: clearableUuidSchema,
+  /**
+   * "Cliente final" (client change request 2026-09-17) — assignable in the
+   * same place as `clientId`, for the same reason: an administrator sets it
+   * when editing a route's origin/destination, not per-service.
+   */
+  endClientId: clearableUuidSchema,
 });
 
 export type CreateRouteInput = z.output<typeof createRouteSchema>;

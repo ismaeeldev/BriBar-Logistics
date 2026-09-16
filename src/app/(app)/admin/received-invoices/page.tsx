@@ -70,6 +70,7 @@ export default async function AdminReceivedInvoicesPage({
             <tr>
               <Th>{FIELD_LABELS.invoiceCode}</Th>
               <Th>{FIELD_LABELS.supplier}</Th>
+              <Th>{FIELD_LABELS.concept}</Th>
               <Th className="hidden lg:table-cell">{FIELD_LABELS.category}</Th>
               <Th>{FIELD_LABELS.invoiceDate}</Th>
               <Th>{FIELD_LABELS.total}</Th>
@@ -91,6 +92,11 @@ export default async function AdminReceivedInvoicesPage({
               <Td className="align-middle py-3 whitespace-nowrap">
                 <span className="text-[13px] font-semibold text-foreground">
                   {invoice.supplier.name}
+                </span>
+              </Td>
+              <Td className="align-middle py-3">
+                <span className="text-[13px] text-muted-foreground truncate">
+                  {invoice.concept}
                 </span>
               </Td>
               <Td className="hidden align-middle py-3 lg:table-cell whitespace-nowrap">
@@ -138,7 +144,7 @@ export default async function AdminReceivedInvoicesPage({
                   <div className="mt-1.5 flex items-center gap-1.5 text-muted-foreground">
                     <FileText className="size-3.5 shrink-0" />
                     <span className="truncate text-xs text-foreground/80">
-                      {formatBusinessDateValue(invoice.invoiceDate)} · {invoice.category.name}
+                      {invoice.concept} · {formatBusinessDateValue(invoice.invoiceDate)}
                     </span>
                   </div>
                 </div>

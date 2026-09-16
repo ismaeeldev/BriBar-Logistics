@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '@/lib/errors/app-error';
 import { clientService } from '@/modules/clients/service/client.service';
 import { expenseCategoryService } from '@/modules/expense-categories/service/expense-category.service';
-import { issuedInvoiceService } from '@/modules/issued-invoices/service/issued-invoice.service';
 import { receivedInvoiceService } from '@/modules/received-invoices/service/received-invoice.service';
 import { routeService } from '@/modules/routes/service/route.service';
 import { serviceService } from '@/modules/services/service/service.service';
@@ -54,6 +53,7 @@ describe('quarterly tax summary (ERP roadmap Phase 4)', () => {
     await receivedInvoiceService.create(fixture.admin, {
       supplierId: supplier.id,
       categoryId: category.id,
+      concept: 'Factura de prueba',
       invoiceDate: '2026-09-02',
       base: 10_000,
       vatRate: 'STANDARD',
@@ -76,12 +76,8 @@ describe('quarterly tax summary (ERP roadmap Phase 4)', () => {
     await serviceService.updateRate(fixture.admin, service.id, 20_000);
     await serviceService.approve(fixture.admin, service.id);
 
-    await issuedInvoiceService.create(fixture.admin, {
-      clientId: client.id,
-      invoiceDate: '2026-09-02',
-      vatRate: 'STANDARD',
-      serviceIds: [service.id],
-    });
+    // The invoice doesn't exist anymore, we just approve the service.
+    // The date of VAT output is the service date. By default `serviceBody(fixture)` creates a service with date 2026-09-02.
 
     const summary = await taxService.quarterlySummary(fixture.admin);
 
@@ -95,12 +91,7 @@ describe('quarterly tax summary (ERP roadmap Phase 4)', () => {
     const service = await serviceService.create(fixture.driver, serviceBody(fixture));
     await serviceService.updateRate(fixture.admin, service.id, 20_000);
     await serviceService.approve(fixture.admin, service.id);
-    await issuedInvoiceService.create(fixture.admin, {
-      clientId: client.id,
-      invoiceDate: '2026-09-02',
-      vatRate: 'STANDARD',
-      serviceIds: [service.id],
-    });
+    // No issued invoice.
 
     const summary = await taxService.quarterlySummary(fixture.admin);
 
@@ -120,6 +111,7 @@ describe('quarterly tax summary (ERP roadmap Phase 4)', () => {
     await receivedInvoiceService.create(fixture.admin, {
       supplierId: supplier.id,
       categoryId: category.id,
+      concept: 'Factura de prueba',
       invoiceDate: '2026-09-02',
       base: 10_000,
       vatRate: 'STANDARD',
@@ -127,6 +119,7 @@ describe('quarterly tax summary (ERP roadmap Phase 4)', () => {
     await receivedInvoiceService.create(fixture.admin, {
       supplierId: supplier.id,
       categoryId: category.id,
+      concept: 'Factura de prueba',
       invoiceDate: '2026-02-10',
       base: 5_000,
       vatRate: 'STANDARD',

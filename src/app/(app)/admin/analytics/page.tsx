@@ -13,19 +13,22 @@
  * filter on the headline KPIs, and moved "Recuperación de la inversión" to
  * `/admin/investments`, next to the investment totals it is computed from.
  */
-import { ChartColumn, TrendingUp, Wrench } from 'lucide-react';
+import { ChartColumn, TrendingUp, Wrench, AlertTriangle, Truck } from 'lucide-react';
 
 import { MarginTrend } from '@/components/charts/margin-trend';
 import { ScenarioSimulator } from '@/components/admin/scenario-simulator';
-import { Card, CardBody, CardHeader, CardTitle, EmptyState, PageHeader } from '@/components/ui/primitives';
+import { Card, CardBody, CardHeader, CardTitle, EmptyState, PageHeader, Badge } from '@/components/ui/primitives';
+import { Td, Th } from '@/components/ui/table';
 import { requireAdmin } from '@/lib/auth/session';
 import { NUMBER_LOCALE, UI } from '@/lib/i18n/messages';
 import { centsToEuros, formatEuros } from '@/lib/money/money';
 import { formatLiters } from '@/lib/units/fuel';
+import { formatBusinessDateValue } from '@/lib/time/business-date';
 import { analyticsService } from '@/modules/analytics/service/analytics.service';
 import { analyticsFilterSchema } from '@/modules/analytics/schemas/analytics.schema';
 import { analyticsRepository } from '@/modules/analytics/repository/analytics.repository';
 import { configRepository } from '@/modules/config/repository/config.repository';
+import { maintenanceRecordService } from '@/modules/maintenance/service/maintenance-record.service';
 import { cn } from '@/lib/utils/cn';
 
 export const metadata = { title: UI.admin.analytics.title };
@@ -85,11 +88,13 @@ export default async function AdminAnalyticsPage({
   const params = await searchParams;
   const filter = analyticsFilterSchema.parse(params);
 
-  const [overview, monthly, vehicles, config] = await Promise.all([
+  const [overview, monthly, vehicles, config, vehicleStats, dueMaintenance] = await Promise.all([
     analyticsService.overview(actor, filter),
     analyticsService.monthlyMargin(actor),
     analyticsRepository.vehicles(),
     configRepository.get(),
+    analyticsService.vehicleStats(actor, filter),
+    maintenanceRecordService.dueSummary(actor),
   ]);
 
   const years = [...new Set(monthly.map((row) => row.year))].sort((a, b) => b - a);
@@ -169,6 +174,40 @@ export default async function AdminAnalyticsPage({
         <EmptyState icon={ChartColumn} title={A.noData} description={A.noDataHint} />
       ) : (
         <>
+          {dueMaintenance.length > 0 && (
+            <Card className="border-amber-500/20 shadow-sm">
+              <CardHeader className="bg-amber-50/50 pb-3">
+                <CardTitle className="text-amber-700">
+                  <AlertTriangle className="size-5 text-amber-500" />
+                  Cartel de Avisos (Mantenimiento)
+                </CardTitle>
+                <p className="text-amber-700/70 text-xs">Vehículos con mantenimiento próximo o vencido</p>
+              </CardHeader>
+              <CardBody className="pt-3">
+                <ul className="divide-border -my-2 divide-y">
+                  {dueMaintenance.filter(r => r.urgency === 'URGENT' || r.urgency === 'UPCOMING').map((record) => (
+                    <li key={record.id} className="flex items-center justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-foreground text-sm font-medium">
+                          {record.vehicle.registrationPlate}
+                          <span className="text-muted-foreground font-normal"> · {record.maintenanceType.name}</span>
+                        </p>
+                        <p className="text-muted-foreground mt-0.5 text-xs">
+                          {record.nextDueKm !== null ? `${record.nextDueKm} km` : null}
+                          {record.nextDueKm !== null && record.nextDueDate !== null ? ' · ' : null}
+                          {record.nextDueDate !== null ? formatBusinessDateValue(record.nextDueDate) : null}
+                        </p>
+                      </div>
+                      <Badge tone={record.urgency === 'URGENT' ? 'destructive' : 'pending'}>
+                        {record.urgency === 'URGENT' ? 'URGENTE' : 'PRÓXIMO'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
+          )}
+
           {/* Headline KPIs */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label={A.revenue} value={euros(overview.revenueCents)} />
@@ -226,6 +265,79 @@ export default async function AdminAnalyticsPage({
               </CardBody>
             </Card>
           ) : null}
+
+          {/* Vehicle Utilization & Fuel Data */}
+          {vehicleStats.length > 0 && (
+            <div className="grid gap-5 xl:grid-cols-2 items-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <Truck className="size-5 text-blue-600" />
+                    Utilización del Vehículo
+                  </CardTitle>
+                  <p className="text-muted-foreground text-xs">Km de servicio vs vacíos</p>
+                </CardHeader>
+                <CardBody className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <Th>Vehículo</Th>
+                        <Th>Km Serv.</Th>
+                        <Th>Km Vacío</Th>
+                        <Th>Km Real</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vehicleStats.map(stat => (
+                        <tr key={stat.vehicleId} className="border-b last:border-0 hover:bg-muted/30">
+                          <Td className="py-2.5 font-semibold uppercase text-foreground">{stat.plate}</Td>
+                          <Td className="py-2.5">{km(stat.serviceKm)}</Td>
+                          <Td className="py-2.5 text-muted-foreground">{km(stat.emptyKm)}</Td>
+                          <Td className="py-2.5 font-bold">{km(stat.actualKm)}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <ChartColumn className="size-5 text-amber-600" />
+                    Datos Combustible
+                  </CardTitle>
+                  <p className="text-muted-foreground text-xs">Consumo y coste medio</p>
+                </CardHeader>
+                <CardBody className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <Th>Vehículo</Th>
+                        <Th>Litros</Th>
+                        <Th>L/100km</Th>
+                        <Th>Precio/L</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vehicleStats.map(stat => (
+                        <tr key={stat.vehicleId} className="border-b last:border-0 hover:bg-muted/30">
+                          <Td className="py-2.5 font-semibold uppercase text-foreground">{stat.plate}</Td>
+                          <Td className="py-2.5">{formatLiters(stat.litresMl, NUMBER_LOCALE)}</Td>
+                          <Td className="py-2.5">
+                            {stat.avgConsumptionMlPer100Km ? formatLiters(stat.avgConsumptionMlPer100Km, NUMBER_LOCALE) : '—'}
+                          </Td>
+                          <Td className="py-2.5 text-muted-foreground">
+                            {stat.avgFuelPriceCentsPerLiter ? euros(stat.avgFuelPriceCentsPerLiter) : '—'}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardBody>
+              </Card>
+            </div>
+          )}
         </>
       )}
 

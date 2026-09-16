@@ -149,6 +149,7 @@ export const receivedInvoiceService = {
             invoiceCode: formatDocumentCode('FR', 6, sequence),
             supplierId: input.supplierId,
             categoryId: input.categoryId,
+            concept: input.concept,
             vehicleId: input.vehicleId ?? null,
             invoiceDate: new Date(`${input.invoiceDate}T00:00:00.000Z`),
             baseCents: input.base,
@@ -203,6 +204,7 @@ export const receivedInvoiceService = {
           {
             ...(input.supplierId === undefined ? {} : { supplierId: input.supplierId }),
             ...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
+            ...(input.concept === undefined ? {} : { concept: input.concept }),
             ...(input.vehicleId === undefined ? {} : { vehicleId: input.vehicleId ?? null }),
             ...(input.invoiceDate === undefined
               ? {}

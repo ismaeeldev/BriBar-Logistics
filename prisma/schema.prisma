@@ -80,6 +80,8 @@ enum AuditEntityType {
   DAILY_KM_LOG
   PERSONNEL_COST
   MAINTENANCE_RECORD
+  /// client change request 2026-09-17: End Client promoted to its own model.
+  END_CLIENT
 
   @@map("audit_entity_type")
 }
@@ -101,10 +103,10 @@ enum LookupKind {
   /// nocturno, ...) - the list a future `Service.supplementType` will pick
   /// from once the supplement field itself ships.
   SUPPLEMENT_TYPE
-  /// `Cliente final` (roadmap §6 B5): kept as a plain named list, not a full
-  /// entity, until the client confirms it needs its own contacts/addresses.
-  /// Promoting it later is a new model, not a rewrite of what points at it,
-  /// because nothing points at it yet.
+  /// `Cliente final`. Promoted to a real `EndClient` model (client change
+  /// request 2026-09-17) - kept only so historical `LookupItem` rows of this
+  /// kind can still be read during the promotion migration; no longer
+  /// offered in `LOOKUP_KINDS`, see `src/modules/lookup/lookup-kinds.ts`.
   END_CLIENT
   /// `99_Listas` gas stations (ERP roadmap Phase 2). Added alongside the
   /// refuelling module that is its first consumer, per this enum's own
@@ -278,17 +280,25 @@ model Route {
   /// (`issuedInvoiceService.create` requires it transitively, via the route).
   clientId String? @map("client_id") @db.Uuid
 
+  /// "Cliente final" for this route/contract, distinct from `clientId` (who
+  /// is billed). Client change request 2026-09-17: assignable in the same
+  /// place as Client, when an administrator edits a route's
+  /// origin/destination.
+  endClientId String? @map("end_client_id") @db.Uuid
+
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   client            Client?       @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  endClient         EndClient?    @relation(fields: [endClientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   driverAssignments DriverRoute[]
   services          Service[]
   dailyKmLogs       DailyKmLog[]
 
   @@index([isActive], map: "routes_is_active_idx")
   @@index([clientId], map: "routes_client_id_idx")
+  @@index([endClientId], map: "routes_end_client_id_idx")
   @@map("routes")
 }
 
@@ -348,6 +358,27 @@ model Client {
 
   @@index([isActive], map: "clients_is_active_idx")
   @@map("clients")
+}
+
+/// "Cliente final" - who a route's/contract's freight is ultimately for,
+/// distinct from `Client` (who the company bills). Promoted from a plain
+/// `LookupKind.END_CLIENT` named list to its own model (client change
+/// request 2026-09-17: assignable per-route, same as Client) - same shape as
+/// `Client` deliberately, for the same reason `Supplier` mirrors `Client`.
+model EndClient {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String @db.VarChar(160)
+
+  taxId String? @map("tax_id") @db.VarChar(32)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  routes Route[]
+
+  @@index([isActive], map: "end_clients_is_active_idx")
+  @@map("end_clients")
 }
 
 /// Who a received invoice was billed by (ERP roadmap Phase 3, roadmap §2's
@@ -420,7 +451,6 @@ model LookupItem {
   // given `LookupItem` is allowed to be referenced as.
   refuellingsAsFuelType           Refuelling[]        @relation("RefuellingFuelType")
   refuellingsAsGasStation         Refuelling[]        @relation("RefuellingGasStation")
-  refuellingsAsPaymentMethod      Refuelling[]        @relation("RefuellingPaymentMethod")
   // ERP roadmap Phase 3 - same polymorphic-reference trade-off as above.
   receivedInvoicesAsState         ReceivedInvoice[]   @relation("ReceivedInvoiceState")
   receivedInvoicesAsPaymentMethod ReceivedInvoice[]   @relation("ReceivedInvoicePaymentMethod")
@@ -541,23 +571,25 @@ model Refuelling {
   /// cent on a compounding-rounding input.
   vatCents  Int     @map("vat_cents")
 
-  /// The three optional categorisations (`99_Listas`). Nullable: the
+  /// The two optional categorisations (`99_Listas`). Nullable: the
   /// financial facts above are what matters most on a first pass, and these
-  /// can be filled in later without blocking on it.
-  fuelTypeId      String? @map("fuel_type_id") @db.Uuid
-  gasStationId    String? @map("gas_station_id") @db.Uuid
-  paymentMethodId String? @map("payment_method_id") @db.Uuid
+  /// can be filled in later without blocking on it. A third,
+  /// `paymentMethodId`, was removed (client change request 2026-09-17,
+  /// superseding the 2026-09-13 decision that made it mandatory here) — see
+  /// `docs/adr/0013-refuelling-module.md`. `ReceivedInvoice.paymentMethodId`
+  /// is unaffected; that one is a different relation into `LookupItem`.
+  fuelTypeId   String? @map("fuel_type_id") @db.Uuid
+  gasStationId String? @map("gas_station_id") @db.Uuid
 
   notes String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  driver        User        @relation("RefuellingDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  fuelType      LookupItem? @relation("RefuellingFuelType", fields: [fuelTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  gasStation    LookupItem? @relation("RefuellingGasStation", fields: [gasStationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  paymentMethod LookupItem? @relation("RefuellingPaymentMethod", fields: [paymentMethodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vehicle    Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  driver     User        @relation("RefuellingDriver", fields: [driverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  fuelType   LookupItem? @relation("RefuellingFuelType", fields: [fuelTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  gasStation LookupItem? @relation("RefuellingGasStation", fields: [gasStationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Backs the admin list and, more importantly, `previousForVehicle` -
   // finding the chronologically preceding refuel for a vehicle is this
@@ -601,6 +633,11 @@ model ReceivedInvoice {
 
   supplierId String @map("supplier_id") @db.Uuid
   categoryId String @map("category_id") @db.Uuid
+
+  /// The human-readable line transcribed from the supplier's own document
+  /// (client change request 2026-09-17) - what `notes` free text did
+  /// informally before this field existed.
+  concept String @db.VarChar(200)
 
   /// Which vehicle this cost belongs to, if any - not every bill is
   /// vehicle-specific (office supplies, bank fees). Feeds the Phase 3

@@ -130,7 +130,6 @@ export const refuellingService = {
     await assertActiveDriver(input.driverId);
     await assertLookupKind(input.fuelTypeId, 'FUEL_TYPE');
     await assertLookupKind(input.gasStationId, 'GAS_STATION');
-    await assertLookupKind(input.paymentMethodId, 'PAYMENT_METHOD');
 
     const { baseCents, vatCents } = splitBaseAndVat(input.total, input.vatRate);
 
@@ -154,7 +153,6 @@ export const refuellingService = {
             vatCents,
             fuelTypeId: input.fuelTypeId ?? null,
             gasStationId: input.gasStationId ?? null,
-            paymentMethodId: input.paymentMethodId ?? null,
             notes: input.notes ?? null,
           } satisfies Prisma.RefuellingUncheckedCreateInput,
           tx,
@@ -187,7 +185,6 @@ export const refuellingService = {
     if (input.driverId !== undefined) await assertActiveDriver(input.driverId);
     await assertLookupKind(input.fuelTypeId, 'FUEL_TYPE');
     await assertLookupKind(input.gasStationId, 'GAS_STATION');
-    await assertLookupKind(input.paymentMethodId, 'PAYMENT_METHOD');
 
     // The base/VAT split is recalculated whenever either input to it
     // changes, and left untouched otherwise — an edit to, say, the notes
@@ -213,9 +210,6 @@ export const refuellingService = {
             ...(input.gasStationId === undefined
               ? {}
               : { gasStationId: input.gasStationId ?? null }),
-            ...(input.paymentMethodId === undefined
-              ? {}
-              : { paymentMethodId: input.paymentMethodId ?? null }),
             ...(input.notes === undefined ? {} : { notes: input.notes ?? null }),
           },
           tx,

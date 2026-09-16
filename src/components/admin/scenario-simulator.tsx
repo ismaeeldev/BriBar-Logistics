@@ -64,6 +64,16 @@ export function ScenarioSimulator({ defaults }: { defaults: ScenarioDefaults }) 
     Math.round(defaults.fuelPriceEurosPerLiter * 100),
   );
 
+  const serviceKmFuelCents = estimatedFuelCents(
+    toNumber(form.serviceKm),
+    Math.round(defaults.consumptionLPer100Km * 1_000),
+    Math.round(defaults.fuelPriceEurosPerLiter * 100),
+  );
+
+  const totalFuelCents = emptyKmFuelCents + serviceKmFuelCents;
+  const revenueCents = Math.round(toNumber(form.revenue) * 100);
+  const estimatedMarginCents = revenueCents - totalFuelCents;
+
   return (
     <Card>
       <CardBody className="space-y-4 pt-5">
@@ -103,11 +113,25 @@ export function ScenarioSimulator({ defaults }: { defaults: ScenarioDefaults }) 
           </Field>
         </div>
 
-        <div className="border-t border-border/40 pt-4">
-          <div className="rounded-lg border bg-muted/30 px-3 py-2">
-            <p className="text-muted-foreground text-xs">{UI.admin.analytics.simEmptyKmFuelCost}</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
-              {formatEuros(emptyKmFuelCents, NUMBER_LOCALE)}
+        <div className="border-t border-border/40 pt-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border bg-muted/30 px-3 py-2">
+              <p className="text-muted-foreground text-xs">{UI.admin.analytics.simEmptyKmFuelCost}</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+                {formatEuros(emptyKmFuelCents, NUMBER_LOCALE)}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 px-3 py-2">
+              <p className="text-muted-foreground text-xs">Coste comb. servicio</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+                {formatEuros(serviceKmFuelCents, NUMBER_LOCALE)}
+              </p>
+            </div>
+          </div>
+          <div className={`rounded-lg border px-3 py-2 ${estimatedMarginCents >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-destructive/10 border-destructive/20'}`}>
+            <p className="text-muted-foreground text-xs">Beneficio estimado</p>
+            <p className={`mt-0.5 text-xl font-bold tabular-nums ${estimatedMarginCents >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+              {formatEuros(estimatedMarginCents, NUMBER_LOCALE)}
             </p>
           </div>
         </div>

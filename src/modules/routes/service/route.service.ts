@@ -16,6 +16,7 @@ import { withTranslatedErrors } from '@/lib/db/with-translated-errors';
 import { businessRuleViolation, forbidden, notFound } from '@/lib/errors/app-error';
 import { ERRORS } from '@/lib/i18n/messages';
 import { clientRepository } from '@/modules/clients/repository/client.repository';
+import { endClientRepository } from '@/modules/end-clients/repository/end-client.repository';
 import { Role } from '@/modules/services/domain/service-status';
 import { routeRepository, type RouteRecord } from '../repository/route.repository';
 import type { CreateRouteInput, UpdateRouteInput } from '../schemas/route.schema';
@@ -32,6 +33,14 @@ async function assertClientExists(clientId: string | null | undefined): Promise<
   if (!clientId) return;
   const client = await clientRepository.findById(clientId);
   if (!client) throw notFound();
+}
+
+/** Same reasoning as `assertClientExists`, for "Cliente final" (client
+ * change request 2026-09-17). */
+async function assertEndClientExists(endClientId: string | null | undefined): Promise<void> {
+  if (!endClientId) return;
+  const endClient = await endClientRepository.findById(endClientId);
+  if (!endClient) throw notFound();
 }
 
 export const routeService = {
@@ -115,6 +124,7 @@ export const routeService = {
   async create(actor: Actor, input: CreateRouteInput): Promise<RouteRecord> {
     assertAdmin(actor);
     await assertClientExists(input.clientId);
+    await assertEndClientExists(input.endClientId);
 
     return withTranslatedErrors(() =>
       prisma.$transaction(async (tx) => {
@@ -127,6 +137,7 @@ export const routeService = {
             isActive: input.isActive,
             defaultRateCents: input.defaultRate ?? null,
             clientId: input.clientId ?? null,
+            endClientId: input.endClientId ?? null,
           },
           tx,
         );
@@ -162,6 +173,7 @@ export const routeService = {
     const existing = await routeRepository.findById(id);
     if (!existing) throw notFound();
     if (input.clientId !== undefined) await assertClientExists(input.clientId);
+    if (input.endClientId !== undefined) await assertEndClientExists(input.endClientId);
 
     return withTranslatedErrors(() =>
       prisma.$transaction(async (tx) => {
@@ -178,6 +190,7 @@ export const routeService = {
             // leave alone") — see their doc comments.
             ...(input.defaultRate === undefined ? {} : { defaultRateCents: input.defaultRate }),
             ...(input.clientId === undefined ? {} : { clientId: input.clientId }),
+            ...(input.endClientId === undefined ? {} : { endClientId: input.endClientId }),
           },
           tx,
         );
