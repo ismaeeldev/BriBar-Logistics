@@ -1,0 +1,121 @@
+BRIBAR LOGISTICS — Resumen de cambios solicitados
+Fecha: 17/09/2026
+
+Este documento resume, punto por punto, el estado de los cambios que nos
+pidió en "BRIBAR LOGISTICS CAMBIOS APP". Cada punto está marcado como
+[HECHO] o [PENDIENTE].
+
+----------------------------------------------------------------------
+01Servicios
+----------------------------------------------------------------------
+[HECHO] Al modificar el origen/destino de una ruta, ahora también se
+        puede asignar el Cliente y el Cliente final de esa ruta, en la
+        misma pantalla.
+[HECHO] El campo Observaciones ya estaba disponible en cada servicio.
+
+----------------------------------------------------------------------
+00KmDiariosReales
+----------------------------------------------------------------------
+[HECHO] La pantalla de Km diarios reales muestra ahora, junto a lo que
+        usted introduce a mano, los km que ya vienen de los servicios
+        registrados ese día — no hace falta volver a apuntarlos.
+
+----------------------------------------------------------------------
+00Dashboard
+----------------------------------------------------------------------
+[HECHO] Nuevo panel de avisos de mantenimiento (cambio de aceite, ITV)
+        directamente en el Dashboard.
+[HECHO] Nueva tabla de combustible y consumo por vehículo.
+[PENDIENTE] La opción "Empresa" para ver los gastos que no van a ningún
+        vehículo en concreto (como el software o esta misma app)
+        todavía no está en el selector del Dashboard.
+
+----------------------------------------------------------------------
+00Análisis
+----------------------------------------------------------------------
+[HECHO] El simulador de escenarios calcula ahora también el coste de
+        combustible de los Km de servicio (antes solo el de Km en
+        vacío), y muestra un beneficio estimado.
+[HECHO] Cada servicio, en su ficha individual, muestra el coste de
+        combustible estimado y el margen bruto estimado.
+[PENDIENTE] Las tablas de resumen diario y por servicio que describió
+        para Análisis aún no están montadas como tablas propias; de
+        momento esa información se ve servicio a servicio, no reunida
+        en una tabla.
+
+----------------------------------------------------------------------
+02Repostajes
+----------------------------------------------------------------------
+[HECHO] Se ha quitado el campo "Método de pago" de los repostajes, tal
+        como pidió.
+
+----------------------------------------------------------------------
+03Facturas Recibidas
+----------------------------------------------------------------------
+[HECHO] Se ha añadido el campo Concepto (obligatorio) a cada factura
+        recibida.
+
+----------------------------------------------------------------------
+04Personal
+----------------------------------------------------------------------
+[HECHO] Nueva tabla en la ficha de cada trabajador con los servicios
+        que hizo en ese periodo: fecha, ruta, vehículo, facturación y
+        si fue como conductor principal o conductor adicional.
+[PENDIENTE] Las columnas Horas extra, Dietas, Otros y Coste fijo diario
+        todavía siguen en la app. Se quitarán en el próximo pase, junto
+        con "Tributa" (que nunca llegó a incluirse).
+
+----------------------------------------------------------------------
+05FacturasEmitidas
+----------------------------------------------------------------------
+[HECHO] Esta página se ha quitado de la app, tal como pidió.
+
+----------------------------------------------------------------------
+06Impuestos
+----------------------------------------------------------------------
+[HECHO] El IVA Repercutido ya no depende de Facturas emitidas (que se
+        ha quitado); ahora se calcula directamente sobre los servicios
+        aprobados y facturados.
+
+----------------------------------------------------------------------
+07Inversiones
+----------------------------------------------------------------------
+[PENDIENTE] La tabla de beneficio mes a mes por vehículo todavía no
+        está añadida a esta página.
+
+----------------------------------------------------------------------
+08Mantenimiento
+----------------------------------------------------------------------
+[HECHO] El aviso de mantenimiento aparece ahora también en el
+        Dashboard, no solo en su propia página.
+[PENDIENTE] Seguimos usando los mismos parámetros provisionales para
+        decidir cuándo un aviso es "urgente". En cuanto nos indique los
+        valores reales (a cuántos km o días antes debe avisar cada tipo
+        de mantenimiento), los ajustamos.
+
+----------------------------------------------------------------------
+Datos históricos (Excel)
+----------------------------------------------------------------------
+[HECHO] Se ha importado su Excel real a la base de datos: vehículos,
+        conductores, clientes, proveedores, rutas, servicios,
+        repostajes, facturas recibidas, personal y km diarios.
+[HECHO] Se ha corregido un fallo del importador: antes todas las rutas
+        quedaban asignadas al mismo cliente por defecto y ningún
+        "Cliente final" quedaba realmente enlazado a su ruta. Ahora
+        cada ruta recoge el Cliente y el Cliente final reales que
+        aparecen en sus servicios (por ejemplo, Ilunion o Xiaomi en las
+        rutas que corresponde).
+
+----------------------------------------------------------------------
+Resumen
+----------------------------------------------------------------------
+La mayor parte de lo pedido ya está hecho y probado. Queda pendiente,
+para el próximo pase:
+  - La opción "Empresa" en el selector del Dashboard.
+  - Las tablas de resumen diario y por servicio en Análisis.
+  - Quitar las columnas sobrantes de la página de Personal.
+  - La tabla de beneficio mensual por vehículo en Inversiones.
+  - Los valores reales para los avisos de mantenimiento (nos falta que
+    nos los indique).
+
+Cualquier duda sobre estos puntos, quedamos a su disposición.
