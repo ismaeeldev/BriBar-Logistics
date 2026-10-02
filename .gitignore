@@ -72,3 +72,15 @@ skills-lock.json
 /ERP_Transporte_ANONIMIZADO.xlsm
 /erp-bundle*.json
 /snapshot-*/
+
+# Kept locally, kept out of the GitHub-visible repo: internal dev docs,
+# AI-agent working instructions, local-only infra, dev tooling and test
+# suites. None of this is needed to run the built app.
+/docs/
+/docker/
+docker-compose.yml
+AGENTS.md
+CLAUDE.md
+/scripts/
+/tests/
+/e2e/
