@@ -57,6 +57,9 @@ Thumbs.db
 
 # agent/editor tooling, not project config
 .claude/
+.windsurf/
+.agents/
+skills-lock.json
 
 # playwright (e2e)
 /test-results/
